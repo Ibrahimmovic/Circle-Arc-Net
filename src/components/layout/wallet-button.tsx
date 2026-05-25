@@ -19,24 +19,25 @@ export function WalletButton() {
 
   if (isConnected && address) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex max-w-full items-center gap-1.5 sm:gap-2">
         {onWrongChain && (
           <button
             type="button"
             onClick={() => switchChain({ chainId: targetChainId })}
-            className="rounded-xl border border-amber-500/50 bg-amber-500/15 px-3 py-2 text-xs font-medium text-amber-200"
+            className="shrink-0 rounded-xl border border-amber-500/50 bg-amber-500/15 px-2 py-2 text-[10px] font-medium text-amber-200 sm:px-3 sm:text-xs touch-manipulation"
           >
-            Switch to {isTestnet ? "Arc Testnet" : "Ethereum"}
+            <span className="hidden min-[400px]:inline">Switch to </span>
+            {isTestnet ? "Arc" : "ETH"}
           </button>
         )}
         <button
           type="button"
           onClick={() => disconnect()}
-          className="flex items-center gap-2 rounded-xl border border-cyan-500/40 bg-slate-900/90 px-4 py-2.5 text-sm font-medium text-cyan-100"
+          className="flex max-w-[min(100%,11rem)] items-center gap-1.5 rounded-xl border border-cyan-500/40 bg-slate-900/90 px-2.5 py-2 text-xs font-medium text-cyan-100 sm:max-w-none sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm touch-manipulation"
         >
-          <Wallet className="h-4 w-4 text-cyan-400" />
-          <span className="font-mono">{shortenAddress(address)}</span>
-          <LogOut className="h-4 w-4 opacity-60" />
+          <Wallet className="h-4 w-4 shrink-0 text-cyan-400" />
+          <span className="truncate font-mono">{shortenAddress(address)}</span>
+          <LogOut className="h-4 w-4 shrink-0 opacity-60" />
         </button>
       </div>
     );
@@ -49,7 +50,7 @@ export function WalletButton() {
       type="button"
       disabled={isPending || !injected}
       onClick={() => connect({ connector: injected, chainId: targetChainId })}
-      className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-cyan-500/30 hover:brightness-110 disabled:opacity-50"
+      className="flex min-h-[44px] items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-cyan-500/30 hover:brightness-110 disabled:opacity-50 sm:px-6 sm:text-sm touch-manipulation"
     >
       {isPending ? (
         <Loader2 className="h-4 w-4 animate-spin" />

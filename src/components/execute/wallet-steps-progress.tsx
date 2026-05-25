@@ -30,7 +30,7 @@ export function WalletStepsProgress({ steps }: { steps: WalletStep[] }) {
             >
               {s.state === "done" ? "✓" : i + 1}
             </div>
-            <p className="max-w-[72px] truncate text-center text-[9px] font-medium text-slate-300">
+            <p className="max-w-[56px] truncate text-center text-[8px] font-medium text-slate-300 sm:max-w-[72px] sm:text-[9px]">
               {s.title}
             </p>
             {s.subtitle && (

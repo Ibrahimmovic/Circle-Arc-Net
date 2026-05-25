@@ -22,6 +22,13 @@ const geistMono = Geist_Mono({
 const appUrl =
   process.env.NEXT_PUBLIC_APP_URL ?? "https://circle-arc-net.vercel.app";
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#030712",
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: "Agora Forge | Multichain Portfolio · Bridge · Swap on Arc",

@@ -26,7 +26,7 @@ export function PortfolioHero({
   const up = change24hPct >= 0;
 
   return (
-    <div className="luxury-hero relative overflow-hidden rounded-3xl p-8 lg:p-10">
+    <div className="luxury-hero relative overflow-hidden rounded-2xl p-5 sm:rounded-3xl sm:p-8 lg:p-10">
       <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-violet-600/20 blur-3xl" />
       <div className="absolute -bottom-16 left-10 h-48 w-48 rounded-full bg-cyan-500/15 blur-3xl" />
       <div className="relative grid gap-8 lg:grid-cols-[1fr_auto]">
@@ -34,7 +34,7 @@ export function PortfolioHero({
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-cyan-400/90">
             Multichain net worth
           </p>
-          <p className="font-display mt-2 text-4xl font-bold text-white lg:text-5xl">
+          <p className="font-display mt-2 text-3xl font-bold text-white sm:text-4xl lg:text-5xl">
             {loading ? "…" : formatUsd(totalUsd)}
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-4">

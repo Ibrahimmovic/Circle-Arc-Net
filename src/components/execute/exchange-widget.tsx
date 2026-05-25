@@ -916,18 +916,20 @@ export function ExchangeWidget() {
   return (
     <>
       <div className="exchange-widget mx-auto w-full max-w-md">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-display text-lg font-bold text-white">Swap & Bridge</h2>
+        <div className="mb-3 flex items-center justify-between sm:mb-4">
+          <h2 className="font-display text-base font-bold text-white sm:text-lg">
+            Swap & Bridge
+          </h2>
           <div className="flex gap-1 text-slate-500">
             <Settings2 className="h-4 w-4 opacity-40" />
           </div>
         </div>
 
-        <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-2">
+        <div className="flex flex-col gap-2 md:grid md:grid-cols-[1fr_auto_1fr] md:items-stretch">
           <button
             type="button"
             onClick={() => setPicker("from")}
-            className="exchange-tile rounded-2xl p-3 text-left transition hover:border-violet-500/40"
+            className="exchange-tile rounded-2xl p-3 text-left transition hover:border-violet-500/40 touch-manipulation"
           >
             <p className="text-[10px] text-slate-500">From</p>
             <div className="mt-2 flex items-center gap-2">
@@ -949,8 +951,8 @@ export function ExchangeWidget() {
           <button
             type="button"
             onClick={swapEnds}
-            className="self-center rounded-full border border-slate-600 bg-slate-800/80 p-2 text-slate-300 hover:text-cyan-300"
-            aria-label="Flip"
+            className="mx-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-600 bg-slate-800/80 text-slate-300 hover:text-cyan-300 touch-manipulation md:mx-0 md:self-center"
+            aria-label="Swap from and to"
           >
             <ArrowDownUp className="h-4 w-4" />
           </button>
@@ -958,7 +960,7 @@ export function ExchangeWidget() {
           <button
             type="button"
             onClick={() => setPicker("to")}
-            className="exchange-tile rounded-2xl p-3 text-left transition hover:border-violet-500/40"
+            className="exchange-tile rounded-2xl p-3 text-left transition hover:border-violet-500/40 touch-manipulation"
           >
             <p className="text-[10px] text-slate-500">To</p>
             <div className="mt-2 flex items-center gap-2">
@@ -1002,7 +1004,7 @@ export function ExchangeWidget() {
                 }
               }}
               placeholder="0"
-              className="min-w-0 flex-1 bg-transparent text-3xl font-semibold text-white outline-none"
+              className="min-w-0 flex-1 bg-transparent text-2xl font-semibold text-white outline-none sm:text-3xl"
             />
           </div>
           <div className="mt-3 flex gap-2">
@@ -1104,12 +1106,12 @@ export function ExchangeWidget() {
           </div>
         )}
 
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
           <button
             type="button"
             onClick={() => void runQuote(true)}
             disabled={status === "loading" || quoteLoading}
-            className="btn-secondary flex-1 py-3 text-sm disabled:opacity-50"
+            className="btn-secondary min-h-[48px] flex-1 py-3 text-sm disabled:opacity-50 touch-manipulation"
           >
             {quoteLoading ? "…" : "Quote"}
           </button>
@@ -1117,7 +1119,7 @@ export function ExchangeWidget() {
             type="button"
             onClick={runExchange}
             disabled={status === "loading"}
-            className="btn-primary flex-[2] rounded-2xl py-3 text-sm font-bold text-white disabled:opacity-70"
+            className="btn-primary min-h-[48px] flex-[2] rounded-2xl py-3 text-sm font-bold text-white disabled:opacity-70 touch-manipulation"
           >
             {status === "loading" ? (
               <span className="flex items-center justify-center gap-2">

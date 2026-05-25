@@ -151,7 +151,7 @@ export function TokenPicker({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-4 backdrop-blur-md sm:items-center"
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 p-2 pb-nav backdrop-blur-md sm:items-center sm:p-4 sm:pb-4"
       onClick={onClose}
       role="presentation"
     >

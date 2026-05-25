@@ -14,11 +14,35 @@
   --font-mono: var(--font-geist-mono);
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 html,
 body {
   background: var(--bg-deep);
   color: var(--foreground);
   min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pb-nav {
+  padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 1024px) {
+  .pb-nav {
+    padding-bottom: 0;
+  }
+}
+
+.touch-manipulation {
+  touch-action: manipulation;
 }
 
 .font-display {
@@ -85,8 +109,14 @@ body {
   background: linear-gradient(165deg, rgba(30, 20, 50, 0.95) 0%, rgba(12, 15, 28, 0.98) 100%);
   border: 1px solid rgba(139, 92, 246, 0.2);
   border-radius: 1.25rem;
-  padding: 1.25rem;
+  padding: 1rem;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+@media (min-width: 640px) {
+  .exchange-widget {
+    padding: 1.25rem;
+  }
 }
 
 .exchange-tile {

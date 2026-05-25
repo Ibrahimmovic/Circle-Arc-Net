@@ -26,22 +26,22 @@ export function ExecuteHub() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-lg space-y-5">
-      <div className="flex justify-center gap-1 rounded-2xl border border-slate-800/80 bg-slate-950/60 p-1.5">
+    <div className="mx-auto w-full max-w-lg space-y-4 sm:space-y-5">
+      <div className="flex gap-1 overflow-x-auto rounded-2xl border border-slate-800/80 bg-slate-950/60 p-1 scrollbar-thin [-webkit-overflow-scrolling:touch]">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             type="button"
             onClick={() => setTab(id)}
             className={cn(
-              "flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all",
+              "flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all touch-manipulation sm:flex-1",
               tab === id
                 ? "bg-violet-600/40 text-white ring-1 ring-violet-400/30"
                 : "text-slate-400 hover:text-white",
             )}
           >
-            <Icon className="h-3.5 w-3.5" />
-            {label}
+            <Icon className="h-4 w-4 shrink-0" />
+            <span className="whitespace-nowrap">{label}</span>
           </button>
         ))}
       </div>

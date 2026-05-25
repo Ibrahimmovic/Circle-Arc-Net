@@ -2,34 +2,24 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  PieChart,
-  Zap,
-  ExternalLink,
-} from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNetwork } from "@/providers/network-context";
-
-const nav = [
-  { href: "/", label: "Overview", icon: LayoutDashboard },
-  { href: "/portfolio", label: "Adaptive Portfolio", icon: PieChart },
-  { href: "/execute", label: "Bridge & Swap", icon: Zap },
-];
+import { APP_NAV } from "@/lib/nav-items";
 
 export function Sidebar() {
   const pathname = usePathname();
   const { network } = useNetwork();
 
   return (
-    <aside className="glass-panel flex w-64 shrink-0 flex-col border-r border-cyan-500/10 rounded-none lg:min-h-screen z-10">
-      <div className="border-b border-slate-800/60 p-6 bg-gradient-to-br from-cyan-500/5 to-violet-500/5">
-        <Link href="/" className="flex items-center gap-3 group">
+    <aside className="glass-panel z-10 hidden w-64 shrink-0 flex-col rounded-none border-r border-cyan-500/10 lg:flex lg:min-h-screen">
+      <div className="border-b border-slate-800/60 bg-gradient-to-br from-cyan-500/5 to-violet-500/5 p-6">
+        <Link href="/" className="group flex items-center gap-3">
           <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-violet-600 shadow-lg shadow-cyan-500/30">
             <span className="font-display text-lg font-extrabold text-white">A</span>
           </div>
           <div>
-            <p className="font-display text-base font-bold text-white group-hover:text-cyan-200 transition-colors">
+            <p className="font-display text-base font-bold text-white transition-colors group-hover:text-cyan-200">
               Agora Forge
             </p>
             <p className="text-[10px] uppercase tracking-[0.2em] text-cyan-400/70">
@@ -40,7 +30,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 p-4">
-        {nav.map(({ href, label, icon: Icon }) => {
+        {APP_NAV.map(({ href, label, icon: Icon }) => {
           const active =
             href === "/" ? pathname === "/" : pathname.startsWith(href);
           return (
@@ -61,11 +51,11 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="border-t border-slate-800/60 p-4 space-y-2">
+      <div className="space-y-2 border-t border-slate-800/60 p-4">
         <p className="px-2 text-[10px] uppercase tracking-wider text-slate-500">
           Built for Agora Hackathon
         </p>
-        <span className="mx-2 mt-1 inline-block rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-semibold text-cyan-300 uppercase">
+        <span className="mx-2 mt-1 inline-block rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-cyan-300">
           {network}
         </span>
         <a

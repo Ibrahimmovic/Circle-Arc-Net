@@ -53,8 +53,8 @@ export default function HomePage() {
       </div>
 
       {!isConnected && (
-        <div className="luxury-hero rounded-3xl p-10 text-center">
-          <p className="font-display text-3xl font-bold text-white">
+        <div className="luxury-hero rounded-2xl p-6 text-center sm:rounded-3xl sm:p-10">
+          <p className="font-display text-2xl font-bold text-white sm:text-3xl">
             Your cross-chain command desk
           </p>
           <p className="mx-auto mt-4 max-w-lg text-slate-300">
