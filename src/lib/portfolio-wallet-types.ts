@@ -99,4 +99,11 @@ export type PortfolioWalletFeed = {
   sources: string[];
   dataFreshness: string;
   zerionAvailable: boolean;
+  /** Human-readable primary indexer label for UI */
+  dataSourceLabel: string;
+  apisConfigured?: {
+    zerion: boolean;
+    goldrush: boolean;
+    coingecko: boolean;
+  };
 };

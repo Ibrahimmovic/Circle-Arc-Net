@@ -26,11 +26,17 @@ import {
   VERIFIED_TOKEN_SYMBOLS,
 } from "@/lib/token-visuals";
 import type { PortfolioAnalysis } from "@/lib/types";
+import { getMarketSnapshot } from "@/lib/coingecko";
+import {
+  buildSymbolMarketMap,
+  enrichAssetsWithMarketData,
+} from "@/lib/portfolio-pricing";
 import {
   getWalletNftPositions,
   getWalletPortfolio,
   getWalletPositions,
   getWalletTransactions,
+  isZerionConfigured,
   type ZerionNftPosition,
   type ZerionPosition,
   type ZerionTransaction,
@@ -60,7 +66,7 @@ const CHAIN_DISPLAY: Record<string, string> = {
 };
 
 const SPAM_NAME_PATTERNS =
-  /airdrop|claim\s|visit\s|\.com|http|reward|voucher|www\.|blep|degen point|super meme|based usa/i;
+  /t\.me\/|\.xyz\b|claimarb|getneirocoin|visit .{0,12}claim|airdrop.*claim|http:\/\/|www\.|blep|degen point|super meme/i;
 
 function chainLabel(chainId: string): string {
   const key = canonicalChainKey(chainId);
@@ -290,13 +296,25 @@ export async function buildPortfolioWalletFeed(
   const activities: PortfolioActivity[] = [];
   const spamActivities: PortfolioActivity[] = [];
 
+  const zerionOn = isZerionConfigured();
+
   const [portfolio, positionsClean, positionsSpam, txs, nftPos, goldBundle] =
     await Promise.all([
-      getWalletPortfolio(address, testnet).catch(() => null),
-      getWalletPositions(address, testnet, "only_non_trash").catch(() => null),
-      getWalletPositions(address, testnet, "only_trash").catch(() => null),
-      getWalletTransactions(address, testnet, "no_filter").catch(() => null),
-      getWalletNftPositions(address, testnet).catch(() => null),
+      zerionOn
+        ? getWalletPortfolio(address, testnet).catch(() => null)
+        : Promise.resolve(null),
+      zerionOn
+        ? getWalletPositions(address, testnet, "only_non_trash").catch(() => null)
+        : Promise.resolve(null),
+      zerionOn
+        ? getWalletPositions(address, testnet, "only_trash").catch(() => null)
+        : Promise.resolve(null),
+      zerionOn
+        ? getWalletTransactions(address, testnet, "no_filter").catch(() => null)
+        : Promise.resolve(null),
+      zerionOn
+        ? getWalletNftPositions(address, testnet).catch(() => null)
+        : Promise.resolve(null),
       testnet
         ? getBalancesForNetworkMode(address, true).catch(() => null)
         : getMainnetBalancesFull(address).catch(() => null),
@@ -418,14 +436,16 @@ export async function buildPortfolioWalletFeed(
     }
   }
 
-  const cleanAssets = [...assetMap.values()]
-    .filter(
-      (a) =>
-        a.valueUsd >= MIN_POSITION_USD ||
-        (a.balance && a.balance !== "0" && a.balance !== "<0.0001"),
-    )
+  let cleanAssets = [...assetMap.values()];
+  const market = await buildSymbolMarketMap(cleanAssets.map((a) => a.symbol));
+  cleanAssets = enrichAssetsWithMarketData(cleanAssets, market);
+  sources.push("CoinGecko prices");
+
+  cleanAssets = cleanAssets
+    .filter((a) => a.valueUsd >= MIN_POSITION_USD)
     .sort((a, b) => b.valueUsd - a.valueUsd)
     .slice(0, MAX_TOKEN_ROWS);
+
   const spamAssets = [...spamMap.values()]
     .filter((a) => hasMeaningfulHolding(a))
     .sort((a, b) => b.valueUsd - a.valueUsd);
@@ -451,7 +471,18 @@ export async function buildPortfolioWalletFeed(
           (chainDistribution[canonicalChainKey(chain)] ?? 0) + usd;
       }
     }
+  } else if (!zerionAvailable && change24hPct === 0) {
+    try {
+      const snap = await getMarketSnapshot();
+      change24hPct = (snap.ethChange24h + snap.btcChange24h) / 2;
+    } catch {
+      change24hPct = market.get("ETH")?.change24h ?? 0;
+    }
   }
+
+  const dataSourceLabel = zerionAvailable
+    ? "Zerion + GoldRush + CoinGecko"
+    : "GoldRush + CoinGecko";
 
   let walletUsd = 0;
   let defiUsd = 0;
@@ -509,6 +540,12 @@ export async function buildPortfolioWalletFeed(
     sources: [...new Set(sources)],
     dataFreshness: new Date().toISOString(),
     zerionAvailable,
+    dataSourceLabel,
+    apisConfigured: {
+      zerion: zerionOn,
+      goldrush: Boolean(process.env.GOLDRUSH_API_KEY),
+      coingecko: true,
+    },
   };
 
   const analysis =

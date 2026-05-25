@@ -16,12 +16,12 @@ import { usePortfolioWallet } from "@/hooks/use-portfolio-wallet";
 import { useNetwork } from "@/providers/network-context";
 import { PortfolioHero } from "./portfolio-hero";
 import { PortfolioChainMatrix } from "./portfolio-chain-matrix";
-import { PortfolioAggregatedTokens } from "./portfolio-aggregated-tokens";
 import { PortfolioAssetsTable } from "./portfolio-assets-table";
 import { PortfolioNftCollections } from "./portfolio-nft-collections";
 import { PortfolioActivityList } from "./portfolio-activity-list";
 import { PortfolioAdaptivePanel } from "./portfolio-adaptive-panel";
 import { PortfolioPositionCards } from "./portfolio-position-cards";
+import { PortfolioSetupBanner } from "./portfolio-setup-banner";
 import { MarketTicker } from "@/components/dashboard/market-ticker";
 import { CoinStrip } from "@/components/dashboard/coin-strip";
 import { cn, formatUsd } from "@/lib/utils";
@@ -46,9 +46,6 @@ export function PortfolioCommandCenter() {
   );
   const [tab, setTab] = useState<TabId>("overview");
   const [chainFilter, setChainFilter] = useState<string>("all");
-  const [tokenView, setTokenView] = useState<"aggregated" | "per-chain">(
-    "per-chain",
-  );
   const [hideSpam, setHideSpam] = useState(true);
 
   const analysis = data?.analysis;
@@ -60,27 +57,6 @@ export function PortfolioCommandCenter() {
     return data.assets.filter(
       (a) => (a.chainId ?? a.chain) === chainFilter || a.chain === chainFilter,
     );
-  }, [data, chainFilter]);
-
-  const filteredAggregated = useMemo(() => {
-    if (!data) return [];
-    if (chainFilter === "all") return data.aggregatedAssets;
-    return data.aggregatedAssets
-      .map((a) => ({
-        ...a,
-        holdings: a.holdings.filter(
-          (h) =>
-            (h.chainId ?? h.chain) === chainFilter || h.chain === chainFilter,
-        ),
-      }))
-      .filter((a) => a.holdings.length > 0)
-      .map((a) => ({
-        ...a,
-        valueUsd: a.holdings.reduce((s, h) => s + h.valueUsd, 0),
-        networkCount: new Set(a.holdings.map((h) => h.chain)).size,
-        networks: [...new Set(a.holdings.map((h) => h.chain))],
-      }))
-      .sort((a, b) => b.valueUsd - a.valueUsd);
   }, [data, chainFilter]);
 
   const nftUsd = useMemo(
@@ -178,6 +154,12 @@ export function PortfolioCommandCenter() {
 
       {data && (
         <>
+          <PortfolioSetupBanner
+            zerionAvailable={data.zerionAvailable}
+            dataSourceLabel={data.dataSourceLabel}
+            apis={data.apisConfigured}
+          />
+
           <PortfolioHero
             totalUsd={data.totalUsd}
             change24hPct={data.change24hPct}
@@ -185,6 +167,7 @@ export function PortfolioCommandCenter() {
             chainCount={data.allChainBalances.length}
             sparkline={data.sparkline ?? []}
             sources={data.sources}
+            dataSourceLabel={data.dataSourceLabel}
             loading={loading}
           />
 
@@ -291,45 +274,14 @@ export function PortfolioCommandCenter() {
 
           {tab === "assets" && (
             <div className="luxury-card rounded-2xl p-5 sm:p-6">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Assets</h3>
-                  <p className="text-xs text-slate-500">
-                    Live Zerion positions + prices · net worth {formatUsd(data.totalUsd)}
-                  </p>
-                </div>
-                <div className="flex rounded-lg border border-slate-700 p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setTokenView("aggregated")}
-                    className={cn(
-                      "rounded-md px-3 py-1.5 text-xs font-medium",
-                      tokenView === "aggregated"
-                        ? "bg-cyan-500/20 text-cyan-100"
-                        : "text-slate-400",
-                    )}
-                  >
-                    By token
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTokenView("per-chain")}
-                    className={cn(
-                      "rounded-md px-3 py-1.5 text-xs font-medium",
-                      tokenView === "per-chain"
-                        ? "bg-cyan-500/20 text-cyan-100"
-                        : "text-slate-400",
-                    )}
-                  >
-                    By chain
-                  </button>
-                </div>
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-white">Assets</h3>
+                <p className="text-xs text-slate-500">
+                  Zerion-style holdings · {formatUsd(data.totalUsd)} net worth · icons &
+                  prices from live APIs
+                </p>
               </div>
-              {tokenView === "aggregated" ? (
-                <PortfolioAggregatedTokens assets={filteredAggregated} />
-              ) : (
-                <PortfolioAssetsTable assets={filteredAssets} />
-              )}
+              <PortfolioAssetsTable assets={filteredAssets} />
             </div>
           )}
 
