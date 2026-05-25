@@ -1,11 +1,13 @@
 import { TESTNET_HOME_CHAIN } from "@/lib/network";
 import type { ExecuteToken } from "@/lib/execute-tokens";
-import { useCircleCctpBridge } from "@/lib/execute-tokens";
+import { getSwapChain, useCircleCctpBridge } from "@/lib/execute-tokens";
+import { supportsUniswapV3 } from "@/lib/uniswap-v3";
 
 export type RouteKind =
   | "circle-swap"
   | "circle-cctp"
   | "lifi"
+  | "uniswap-v3"
   | "compound-swap-bridge";
 
 export interface RoutePlan {
@@ -36,6 +38,16 @@ export function planRoute(
         feeChain: TESTNET_HOME_CHAIN,
         label: "Swap on Arc",
         hint: "Circle swap · fee debited in Arc USDC",
+      };
+    }
+    const chainCfg = getSwapChain(fromChain);
+    if (chainCfg && supportsUniswapV3(chainCfg.lifiChainId)) {
+      return {
+        kind: "uniswap-v3",
+        signChain: fromChain,
+        feeChain: TESTNET_HOME_CHAIN,
+        label: `Swap on ${fromChain.replace(/_/g, " ")}`,
+        hint: "Uniswap V3 on testnet · 0.01 USDC platform fee on Arc first",
       };
     }
     return {

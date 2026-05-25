@@ -31,6 +31,12 @@ import {
   getTestnetSwapChains,
 } from "@/lib/execute-tokens";
 import { formatLifiOutput } from "@/lib/lifi";
+import {
+  formatUniswapQuoteOut,
+  executeUniswapV3Swap,
+  uniswapQuoteFromApi,
+} from "@/lib/uniswap-v3";
+import { getAddress } from "viem";
 import { bridgeSubmitStatus } from "@/lib/bridge-status";
 import { planRoute } from "@/lib/route-engine";
 import {
@@ -169,7 +175,9 @@ export function ExchangeWidget() {
             throw new Error("Try Base ↔ Arc — this testnet pair is not routed.");
           }
           if (String(msg).includes("No available quotes")) {
-            throw new Error("No testnet liquidity. For WETH→Arc we swap to USDC first, then bridge.");
+            throw new Error(
+              "No LI.FI liquidity on this testnet. Use Base Sepolia for USDC↔WETH (Uniswap) or Arc for USDC↔EURC.",
+            );
           }
           throw new Error(msg);
         }
@@ -211,7 +219,48 @@ export function ExchangeWidget() {
         return;
       }
 
+      if (route.kind === "uniswap-v3") {
+        const cfg = getSwapChain(fromChain);
+        if (!cfg) throw new Error("Unsupported chain");
+        const qs = new URLSearchParams({
+          chainId: String(cfg.lifiChainId),
+          tokenIn: fromToken,
+          tokenOut: toToken,
+          amount,
+        });
+        const res = await fetch(`/api/uniswap/quote?${qs}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Uniswap quote failed");
+        const quote = uniswapQuoteFromApi(data);
+        setQuoteOut(formatUniswapQuoteOut(quote));
+        setMessage(route.hint);
+        setStatus("idle");
+        return;
+      }
+
       if (route.kind === "compound-swap-bridge") {
+        const cfg = getSwapChain(fromChain);
+        if (cfg) {
+          try {
+            const qs = new URLSearchParams({
+              chainId: String(cfg.lifiChainId),
+              tokenIn: fromToken,
+              tokenOut: "USDC",
+              amount,
+            });
+            const res = await fetch(`/api/uniswap/quote?${qs}`);
+            const data = await res.json();
+            if (res.ok) {
+              const quote = uniswapQuoteFromApi(data);
+              setQuoteOut(`${formatUniswapQuoteOut(quote)} → Arc via CCTP`);
+              setMessage(route.hint);
+              setStatus("idle");
+              return;
+            }
+          } catch {
+            /* fall through */
+          }
+        }
         setQuoteOut(`USDC on ${fromMeta?.label} → Arc`);
         setMessage(route.hint);
         setStatus("idle");
@@ -331,13 +380,46 @@ export function ExchangeWidget() {
       if (cancelRef.current) throw new Error("Cancelled.");
 
       const signLabel = chains.find((c) => c.appKitChain === route.signChain)?.label;
-      setStep(isTestnet ? "2/2 · Bridge" : "Execute");
-      setMessage(`Switch to ${signLabel ?? "source chain"} and confirm bridge…`);
+      const isBridgeStep =
+        route.kind === "circle-cctp" || route.kind === "compound-swap-bridge";
+      setStep(isTestnet ? (isBridgeStep ? "2/2 · Bridge" : "2/2 · Swap") : "Execute");
+      setMessage(
+        isBridgeStep
+          ? `Switch to ${signLabel ?? "source chain"} and confirm bridge…`
+          : `Switch to ${signLabel ?? "source chain"} and confirm swap…`,
+      );
       await switchWalletToChain(signChainId);
       switchChain({ chainId: signChainId });
       const adapter = await getAdapter();
 
-      if (route.kind === "circle-swap" && kitKey) {
+      if (route.kind === "uniswap-v3") {
+        const cfg = getSwapChain(fromChain);
+        if (!cfg) throw new Error("Unsupported chain");
+        const qs = new URLSearchParams({
+          chainId: String(cfg.lifiChainId),
+          tokenIn: fromToken,
+          tokenOut: toToken,
+          amount,
+        });
+        const res = await fetch(`/api/uniswap/quote?${qs}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Quote failed");
+        const quote = uniswapQuoteFromApi(data);
+        const { swapHash } = await executeUniswapV3Swap(
+          quote,
+          getAddress(address),
+          (msg) => setMessage(msg),
+        );
+        pushTx({
+          type: "swap",
+          status: "success",
+          summary: `${fromToken}→${toToken} · ${swapHash.slice(0, 10)}`,
+          feeUsd: "Arc USDC",
+        });
+        setStatus("success");
+        setStep(null);
+        setMessage(`Swap complete on ${signLabel} · Arc fee already paid`);
+      } else if (route.kind === "circle-swap" && kitKey) {
         setMessage("Confirm swap in wallet (Arc Testnet)…");
         installCircleProxyFetch();
         const { AppKit } = await import("@circle-fin/app-kit");
@@ -389,19 +471,44 @@ export function ExchangeWidget() {
         setMessage(submitted.label);
       } else if (route.kind === "compound-swap-bridge") {
         setMessage("Step A: swap to USDC on source chain…");
-        const swapData = await fetchLifi(fromChain, fromChain, fromToken, "USDC", amount);
-        await sendLifi(swapData, signChainId);
+        const cfg = getSwapChain(fromChain);
+        let usdcAmount = amount;
+        if (cfg) {
+          const qs = new URLSearchParams({
+            chainId: String(cfg.lifiChainId),
+            tokenIn: fromToken,
+            tokenOut: "USDC",
+            amount,
+          });
+          const res = await fetch(`/api/uniswap/quote?${qs}`);
+          const data = await res.json();
+          if (res.ok) {
+            const quote = uniswapQuoteFromApi(data);
+            await executeUniswapV3Swap(quote, getAddress(address), (msg) =>
+              setMessage(`Step A: ${msg}`),
+            );
+            usdcAmount = (
+              Number(quote.amountOut) /
+              10 ** 6
+            ).toFixed(6);
+          } else {
+            const swapData = await fetchLifi(fromChain, fromChain, fromToken, "USDC", amount);
+            await sendLifi(swapData, signChainId);
+          }
+        } else {
+          const swapData = await fetchLifi(fromChain, fromChain, fromToken, "USDC", amount);
+          await sendLifi(swapData, signChainId);
+        }
         setMessage("Step B: bridge USDC → Arc (Circle)…");
         installCircleProxyFetch();
         const { AppKit } = await import("@circle-fin/app-kit");
         const kit = new AppKit();
-        const bridgeAmt = swapData.estimate?.toAmountMin ?? amount;
         await executeCircleBridge(
           kit,
           {
             from: { adapter, chain: fromChain as never },
             to: getBridgeDestination(TESTNET_HOME_CHAIN, adapter, network, recipient) as never,
-            amount: bridgeAmt,
+            amount: usdcAmount,
             config: getBridgeKitConfig(),
             token: "USDC",
           },
