@@ -80,6 +80,20 @@ body {
   background: rgba(34, 211, 238, 0.12);
 }
 
+/* Jumper-style execute widget */
+.exchange-widget {
+  background: linear-gradient(165deg, rgba(30, 20, 50, 0.95) 0%, rgba(12, 15, 28, 0.98) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 1.25rem;
+  padding: 1.25rem;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.exchange-tile {
+  background: rgba(15, 18, 35, 0.9);
+  border: 1px solid rgba(71, 85, 105, 0.35);
+}
+
 .stat-glow::before {
   display: none;
 }

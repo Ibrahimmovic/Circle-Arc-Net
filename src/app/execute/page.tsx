@@ -28,16 +28,14 @@ export default function ExecutePage() {
 
   return (
     <AppShell
-      title="Bridge & Swap"
-      subtitle="Circle CCTP for USDC/EURC · LI.FI for WETH/USDT on Sepolia L2s · multi-chain swap"
+      title="Execute"
+      subtitle="Jumper-style swap & bridge · all fees in Arc USDC"
     >
       <div className="space-y-6">
         <MarketTicker />
-        {!isConnected && (
-          <p className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
-            Testnet hub: stay on Arc Testnet · swaps & outbound bridges use Arc
-            USDC · {ARC_FEE_USDC}
-            {isTestnet ? " · Fund ARC-TESTNET in Fund tab first" : ""}
+        {!isConnected && isTestnet && (
+          <p className="mx-auto max-w-md rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-center text-sm text-cyan-100">
+            Connect wallet · fund Arc USDC first · {ARC_FEE_USDC}
           </p>
         )}
         <ExecuteHub />

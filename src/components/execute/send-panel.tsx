@@ -10,6 +10,7 @@ import { RecipientField } from "@/components/ui/recipient-field";
 import { RouteCard } from "./route-card";
 import { pushTx } from "@/lib/tx-store";
 import { useNetwork } from "@/providers/network-context";
+import { ArcFeeBadge } from "./arc-fee-badge";
 
 export function SendPanel() {
   const { isConnected } = useAccount();
@@ -81,6 +82,10 @@ export function SendPanel() {
           <h3 className="font-display text-lg font-bold text-white">Send USDC</h3>
           <p className="text-sm text-slate-300">Pay friends · same chain · Arc USDC gas on testnet</p>
         </div>
+      </div>
+
+      <div className="mb-4">
+        <ArcFeeBadge compact />
       </div>
 
       <RouteCard
