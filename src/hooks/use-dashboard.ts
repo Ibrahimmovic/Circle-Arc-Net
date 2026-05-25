@@ -13,6 +13,13 @@ interface DashboardData {
     change24h: number;
     chain?: string;
   }>;
+  chainBalances?: Array<{
+    chain: string;
+    chainId: string;
+    valueUsd: number;
+    percent: number;
+  }>;
+  sparkline?: number[];
   markets?: {
     ethChange24h: number;
     btcChange24h: number;
@@ -23,11 +30,13 @@ interface DashboardData {
     network: string;
     kitKeyPresent: boolean;
     walletCount: number;
+    chainCount?: number;
     sources: string[];
     apisConfigured: Record<string, boolean>;
   };
   hint?: string;
   error?: string;
+  dataFreshness?: string;
 }
 
 export function useDashboard(address: string | undefined) {

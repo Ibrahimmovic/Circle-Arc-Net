@@ -91,19 +91,19 @@ export async function getChainBalancesV2(
 
 export async function getMultichainBalancesIncludingTestnet(
   address: string,
-  extraChains: string[] = ["eth-sepolia"],
+  extraChains: string[] = ["eth-sepolia", "base-sepolia"],
+  mainnetChainList?: string,
 ) {
   const [allchains, ...perChain] = await Promise.all([
-    getAllChainsBalances(address).catch(() => ({ data: { items: [] } })),
+    getAllChainsBalances(address, mainnetChainList).catch(() => ({
+      data: { items: [] as GoldRushTokenBalance[] },
+    })),
     ...extraChains.map((c) =>
       getChainBalancesV2(c, address).catch(() => [] as GoldRushTokenBalance[]),
     ),
   ]);
 
-  const items = [
-    ...(allchains.data?.items ?? []),
-    ...perChain.flat(),
-  ];
+  const items = [...(allchains.data?.items ?? []), ...perChain.flat()];
   return { data: { items } };
 }
 

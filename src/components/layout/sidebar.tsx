@@ -6,17 +6,17 @@ import {
   LayoutDashboard,
   PieChart,
   Zap,
-  Bot,
+  Lightbulb,
   ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNetwork } from "@/providers/network-context";
 
 const nav = [
-  { href: "/", label: "Command", icon: LayoutDashboard },
-  { href: "/portfolio", label: "Adaptive Portfolio", icon: PieChart },
-  { href: "/execute", label: "Cross-Chain Execute", icon: Zap },
-  { href: "/agent", label: "Agent Console", icon: Bot },
+  { href: "/", label: "Overview", icon: LayoutDashboard },
+  { href: "/portfolio", label: "Portfolio", icon: PieChart },
+  { href: "/execute", label: "Bridge & Swap", icon: Zap },
+  { href: "/insights", label: "Insights", icon: Lightbulb },
 ];
 
 export function Sidebar() {

@@ -4,21 +4,24 @@ import { useAccount } from "wagmi";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { StatCard } from "@/components/ui/stat-card";
-import { HeroOrbit } from "@/components/dashboard/hero-orbit";
 import { RegimeBadge } from "@/components/portfolio/regime-badge";
 import { MarketTicker } from "@/components/dashboard/market-ticker";
+import { CoinStrip } from "@/components/dashboard/coin-strip";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
+import { PortfolioHero } from "@/components/portfolio/portfolio-hero";
+import { ChainBalanceGrid } from "@/components/portfolio/chain-balance-grid";
 import { useDashboard } from "@/hooks/use-dashboard";
 import {
   Wallet,
   TrendingUp,
   Layers,
-  Shield,
+  Zap,
   ArrowRight,
   RefreshCw,
-  AlertTriangle,
+  Globe,
 } from "lucide-react";
 import { formatUsd, formatPct } from "@/lib/utils";
+import type { MarketRegime } from "@/lib/types";
 
 export default function HomePage() {
   const { address, isConnected } = useAccount();
@@ -26,219 +29,154 @@ export default function HomePage() {
 
   const analysis = data?.analysis;
   const health = data?.health;
-  const trend =
-    (analysis?.change24hPct ?? 0) >= 0 ? "up" : ("down" as const);
+  const totalUsd = analysis?.totalUsd ?? 0;
+  const change24h =
+    analysis?.change24hPct ??
+    (data?.markets
+      ? (data.markets.ethChange24h + data.markets.btcChange24h) / 2
+      : 0);
+  const regime = (analysis?.regime ??
+    data?.macroRegime ??
+    "neutral") as MarketRegime;
+  const trend = change24h >= 0 ? "up" : ("down" as const);
 
   return (
     <AppShell
-      title="Command Center"
-      subtitle="Adaptive portfolio · Circle CCTP · Swap Kit · testnet-ready"
+      title="Overview"
+      subtitle="Live multichain wallet · Circle CCTP · Arc USDC fees"
     >
       <div className="mb-6 space-y-4">
         <MarketTicker />
-        {!isConnected && (
-          <div className="panel-elevated rounded-2xl p-8 text-center">
-            <p className="font-display text-xl font-bold text-white">
-              Connect your wallet to start
-            </p>
-            <p className="mt-2 text-slate-300">
-              Use Connect Wallet · Default network: Arc Testnet · Fees on the chain you use
-            </p>
-            <Link
-              href="/execute"
-              className="btn-primary mt-6 inline-block rounded-xl px-8 py-3 text-sm font-bold text-white"
-            >
-              Bridge & Swap on Execute
-            </Link>
-          </div>
-        )}
-        {isConnected && data?.hint && (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-            <span className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              {data.hint}
-            </span>
-            <Link
-              href="/execute"
-              className="font-semibold text-amber-300 hover:text-amber-200"
-            >
-              Fund on Execute →
-            </Link>
-          </div>
-        )}
+        <CoinStrip />
       </div>
 
+      {!isConnected && (
+        <div className="luxury-hero rounded-3xl p-10 text-center">
+          <p className="font-display text-3xl font-bold text-white">
+            Your cross-chain command desk
+          </p>
+          <p className="mx-auto mt-4 max-w-lg text-slate-300">
+            Real balances from Zerion + GoldRush across Ethereum, Base, Polygon,
+            Arbitrum & more — not demo numbers.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-4">
+            <Link href="/execute" className="btn-primary rounded-xl px-8 py-3 text-sm font-bold text-white">
+              Bridge · Swap · Send
+            </Link>
+            <Link
+              href="/portfolio"
+              className="rounded-xl border border-cyan-500/40 px-8 py-3 text-sm font-semibold text-cyan-200"
+            >
+              View Portfolio
+            </Link>
+          </div>
+        </div>
+      )}
+
       {isConnected && (
-      <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
-        <section className="space-y-8">
-          <div className="glass-panel glow-border overflow-hidden rounded-3xl p-8 lg:p-10 relative">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl" />
-            <div className="relative flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-              <div className="max-w-xl">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-400/90">
-                  Circle × Arc · Agora Hackathon
-                </p>
-                <h2 className="font-display mt-3 text-3xl font-bold tracking-tight text-white lg:text-4xl">
-                  Markets as the{" "}
-                  <span className="text-gradient">agora</span> — agents as
-                  citizens
-                </h2>
-                <p className="mt-4 text-slate-400 leading-relaxed">
-                  Live regime detection, multichain balances, CCTP bridge, Swap
-                  Kit, and Circle faucet — all USDC-denominated fees.
-                </p>
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <Link
-                    href="/portfolio"
-                    className="inline-flex items-center gap-2 rounded-xl bg-cyan-500/20 px-5 py-2.5 text-sm font-semibold text-cyan-200 ring-1 ring-cyan-500/40 hover:bg-cyan-500/30"
-                  >
-                    View Portfolio <ArrowRight className="h-4 w-4" />
-                  </Link>
-                  <Link
-                    href="/execute"
-                    className="btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white"
-                  >
-                    Bridge & Swap
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => refresh()}
-                    className="inline-flex items-center gap-2 rounded-xl border border-slate-600 px-4 py-2.5 text-sm text-slate-300 hover:border-cyan-500/40"
-                  >
-                    <RefreshCw
-                      className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-                    />
-                    Refresh
-                  </button>
-                </div>
-              </div>
-              <HeroOrbit />
+        <div className="space-y-8">
+          {data?.hint && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+              {data.hint}{" "}
+              <Link href="/execute" className="font-semibold text-cyan-300">
+                Fund →
+              </Link>
             </div>
+          )}
+
+          {analysis ? (
+            <PortfolioHero
+              totalUsd={totalUsd}
+              change24hPct={change24h}
+              regime={regime}
+              chainCount={data?.chainBalances?.length ?? health?.chainCount ?? 0}
+              sparkline={data?.sparkline ?? []}
+              sources={health?.sources ?? ["Zerion", "GoldRush"]}
+              loading={loading}
+            />
+          ) : (
+            <div className="luxury-card rounded-2xl p-8 text-center">
+              <p className="text-slate-300">
+                {loading ? "Scanning all chains…" : "No balance yet — use Fund tab."}
+              </p>
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => refresh()}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:border-cyan-500/40"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              Sync live data
+            </button>
+            {data?.dataFreshness && (
+              <span className="text-xs text-slate-500 self-center">
+                Updated {new Date(data.dataFreshness).toLocaleTimeString()}
+              </span>
+            )}
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
-              label="Portfolio Value"
-              value={loading ? "…" : formatUsd(analysis?.totalUsd ?? 0)}
-              sub={
-                analysis
-                  ? formatPct(analysis.change24hPct ?? 0) + " 24h"
-                  : data?.markets
-                    ? `ETH ${formatPct(data.markets.ethChange24h ?? 0)} macro`
-                    : undefined
-              }
+              label="Net worth"
+              value={loading ? "…" : formatUsd(totalUsd)}
+              sub={formatPct(change24h) + " 24h"}
               icon={Wallet}
               trend={trend}
             />
             <StatCard
-              label="Market Regime"
-              value={
-                analysis?.regime?.replace("-", " ") ??
-                data?.macroRegime?.replace("-", " ") ??
-                "—"
-              }
-              sub="Agent + macro"
+              label="Chains"
+              value={String(data?.chainBalances?.length ?? 0)}
+              sub="Multichain scan"
+              icon={Globe}
+            />
+            <StatCard
+              label="Regime"
+              value={regime.replace("-", " ")}
+              sub="CoinGecko + portfolio"
               icon={TrendingUp}
             />
             <StatCard
-              label="Rebalance Queue"
+              label="Rebalance"
               value={String(analysis?.rebalanceActions.length ?? 0)}
-              sub="CCTP-ready"
+              sub="Suggested moves"
               icon={Layers}
             />
-            <StatCard
-              label="Circle Stack"
-              value={
-                health?.apisConfigured?.circle && health?.apisConfigured?.kit
-                  ? "Live"
-                  : "Check env"
-              }
-              sub={`${health?.network ?? "testnet"} · ${health?.walletCount ?? 0} wallets`}
-              icon={Shield}
-            />
           </div>
 
-          <ActivityFeed />
-        </section>
-
-        <aside className="space-y-4">
-          <div className="glass-panel rounded-2xl p-6 glow-border">
-            <p className="text-xs uppercase tracking-wider text-slate-500">
-              Active regime
-            </p>
-            <div className="mt-4">
-              {analysis ? (
-                <RegimeBadge regime={analysis.regime} />
-              ) : data?.macroRegime ? (
-                <RegimeBadge
-                  regime={
-                    data.macroRegime as "risk-on" | "neutral" | "risk-off"
-                  }
-                />
-              ) : (
-                <span className="text-slate-500">
-                  {loading ? "Loading…" : "Fund wallet for portfolio"}
-                </span>
-              )}
+          {data?.chainBalances && data.chainBalances.length > 0 && (
+            <div className="luxury-card rounded-2xl p-6">
+              <h3 className="mb-4 text-lg font-semibold text-white">By chain</h3>
+              <ChainBalanceGrid chains={data.chainBalances} />
             </div>
-            <p className="mt-4 text-sm text-slate-400 leading-relaxed">
-              {analysis?.arcAdvantage ??
-                "Arc: sub-second finality, ~$0.01 USDC tx fees for agents."}
-            </p>
-          </div>
+          )}
 
-          <div className="glass-panel rounded-2xl p-6">
-            <p className="text-xs uppercase tracking-wider text-slate-500">
-              Watching
-            </p>
-            {isConnected && address && (
-              <>
-                <p className="mt-2 font-mono text-xs text-cyan-300 break-all">
-                  {address}
-                </p>
-                <p className="mt-2 text-xs text-slate-400">Live portfolio sync</p>
-              </>
-            )}
-          </div>
-
-          <div className="glass-panel rounded-2xl p-6">
-            <p className="mb-3 text-xs uppercase tracking-wider text-slate-500">
-              Data sources
-            </p>
-            <ul className="space-y-2 text-sm text-slate-300">
-              {(health?.sources ?? [
-                "Circle Wallets",
-                "App Kit CCTP",
-                "Swap Kit",
-                "Zerion",
-                "GoldRush",
-                "CoinGecko",
-              ]).map((p) => (
-                <li key={p} className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  {p}
-                </li>
-              ))}
-            </ul>
-            {health?.apisConfigured && (
-              <div className="mt-4 flex flex-wrap gap-1">
-                {Object.entries(health.apisConfigured).map(([k, v]) => (
-                  <span
-                    key={k}
-                    className={`rounded px-2 py-0.5 text-[10px] uppercase ${
-                      v
-                        ? "bg-emerald-500/15 text-emerald-300"
-                        : "bg-rose-500/15 text-rose-300"
-                    }`}
-                  >
-                    {k}
-                  </span>
-                ))}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="luxury-card rounded-2xl p-6">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-white">Quick actions</h3>
+                <RegimeBadge regime={regime} />
               </div>
-            )}
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <Link
+                  href="/execute"
+                  className="btn-primary flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white"
+                >
+                  <Zap className="h-4 w-4" /> Execute
+                </Link>
+                <Link
+                  href="/portfolio"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-violet-500/40 py-3 text-sm font-semibold text-violet-200"
+                >
+                  Portfolio <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+            <ActivityFeed />
           </div>
-        </aside>
-      </div>
+        </div>
       )}
     </AppShell>
   );

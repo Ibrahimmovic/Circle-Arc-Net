@@ -193,7 +193,15 @@ export function getGoldRushChainList(_mode: NetworkMode): string {
 }
 
 export function getGoldRushSepoliaChains(): string[] {
-  return ["eth-sepolia"];
+  return ["eth-sepolia", "base-sepolia"];
+}
+
+/** Mainnet multichain balance scan (not Base-only). */
+export function getGoldRushMainnetChains(): string {
+  return (
+    process.env.GOLDRUSH_CHAINS ??
+    "eth-mainnet,base-mainnet,polygon-mainnet,arbitrum-mainnet,optimism-mainnet,avalanche-mainnet,bsc-mainnet"
+  );
 }
 
 export const ARC_FEE_USDC = "~$0.01 USDC on Arc";

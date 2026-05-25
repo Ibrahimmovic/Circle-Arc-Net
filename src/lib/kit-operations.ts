@@ -23,13 +23,15 @@ export function getBridgeDestination(
   toChain: string,
   adapter: unknown,
   network: "testnet" | "mainnet",
+  recipientAddress?: string,
 ) {
-  if (network === "testnet" && toChain !== TESTNET_HOME_CHAIN) {
-    return {
-      adapter,
-      chain: toChain,
-      useForwarder: true as const,
-    };
+  const base =
+    network === "testnet" && toChain !== TESTNET_HOME_CHAIN
+      ? { adapter, chain: toChain, useForwarder: true as const }
+      : { adapter, chain: toChain };
+
+  if (recipientAddress && /^0x[a-fA-F0-9]{40}$/.test(recipientAddress)) {
+    return { ...base, recipientAddress };
   }
-  return { adapter, chain: toChain };
+  return base;
 }

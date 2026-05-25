@@ -1,20 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getMarketSnapshot } from "@/lib/coingecko";
+import { getMarketSnapshot, getEthSparkline, syntheticSparkline } from "@/lib/coingecko";
 import { getKitKey, listCircleWallets } from "@/lib/circle";
 import {
   aggregateGoldRushByChain,
   getMultichainBalancesIncludingTestnet,
 } from "@/lib/goldrush";
 import type { NetworkMode } from "@/lib/network";
-import { getGoldRushSepoliaChains } from "@/lib/network";
+import {
+  getGoldRushMainnetChains,
+  getGoldRushSepoliaChains,
+} from "@/lib/network";
 import { analyzePortfolio, mergeChainData, detectRegime } from "@/lib/portfolio-engine";
 import { getWalletPortfolio, getWalletPositions } from "@/lib/zerion";
 
-export async function GET(req: NextRequest) {
-  const address =
-    req.nextUrl.searchParams.get("address") ??
-    process.env.NEXT_PUBLIC_DEMO_WALLET;
+function formatChainLabel(id: string): string {
+  const map: Record<string, string> = {
+    ethereum: "Ethereum",
+    base: "Base",
+    polygon: "Polygon",
+    arbitrum: "Arbitrum",
+    optimism: "Optimism",
+    avalanche: "Avalanche",
+    bsc: "BNB Chain",
+    "eth-mainnet": "Ethereum",
+    "base-mainnet": "Base",
+    "eth-sepolia": "Ethereum Sepolia",
+    "base-sepolia": "Base Sepolia",
+    "polygon-mainnet": "Polygon",
+    "arbitrum-mainnet": "Arbitrum",
+    "optimism-mainnet": "Optimism",
+    "avalanche-mainnet": "Avalanche",
+  };
+  return map[id] ?? id.replace(/-/g, " ").replace(/_/g, " ");
+}
 
+export async function GET(req: NextRequest) {
+  const address = req.nextUrl.searchParams.get("address");
   if (!address) {
     return NextResponse.json({ error: "address required" }, { status: 400 });
   }
@@ -23,7 +44,9 @@ export async function GET(req: NextRequest) {
   const testnet =
     networkParam === "mainnet"
       ? false
-      : networkParam === "testnet" || process.env.NEXT_PUBLIC_NETWORK !== "mainnet";
+      : networkParam === "testnet" ||
+        process.env.NEXT_PUBLIC_NETWORK !== "mainnet";
+
   const sources: string[] = [];
   let totalUsd = 0;
   let change24hPct = 0;
@@ -36,27 +59,33 @@ export async function GET(req: NextRequest) {
     chain?: string;
   }> = [];
 
-  const [markets, goldrush, wallets] = await Promise.all([
+  const extraTestnet = testnet ? getGoldRushSepoliaChains() : [];
+  const mainnetChains = getGoldRushMainnetChains();
+
+  const [markets, goldrush, wallets, sparkline] = await Promise.all([
     getMarketSnapshot().catch(() => null),
     getMultichainBalancesIncludingTestnet(
       address,
-      getGoldRushSepoliaChains(),
+      extraTestnet,
+      mainnetChains,
     ).catch(() => null),
     listCircleWallets().catch(() => null),
+    getEthSparkline().catch(() => syntheticSparkline(0)),
   ]);
 
-  try {
-    const [portfolio, positions] = await Promise.all([
-      getWalletPortfolio(address, false),
-      getWalletPositions(address, false),
-    ]);
+  const zerionMainnet = await Promise.all([
+    getWalletPortfolio(address, false).catch(() => null),
+    getWalletPositions(address, false).catch(() => null),
+  ]);
+
+  if (zerionMainnet[0]) {
     sources.push("Zerion");
-    const attrs = portfolio.data?.attributes;
+    const attrs = zerionMainnet[0].data?.attributes;
     totalUsd = attrs?.total?.positions ?? 0;
     change24hPct = attrs?.changes?.percent_1d ?? 0;
     chainDistribution = attrs?.positions_distribution_by_chain ?? {};
     topPositions =
-      positions.data?.slice(0, 12).map((p) => ({
+      zerionMainnet[1]?.data?.slice(0, 16).map((p) => ({
         id: p.id,
         name:
           p.attributes?.fungible_info?.symbol ??
@@ -66,7 +95,9 @@ export async function GET(req: NextRequest) {
         change24h: p.attributes?.percent_change_24h ?? 0,
         chain: p.relationships?.chain?.data?.id,
       })) ?? [];
-  } catch {
+  }
+
+  if (totalUsd === 0 && testnet) {
     try {
       const [portfolio, positions] = await Promise.all([
         getWalletPortfolio(address, true),
@@ -80,7 +111,7 @@ export async function GET(req: NextRequest) {
         attrs?.positions_distribution_by_chain ?? chainDistribution;
       if (topPositions.length === 0) {
         topPositions =
-          positions.data?.slice(0, 12).map((p) => ({
+          positions.data?.slice(0, 16).map((p) => ({
             id: p.id,
             name:
               p.attributes?.fungible_info?.symbol ??
@@ -92,55 +123,76 @@ export async function GET(req: NextRequest) {
           })) ?? [];
       }
     } catch {
-      /* Zerion optional */
+      /* optional */
     }
   }
 
   if (goldrush?.data?.items?.length) {
-    sources.push("GoldRush");
+    sources.push("GoldRush multichain");
     const { chainDistribution: grChains, totalUsd: grTotal, tokens } =
       aggregateGoldRushByChain(goldrush.data.items);
-    if (totalUsd === 0) totalUsd = grTotal;
+    if (grTotal > totalUsd) totalUsd = grTotal;
     chainDistribution = mergeChainData(chainDistribution, grChains);
-    if (topPositions.length === 0) {
-      topPositions = [...tokens]
-        .sort((a, b) => (b.quote ?? 0) - (a.quote ?? 0))
-        .slice(0, 12)
-        .map((t, i) => ({
-          id: `gr-${i}`,
-          name: t.contract_ticker_symbol ?? t.contract_name,
-          value: t.quote ?? 0,
-          change24h: 0,
-          chain: t.chain_name,
-        }));
+    const grPositions = [...tokens]
+      .sort((a, b) => (b.quote ?? 0) - (a.quote ?? 0))
+      .slice(0, 16)
+      .map((t, i) => ({
+        id: `gr-${i}-${t.contract_ticker_symbol}`,
+        name: t.contract_ticker_symbol ?? t.contract_name,
+        value: t.quote ?? 0,
+        change24h: 0,
+        chain: t.chain_display_name ?? t.chain_name,
+      }));
+    if (topPositions.length < grPositions.length) {
+      topPositions = mergePositions(topPositions, grPositions);
     }
   }
 
   if (change24hPct === 0 && markets) {
     change24hPct = (markets.ethChange24h + markets.btcChange24h) / 2;
-    sources.push("CoinGecko macro");
+    if (!sources.includes("CoinGecko macro")) sources.push("CoinGecko macro");
   }
+
+  const chainBalances = Object.entries(chainDistribution)
+    .filter(([, v]) => v > 0.01)
+    .map(([chain, valueUsd]) => ({
+      chain: formatChainLabel(chain),
+      chainId: chain,
+      valueUsd,
+      percent: totalUsd > 0 ? (valueUsd / totalUsd) * 100 : 0,
+    }))
+    .sort((a, b) => b.valueUsd - a.valueUsd);
+
+  const health = {
+    network: (networkParam as NetworkMode) ?? (testnet ? "testnet" : "mainnet"),
+    kitKeyPresent: Boolean(getKitKey()),
+    walletCount: wallets?.data?.wallets?.length ?? 0,
+    sources: [...new Set(sources)],
+    apisConfigured: {
+      circle: Boolean(process.env.CIRCLE_API_KEY),
+      zerion: Boolean(process.env.ZERION_API_KEY),
+      goldrush: Boolean(process.env.GOLDRUSH_API_KEY),
+      kit: Boolean(getKitKey()),
+      coingecko: true,
+    },
+    chainCount: chainBalances.length,
+  };
 
   if (totalUsd === 0) {
     return NextResponse.json({
       analysis: null,
       topPositions: [],
+      chainBalances: [],
       markets,
-      health: {
-        network: (networkParam as NetworkMode) ?? (testnet ? "testnet" : "mainnet"),
-        kitKeyPresent: Boolean(getKitKey()),
-        walletCount: wallets?.data?.wallets?.length ?? 0,
-        sources,
-        apisConfigured: {
-          circle: Boolean(process.env.CIRCLE_API_KEY),
-          zerion: Boolean(process.env.ZERION_API_KEY),
-          goldrush: Boolean(process.env.GOLDRUSH_API_KEY),
-          kit: Boolean(getKitKey()),
-        },
-      },
+      sparkline,
+      macroRegime: markets
+        ? detectRegime((markets.ethChange24h + markets.btcChange24h) / 2).regime
+        : "neutral",
+      health,
       hint: testnet
-        ? "Fund wallet via Fund tab (Circle faucet) then refresh."
-        : "Connect a funded wallet or check API keys on Vercel.",
+        ? "No balance detected yet — Fund tab (ARC-TESTNET) then refresh."
+        : "Connect a funded wallet across any chain.",
+      dataFreshness: new Date().toISOString(),
     });
   }
 
@@ -154,21 +206,26 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     analysis,
     topPositions,
+    chainBalances,
     markets,
+    sparkline,
     macroRegime: markets
       ? detectRegime((markets.ethChange24h + markets.btcChange24h) / 2).regime
       : analysis.regime,
-    health: {
-      network: (networkParam as NetworkMode) ?? (testnet ? "testnet" : "mainnet"),
-      kitKeyPresent: Boolean(getKitKey()),
-      walletCount: wallets?.data?.wallets?.length ?? 0,
-      sources,
-      apisConfigured: {
-        circle: Boolean(process.env.CIRCLE_API_KEY),
-        zerion: Boolean(process.env.ZERION_API_KEY),
-        goldrush: Boolean(process.env.GOLDRUSH_API_KEY),
-        kit: Boolean(getKitKey()),
-      },
-    },
+    health,
+    dataFreshness: new Date().toISOString(),
   });
+}
+
+function mergePositions(
+  a: Array<{ id: string; name?: string; value: number; change24h: number; chain?: string }>,
+  b: Array<{ id: string; name?: string; value: number; change24h: number; chain?: string }>,
+) {
+  const byKey = new Map<string, (typeof a)[0]>();
+  for (const p of [...a, ...b]) {
+    const key = `${p.name}-${p.chain}`;
+    const existing = byKey.get(key);
+    if (!existing || p.value > existing.value) byKey.set(key, p);
+  }
+  return [...byKey.values()].sort((x, y) => y.value - x.value).slice(0, 16);
 }

@@ -21,6 +21,8 @@ import { defaultWalletChainId } from "@/providers/wagmi-config";
 import { useNetwork } from "@/providers/network-context";
 import { pushTx } from "@/lib/tx-store";
 import { FeeHint } from "./fee-hint";
+import { RecipientField } from "@/components/ui/recipient-field";
+import { RouteCard } from "./route-card";
 
 type Status = "idle" | "estimating" | "executing" | "success" | "error";
 
@@ -44,6 +46,7 @@ export function BridgePanel() {
   );
   const [inboundMode, setInboundMode] = useState(false);
   const [amount, setAmount] = useState("10");
+  const [recipient, setRecipient] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [gasLines, setGasLines] = useState<
@@ -110,6 +113,7 @@ export function BridgePanel() {
             effectiveTo,
             adapter,
             network,
+            recipient,
           ) as never,
           amount,
           config: getBridgeKitConfig(),
@@ -132,7 +136,7 @@ export function BridgePanel() {
       setStatus("error");
       setMessage(e instanceof Error ? e.message : "Estimate failed");
     }
-  }, [effectiveFrom, effectiveTo, amount, isConnected, network]);
+  }, [effectiveFrom, effectiveTo, amount, isConnected, network, recipient]);
 
   const runBridge = useCallback(async () => {
     if (!isConnected || !window.ethereum) {
@@ -164,7 +168,7 @@ export function BridgePanel() {
 
       const result = await kit.bridge({
         from: { adapter, chain: effectiveFrom as never },
-        to: getBridgeDestination(effectiveTo, adapter, network) as never,
+        to: getBridgeDestination(effectiveTo, adapter, network, recipient) as never,
         amount,
         config: getBridgeKitConfig(),
       });
@@ -203,6 +207,7 @@ export function BridgePanel() {
     needsSwitch,
     network,
     arcOnly,
+    recipient,
   ]);
 
   return (
@@ -227,6 +232,14 @@ export function BridgePanel() {
             : [feeInfo.sourceLine, feeInfo.destLine]
         }
       />
+
+      <RouteCard
+        fromLabel={fromMeta?.label ?? effectiveFrom}
+        toLabel={toMeta?.label ?? effectiveTo}
+        amount={amount}
+      />
+
+      <RecipientField value={recipient} onChange={setRecipient} />
 
       {arcOnly && (
         <div className="mt-4 flex gap-2 rounded-xl border border-slate-700 bg-slate-950/80 p-1">

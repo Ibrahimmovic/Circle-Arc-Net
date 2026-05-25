@@ -28,8 +28,8 @@ export default function ExecutePage() {
 
   return (
     <AppShell
-      title="Cross-Chain Execution"
-      subtitle="Circle CCTP Bridge · Swap Kit · Faucet · USDC fees on Arc"
+      title="Bridge & Swap"
+      subtitle="Jumper-style routes · send to friends · Arc USDC on testnet"
     >
       <div className="space-y-6">
         <MarketTicker />

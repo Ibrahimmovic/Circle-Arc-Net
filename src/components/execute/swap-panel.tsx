@@ -13,6 +13,7 @@ import { wagmiChainIdForAppKit } from "@/lib/chains";
 import { installCircleProxyFetch } from "@/lib/circle-proxy-fetch";
 import { getSwapKitConfig } from "@/lib/kit-operations";
 import { FeeHint } from "./fee-hint";
+import { RouteCard } from "./route-card";
 import { useNetwork } from "@/providers/network-context";
 import { pushTx } from "@/lib/tx-store";
 import { defaultWalletChainId } from "@/providers/wagmi-config";
@@ -23,7 +24,7 @@ type Status = "idle" | "estimating" | "executing" | "success" | "error";
 const SWAP_PAIRS = [
   { tokenIn: "USDC" as const, tokenOut: "EURC" as const, label: "USDC → EURC" },
   { tokenIn: "EURC" as const, tokenOut: "USDC" as const, label: "EURC → USDC" },
-];
+] as const;
 
 export function SwapPanel() {
   const { isConnected } = useAccount();
@@ -169,6 +170,8 @@ export function SwapPanel() {
           </p>
         </div>
       </div>
+
+      <RouteCard fromLabel="Arc Testnet" toLabel="Arc Testnet" amount={amountIn} />
 
       <FeeHint
         summary={isTestnet ? describeTestnetArcHubFees() : describeSwapFees(chain)}

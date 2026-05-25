@@ -1,6 +1,6 @@
 export interface TxRecord {
   id: string;
-  type: "bridge" | "swap" | "faucet";
+  type: "bridge" | "swap" | "faucet" | "send";
   status: "pending" | "success" | "error";
   summary: string;
   feeUsd?: string;
