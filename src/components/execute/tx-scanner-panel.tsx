@@ -13,17 +13,18 @@ import { fetchTxGas, type TxScanStep } from "@/lib/tx-scanner";
 
 interface TxScannerPanelProps {
   walletAddress?: string;
-  /** Chains to show wallet address links (e.g. Arc + Base for bridge) */
   walletChainIds: number[];
   steps: TxScanStep[];
   title?: string;
+  variant?: "result" | "compact";
 }
 
 export function TxScannerPanel({
   walletAddress,
   walletChainIds,
   steps,
-  title = "Transaction scanner",
+  title = "On-chain receipts",
+  variant = "result",
 }: TxScannerPanelProps) {
   const [gasByKey, setGasByKey] = useState<Record<string, string>>({});
 
@@ -34,6 +35,7 @@ export function TxScannerPanel({
       const next: Record<string, string> = {};
       await Promise.all(
         steps.map(async (s) => {
+          if (!s.hash || s.hash.length < 10) return;
           const key = `${s.chainId}:${s.hash}`;
           const gas = await fetchTxGas(s.chainId, s.hash);
           if (gas) next[key] = gas;
@@ -53,64 +55,71 @@ export function TxScannerPanel({
   );
 
   return (
-    <div className="mt-3 rounded-xl border border-cyan-500/30 bg-slate-950/80 p-3">
-      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-cyan-300/90">
+    <div
+      className={
+        variant === "compact"
+          ? "mt-2 rounded-xl border border-white/10 bg-black/20 p-2 backdrop-blur-md"
+          : "mt-3 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-transparent p-3 backdrop-blur-xl"
+      }
+    >
+      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
         {title}
       </p>
 
       {walletAddress && uniqueChains.length > 0 && (
-        <div className="mb-3">
-          <p className="mb-1.5 flex items-center gap-1 text-[10px] text-slate-500">
-            <Wallet className="h-3 w-3" />
-            Your wallet on each chain
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {uniqueChains.map((chainId) => {
-              const href = addressExplorerLink(chainId, walletAddress);
-              if (!href) return null;
-              return (
-                <a
-                  key={chainId}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900/60 px-2 py-1 font-mono text-[11px] text-cyan-200 hover:border-cyan-500/50 hover:bg-slate-800"
-                >
-                  {explorerLabel(chainId)} · {shortAddress(walletAddress)}
-                  <ExternalLink className="h-3 w-3 opacity-60" />
-                </a>
-              );
-            })}
-          </div>
+        <div className="mb-3 flex flex-wrap gap-2">
+          {uniqueChains.map((chainId) => {
+            const href = addressExplorerLink(chainId, walletAddress);
+            if (!href) return null;
+            return (
+              <a
+                key={chainId}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 font-mono text-[10px] text-slate-200 transition hover:border-cyan-400/40 hover:bg-white/10"
+              >
+                <Wallet className="h-3 w-3 text-cyan-400/80" />
+                {explorerLabel(chainId)} · {shortAddress(walletAddress)}
+                <ExternalLink className="h-2.5 w-2.5 opacity-50" />
+              </a>
+            );
+          })}
         </div>
       )}
 
       {steps.length > 0 && (
         <ul className="space-y-2">
           {steps.map((s) => {
-            const href = txExplorerLink(s.chainId, s.hash);
-            const gas = gasByKey[`${s.chainId}:${s.hash}`];
-            const statusColor =
-              s.status === "error"
-                ? "text-rose-300"
-                : s.status === "pending"
-                  ? "text-amber-300"
-                  : "text-emerald-300";
+            const href = s.hash ? txExplorerLink(s.chainId, s.hash) : undefined;
+            const gas = s.hash ? gasByKey[`${s.chainId}:${s.hash}`] : undefined;
+            const isSkipped = s.status === "skipped" || !s.hash;
             return (
               <li
-                key={`${s.chainId}:${s.hash}:${s.label}`}
-                className="rounded-lg border border-slate-800/80 bg-slate-900/50 px-2.5 py-2"
+                key={`${s.chainId}:${s.label}:${s.hash ?? "x"}`}
+                className="rounded-xl border border-white/8 bg-black/25 px-3 py-2.5"
               >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className={`text-xs font-medium ${statusColor}`}>
-                    {s.label}
-                    <span className="ml-1 font-normal text-slate-500">
-                      · {explorerLabel(s.chainId)}
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <span
+                      className={`text-xs font-medium ${
+                        isSkipped
+                          ? "text-slate-500"
+                          : s.status === "error"
+                            ? "text-rose-300"
+                            : "text-emerald-200"
+                      }`}
+                    >
+                      {s.label}
                     </span>
-                  </span>
+                    <p className="text-[10px] text-slate-500">
+                      {explorerLabel(s.chainId)}
+                      {s.note ? ` · ${s.note}` : ""}
+                    </p>
+                  </div>
                   {gas && (
-                    <span className="text-[10px] text-slate-400">
-                      Gas ~{gas}
+                    <span className="rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] text-slate-400">
+                      Gas {gas}
                     </span>
                   )}
                 </div>
@@ -119,26 +128,25 @@ export function TxScannerPanel({
                     href={href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-1 inline-flex items-center gap-1 font-mono text-[11px] text-violet-300 hover:text-cyan-300"
+                    className="mt-1.5 inline-flex items-center gap-1 font-mono text-[11px] text-cyan-300/90 hover:text-cyan-200"
                   >
-                    {shortHash(s.hash)}
+                    {shortHash(s.hash!)}
                     <ExternalLink className="h-3 w-3" />
                   </a>
-                ) : (
-                  <p className="mt-1 font-mono text-[11px] text-slate-500">
-                    {shortHash(s.hash)}
+                ) : isSkipped ? (
+                  <p className="mt-1 text-[10px] text-slate-600">
+                    Bundled with bridge or already approved
                   </p>
-                )}
+                ) : null}
               </li>
             );
           })}
         </ul>
       )}
 
-      {steps.some((s) => s.label.includes("Bridge burn")) && (
-        <p className="mt-2 text-[10px] text-slate-500">
-          CCTP mint on the destination chain may appear in ~15 min (SLOW). Track your wallet on
-          both explorers above.
+      {steps.some((s) => s.label.includes("burn") || s.label.includes("Bridge")) && (
+        <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
+          Destination mint (~15 min SLOW CCTP) — track both explorers above.
         </p>
       )}
     </div>

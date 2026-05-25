@@ -9,6 +9,8 @@ function txHashFromBridgeEvent(payload: unknown): string | undefined {
 export interface BridgeCapture {
   approveTx?: string;
   burnTx?: string;
+  /** True when approve was not a separate wallet signature (batch/permit/already allowed). */
+  approveBundled?: boolean;
 }
 
 function pendingBridgeResult(amount: string, burnTx: string): BridgeResult {
@@ -85,6 +87,9 @@ export async function executeCircleBridge(
   const capture = (): BridgeCapture => ({
     approveTx,
     burnTx,
+    approveBundled:
+      Boolean(approveTx && burnTx && approveTx === burnTx) ||
+      Boolean(burnTx && !approveTx),
   });
 
   try {

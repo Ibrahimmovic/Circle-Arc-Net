@@ -87,8 +87,8 @@ export function planRoute(
       label: "Circle CCTP bridge",
       hint:
         fromChain === TESTNET_HOME_CHAIN
-          ? "3 wallet steps on Arc: fee → approve → burn"
-          : `3 steps: Arc fee, then approve + burn on ${fromChain.replace(/_/g, " ")}`,
+          ? "2 wallet popups on Arc: fee, then bridge (approve may batch with burn)"
+          : `Arc fee, then bridge on ${fromChain.replace(/_/g, " ")}`,
     };
   }
 

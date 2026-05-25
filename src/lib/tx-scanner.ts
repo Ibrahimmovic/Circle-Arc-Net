@@ -7,9 +7,10 @@ import type { BridgeResult } from "@circle-fin/app-kit";
 
 export interface TxScanStep {
   label: string;
-  hash: string;
+  hash?: string;
   chainId: number;
-  status?: "success" | "error" | "pending";
+  status?: "success" | "error" | "pending" | "skipped";
+  note?: string;
   gasDisplay?: string;
 }
 
@@ -72,8 +73,17 @@ export function scanStep(
   hash: string,
   chainId: number,
   status: TxScanStep["status"] = "success",
+  note?: string,
 ): TxScanStep {
-  return { label, hash, chainId, status };
+  return { label, hash, chainId, status, note };
+}
+
+export function skippedScanStep(
+  label: string,
+  chainId: number,
+  note: string,
+): TxScanStep {
+  return { label, hash: undefined, chainId, status: "skipped", note };
 }
 
 export function arcFeeScanStep(hash: string): TxScanStep {
@@ -81,6 +91,45 @@ export function arcFeeScanStep(hash: string): TxScanStep {
 }
 
 /** Map Circle bridge steps → explorer links on source vs destination chain. */
+export function buildBridgeScanSteps(
+  collected: TxScanStep[],
+  capture: { approveTx?: string; burnTx?: string; approveBundled?: boolean },
+  result: BridgeResult,
+  fromAppKitChain: string,
+  toAppKitChain: string,
+  signChainId: number,
+): TxScanStep[] {
+  const extra: TxScanStep[] = [];
+
+  if (capture.approveTx && capture.approveTx !== capture.burnTx) {
+    extra.push(scanStep("Approve USDC", capture.approveTx, signChainId));
+  } else {
+    extra.push(
+      skippedScanStep(
+        "Approve USDC",
+        signChainId,
+        "Bundled with burn or already approved — no extra wallet popup",
+      ),
+    );
+  }
+
+  if (capture.burnTx) {
+    extra.push(scanStep("Bridge burn", capture.burnTx, signChainId));
+  }
+
+  const fromResult = bridgeStepsFromResult(result, fromAppKitChain, toAppKitChain).filter(
+    (s) => {
+      if (!s.hash) return false;
+      const n = s.label.toLowerCase();
+      if (n.includes("approve")) return false;
+      if (n.includes("burn") && capture.burnTx) return false;
+      return true;
+    },
+  );
+
+  return mergeScanSteps(collected, extra, fromResult);
+}
+
 export function bridgeStepsFromResult(
   result: BridgeResult,
   fromAppKitChain: string,

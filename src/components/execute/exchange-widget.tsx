@@ -54,7 +54,6 @@ import {
 import { formatUnits } from "viem";
 import { TokenAvatar } from "./token-avatar";
 import { TokenPicker } from "./token-picker";
-import { ArcFeeBadge } from "./arc-fee-badge";
 import { TokenBalanceLine } from "./token-balance-line";
 import type { TokenBalanceRow } from "@/lib/wallet-balances";
 import { RecipientField } from "@/components/ui/recipient-field";
@@ -62,11 +61,21 @@ import { TxScannerPanel } from "./tx-scanner-panel";
 import { chainIdsForRoute } from "@/lib/explorers";
 import {
   arcFeeScanStep,
-  bridgeStepsFromResult,
+  buildBridgeScanSteps,
   mergeScanSteps,
   scanStep,
   type TxScanStep,
 } from "@/lib/tx-scanner";
+import {
+  gasPreviewForSwap,
+  gasPreviewFromBridgeEstimate,
+  type GasPreview,
+} from "@/lib/gas-preview";
+import { FeePreviewPanel } from "./fee-preview-panel";
+import {
+  WalletStepsProgress,
+  type WalletStep,
+} from "./wallet-steps-progress";
 import type { ChainOption } from "@/lib/network";
 
 type Status = "idle" | "loading" | "success" | "error";
@@ -100,6 +109,8 @@ export function ExchangeWidget() {
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [balances, setBalances] = useState<TokenBalanceRow[]>([]);
   const [balancesLoading, setBalancesLoading] = useState(false);
+  const [gasPreview, setGasPreview] = useState<GasPreview | null>(null);
+  const [gasPreviewLoading, setGasPreviewLoading] = useState(false);
   const cancelRef = useRef(false);
   const walletChainIds = useMemo(
     () => chainIdsForRoute(fromChain, toChain),
@@ -139,7 +150,7 @@ export function ExchangeWidget() {
         kind: "circle-cctp" as const,
         signChain: fromChain,
         label: "Circle CCTP bridge",
-        hint: "3 wallet steps on Arc: fee → approve → burn",
+        hint: "2 wallet popups: Arc fee, then bridge",
       };
     }
     return plan;
@@ -208,6 +219,87 @@ export function ExchangeWidget() {
     }, 600);
     return () => window.clearTimeout(id);
   }, [address, isConnected, fromChain, toChain]);
+
+  useEffect(() => {
+    if (!amount || Number(amount) <= 0 || !route) {
+      setGasPreview(null);
+      return;
+    }
+    const id = window.setTimeout(async () => {
+      setGasPreviewLoading(true);
+      try {
+        if (route.kind === "circle-cctp" && kitKey && isConnected && address) {
+          installCircleProxyFetch();
+          const { AppKit } = await import("@circle-fin/app-kit");
+          const kit = new AppKit();
+          const adapter = await getAdapter();
+          const est = await kit.estimateBridge({
+            from: { adapter, chain: fromChain as never },
+            to: getBridgeDestination(toChain, adapter, network, recipient) as never,
+            amount,
+            config: getBridgeKitConfig(),
+            token: "USDC",
+          });
+          setGasPreview(
+            gasPreviewFromBridgeEstimate(
+              { gasFees: est.gasFees, fees: est.fees },
+              amount,
+              true,
+            ),
+          );
+        } else if (route.kind === "uniswap-v3" || route.kind === "eth-wrap") {
+          setGasPreview(gasPreviewForSwap(fromMeta?.label ?? "chain"));
+        } else if (route.kind === "circle-swap") {
+          setGasPreview(gasPreviewForSwap("Arc Testnet"));
+        } else {
+          setGasPreview(gasPreviewForSwap(fromMeta?.label ?? "source"));
+        }
+      } catch {
+        setGasPreview(
+          gasPreviewForSwap(fromMeta?.label ?? "Arc Testnet"),
+        );
+      } finally {
+        setGasPreviewLoading(false);
+      }
+    }, 700);
+    return () => window.clearTimeout(id);
+  }, [
+    amount,
+    route,
+    fromChain,
+    toChain,
+    network,
+    recipient,
+    kitKey,
+    isConnected,
+    address,
+    fromMeta?.label,
+    getAdapter,
+  ]);
+
+  const walletProgressSteps = useMemo((): WalletStep[] => {
+    if (!isTestnet || status !== "loading") return [];
+    const s = step ?? "";
+    const onBridge = s.includes("2/");
+    return [
+      {
+        id: "fee",
+        title: "Arc fee",
+        state: onBridge ? "done" : s.startsWith("1/") ? "active" : "pending",
+      },
+      {
+        id: "allow",
+        title: "Allowance",
+        subtitle: "batched",
+        state: onBridge ? "skipped" : "pending",
+      },
+      {
+        id: "bridge",
+        title: "Bridge burn",
+        state: onBridge ? "active" : "pending",
+      },
+    ];
+  }, [isTestnet, status, step]);
 
   const runQuote = useCallback(async (userInitiated = false) => {
     if (!isConnected || !address || !route) {
@@ -396,7 +488,7 @@ export function ExchangeWidget() {
     const collected: TxScanStep[] = [];
     const isBridgeFlow =
       route.kind === "circle-cctp" || route.kind === "compound-swap-bridge";
-    const testnetSteps = isTestnet && isBridgeFlow ? 3 : isTestnet ? 2 : 1;
+    const testnetSteps = isTestnet ? 2 : 1;
     try {
       const fetchLifi = async (fc: string, tc: string, fSym: string, tSym: string, amt: string) => {
         const fromCfg = getSwapChain(fc);
@@ -463,16 +555,11 @@ export function ExchangeWidget() {
       if (cancelRef.current) throw new Error("Cancelled.");
 
       const signLabel = chains.find((c) => c.appKitChain === route.signChain)?.label;
-      const bridgeWalletStep = isBridgeFlow && isTestnet ? 2 : testnetSteps;
-      setStep(
-        isTestnet
-          ? `${bridgeWalletStep}/${testnetSteps} · ${isBridgeFlow ? "Approve + burn" : "Swap"}`
-          : "Execute",
-      );
+      setStep(isTestnet ? `2/${testnetSteps} · Bridge` : "Execute");
       setMessage(
         isBridgeFlow
-          ? `Switch to ${signLabel ?? "source chain"} and confirm bridge (steps 2–3)…`
-          : `Switch to ${signLabel ?? "source chain"} and confirm swap…`,
+          ? `Confirm bridge on ${signLabel} — approve + burn are usually one wallet popup`
+          : `Confirm swap on ${signLabel}…`,
       );
       await switchWalletToChain(signChainId);
       switchChain({ chainId: signChainId });
@@ -563,9 +650,6 @@ export function ExchangeWidget() {
         setStep(null);
         setMessage(`Swap complete · fee paid on Arc`);
       } else if (route.kind === "circle-cctp") {
-        setMessage(
-          `Confirm bridge on ${signLabel} in wallet (approve + burn — Rabby may show “Unknown Signature Type”, that is normal).`,
-        );
         installCircleProxyFetch();
         const { AppKit } = await import("@circle-fin/app-kit");
         const kit = new AppKit();
@@ -579,37 +663,30 @@ export function ExchangeWidget() {
             token: "USDC",
           },
           (msg) => {
-            if (msg.toLowerCase().includes("approve")) {
-              setStep(`2/${testnetSteps} · Approve USDC`);
-            } else if (msg.toLowerCase().includes("burn")) {
-              setStep(`3/${testnetSteps} · Bridge burn`);
-            }
+            setStep(`2/${testnetSteps} · Bridge`);
             setMessage(msg);
           },
         );
         const submitted = bridgeSubmitStatus(
           typeof result.state === "string" ? result.state : undefined,
+          Boolean(capture.burnTx),
         );
-        const bridgeScans = mergeScanSteps(
+        const bridgeScans = buildBridgeScanSteps(
           collected,
-          [
-            ...(capture.approveTx
-              ? [scanStep("Approve USDC", capture.approveTx, signChainId)]
-              : []),
-            ...(capture.burnTx
-              ? [scanStep("Bridge burn", capture.burnTx, signChainId)]
-              : []),
-          ],
-          bridgeStepsFromResult(result, fromChain, toChain),
+          capture,
+          result,
+          fromChain,
+          toChain,
+          signChainId,
         );
         publishScans(bridgeScans, {
           type: "bridge",
-          status: submitted.uiStatus === "error" ? "error" : "success",
+          status: submitted.uiStatus,
           summary: `${fromMeta?.label}→${toMeta?.label}`,
           feeUsd: "Arc USDC",
           hash: capture.burnTx ?? capture.approveTx,
         });
-        setStatus(submitted.uiStatus === "error" ? "error" : "success");
+        setStatus(submitted.uiStatus);
         setStep(null);
         setMessage(submitted.label);
       } else if (route.kind === "compound-swap-bridge") {
@@ -666,15 +743,14 @@ export function ExchangeWidget() {
         const allSteps = mergeScanSteps(
           collected,
           stepA,
-          [
-            ...(capture.approveTx
-              ? [scanStep("Approve USDC", capture.approveTx, signChainId)]
-              : []),
-            ...(capture.burnTx
-              ? [scanStep("Bridge burn", capture.burnTx, signChainId)]
-              : []),
-          ],
-          bridgeStepsFromResult(result, fromChain, TESTNET_HOME_CHAIN),
+          buildBridgeScanSteps(
+            [],
+            capture,
+            result,
+            fromChain,
+            TESTNET_HOME_CHAIN,
+            signChainId,
+          ),
         );
         publishScans(allSteps, {
           type: "bridge",
@@ -843,6 +919,11 @@ export function ExchangeWidget() {
               onChange={(e) => {
                 setAmount(e.target.value);
                 setQuoteOut(null);
+                setScanSteps([]);
+                if (status !== "loading") {
+                  setStatus("idle");
+                  setMessage(null);
+                }
               }}
               placeholder="0"
               className="min-w-0 flex-1 bg-transparent text-3xl font-semibold text-white outline-none"
@@ -862,38 +943,34 @@ export function ExchangeWidget() {
           </div>
         </div>
 
-        <div className="mt-3">
-          <ArcFeeBadge />
-        </div>
+        <FeePreviewPanel preview={gasPreview} loading={gasPreviewLoading} />
 
-        {quoteLoading && (
-          <p className="mt-2 text-center text-xs text-slate-500">Updating quote…</p>
+        {walletProgressSteps.length > 0 && (
+          <WalletStepsProgress steps={walletProgressSteps} />
         )}
 
         {quoteOut && !quoteLoading && (
-          <p className="mt-2 text-center text-sm text-emerald-300/90">
-            → {quoteOut}
+          <p className="mt-2 text-center text-sm text-emerald-300/80">
+            Receive → {quoteOut}
           </p>
         )}
 
         {message && (
           <p
-            className={`mt-2 text-center text-xs ${
-              status === "error" ? "text-rose-300" : status === "success" ? "text-emerald-300" : "text-slate-400"
+            className={`mt-2 rounded-lg px-2 py-1.5 text-center text-xs ${
+              status === "error"
+                ? "bg-rose-950/40 text-rose-200"
+                : status === "success"
+                  ? "bg-emerald-950/30 text-emerald-200"
+                  : "text-slate-400"
             }`}
           >
             {message}
           </p>
         )}
 
-        {route && (
-          <p className="mt-2 text-center text-[10px] text-violet-300/90">
-            {route.label} · {route.hint}
-          </p>
-        )}
-
-        {status === "loading" && step && (
-          <p className="mt-2 text-center text-sm font-semibold text-cyan-200">{step}</p>
+        {status === "loading" && step && !walletProgressSteps.length && (
+          <p className="mt-2 text-center text-sm font-medium text-cyan-200/90">{step}</p>
         )}
 
         {status === "success" && (

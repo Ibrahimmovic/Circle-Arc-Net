@@ -57,9 +57,11 @@ export function ActivityFeed({ expanded = false }: { expanded?: boolean }) {
                 {tx.steps && tx.steps.length > 0 && (
                   <ul className="mt-2 space-y-1">
                     {tx.steps.map((s) => {
-                      const href = txExplorerLink(s.chainId, s.hash);
+                      const href = s.hash
+                        ? txExplorerLink(s.chainId, s.hash)
+                        : undefined;
                       return (
-                        <li key={`${s.chainId}-${s.hash}-${s.label}`}>
+                        <li key={`${s.chainId}-${s.hash ?? "skip"}-${s.label}`}>
                           {href ? (
                             <a
                               href={href}
@@ -67,12 +69,14 @@ export function ActivityFeed({ expanded = false }: { expanded?: boolean }) {
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 text-[10px] text-violet-300 hover:text-cyan-300"
                             >
-                              {s.label} · {explorerLabel(s.chainId)} · {shortHash(s.hash)}
+                              {s.label} · {explorerLabel(s.chainId)}
+                              {s.hash ? ` · ${shortHash(s.hash)}` : ""}
                               <ExternalLink className="h-2.5 w-2.5" />
                             </a>
                           ) : (
                             <span className="text-[10px] text-slate-500">
-                              {s.label} · {shortHash(s.hash)}
+                              {s.label}
+                              {s.note ? ` · ${s.note}` : ""}
                             </span>
                           )}
                         </li>

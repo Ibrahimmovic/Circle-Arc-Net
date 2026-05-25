@@ -13,10 +13,20 @@ const SUCCESS_STATES = new Set([
 
 const FAILURE_STATES = new Set(["error", "failed", "reverted", "cancelled"]);
 
-export function bridgeSubmitStatus(state: string | undefined): {
+export function bridgeSubmitStatus(
+  state: string | undefined,
+  hasBurnTx?: boolean,
+): {
   uiStatus: "success" | "error";
   label: string;
 } {
+  if (hasBurnTx) {
+    return {
+      uiStatus: "success",
+      label:
+        "Bridge burn confirmed on-chain — USDC mints on destination in ~15 min (SLOW CCTP).",
+    };
+  }
   const raw = (state ?? "submitted").toLowerCase().trim();
 
   if (FAILURE_STATES.has(raw)) {
