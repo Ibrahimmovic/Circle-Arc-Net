@@ -56,9 +56,9 @@ export function PortfolioHero({
         </div>
         <div className="flex flex-col items-end justify-between gap-4">
           {sparkline.length > 4 && (
-            <div className="rounded-2xl border border-slate-700/50 bg-slate-950/50 p-3">
-              <p className="mb-2 text-[10px] uppercase text-slate-500">Portfolio trend</p>
-              <Sparkline data={sparkline} width={200} height={56} positive={up} />
+            <div className="rounded-xl border border-slate-700/50 bg-slate-950/50 px-2 py-1.5">
+              <p className="text-[9px] uppercase text-slate-500">ETH macro</p>
+              <Sparkline data={sparkline} width={120} height={32} positive={up} />
             </div>
           )}
         </div>

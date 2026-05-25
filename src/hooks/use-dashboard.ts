@@ -26,6 +26,7 @@ interface DashboardData {
     usdcPrice: number;
   };
   macroRegime?: string;
+  networkMode?: "testnet" | "mainnet";
   health?: {
     network: string;
     kitKeyPresent: boolean;

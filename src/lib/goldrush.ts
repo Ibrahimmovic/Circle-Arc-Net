@@ -39,18 +39,42 @@ export interface GoldRushAllChainsBalance {
   };
 }
 
+const TESTNET_CHAIN_PREFIXES = [
+  "eth-sepolia",
+  "base-sepolia",
+  "sepolia",
+  "fuji",
+  "amoy",
+  "testnet",
+];
+
+export function isTestnetChainName(chain: string): boolean {
+  const c = chain.toLowerCase();
+  return TESTNET_CHAIN_PREFIXES.some((p) => c.includes(p));
+}
+
 export function aggregateGoldRushByChain(
   items: GoldRushTokenBalance[],
-): { chainDistribution: Record<string, number>; totalUsd: number; tokens: GoldRushTokenBalance[] } {
+  testnetOnly?: boolean,
+): {
+  chainDistribution: Record<string, number>;
+  totalUsd: number;
+  tokens: GoldRushTokenBalance[];
+} {
   const chainDistribution: Record<string, number> = {};
   let totalUsd = 0;
   const tokens: GoldRushTokenBalance[] = [];
 
   for (const item of items) {
     if (item.is_spam) continue;
+    const chain = item.chain_name ?? "unknown";
+    if (testnetOnly !== undefined) {
+      const isTn = isTestnetChainName(chain);
+      if (testnetOnly && !isTn) continue;
+      if (!testnetOnly && isTn) continue;
+    }
     const quote = item.quote ?? 0;
     if (quote <= 0 || quote > 50_000_000) continue;
-    const chain = item.chain_name ?? "unknown";
     chainDistribution[chain] = (chainDistribution[chain] ?? 0) + quote;
     totalUsd += quote;
     tokens.push(item);
@@ -70,7 +94,6 @@ export async function getAllChainsBalances(
   );
 }
 
-/** Per-chain balances (works for eth-sepolia testnet). */
 export async function getChainBalancesV2(
   chainName: string,
   address: string,
@@ -89,6 +112,21 @@ export async function getChainBalancesV2(
   }));
 }
 
+/** Balances scoped to testnet OR mainnet — never both at once. */
+export async function getBalancesForNetworkMode(
+  address: string,
+  testnet: boolean,
+) {
+  if (testnet) {
+    const chains = ["eth-sepolia", "base-sepolia"];
+    const perChain = await Promise.all(
+      chains.map((c) => getChainBalancesV2(c, address).catch(() => [])),
+    );
+    return { data: { items: perChain.flat() } };
+  }
+  return getAllChainsBalances(address);
+}
+
 export async function getMultichainBalancesIncludingTestnet(
   address: string,
   extraChains: string[] = ["eth-sepolia", "base-sepolia"],
@@ -105,12 +143,4 @@ export async function getMultichainBalancesIncludingTestnet(
 
   const items = [...(allchains.data?.items ?? []), ...perChain.flat()];
   return { data: { items } };
-}
-
-export async function getTokenPrices(chainName: string, addresses: string) {
-  return goldrushFetch<{
-    data?: { items?: Array<{ contract_ticker_symbol?: string; quote?: number }> };
-  }>(
-    `/${chainName}/pricing/spots/${addresses}/?quote-currency=USD`,
-  );
 }

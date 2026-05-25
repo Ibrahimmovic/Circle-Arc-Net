@@ -6,7 +6,6 @@ import {
   LayoutDashboard,
   PieChart,
   Zap,
-  Lightbulb,
   ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -14,9 +13,8 @@ import { useNetwork } from "@/providers/network-context";
 
 const nav = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
-  { href: "/portfolio", label: "Portfolio", icon: PieChart },
+  { href: "/portfolio", label: "Adaptive Portfolio", icon: PieChart },
   { href: "/execute", label: "Bridge & Swap", icon: Zap },
-  { href: "/insights", label: "Insights", icon: Lightbulb },
 ];
 
 export function Sidebar() {

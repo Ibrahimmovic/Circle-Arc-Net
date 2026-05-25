@@ -9,6 +9,7 @@ import { ChainBalanceGrid } from "@/components/portfolio/chain-balance-grid";
 import { CoinStrip } from "@/components/dashboard/coin-strip";
 import { MarketTicker } from "@/components/dashboard/market-ticker";
 import { useDashboard } from "@/hooks/use-dashboard";
+import { useNetwork } from "@/providers/network-context";
 import { formatUsd } from "@/lib/utils";
 import { motion } from "framer-motion";
 import Link from "next/link";
@@ -17,6 +18,7 @@ import type { MarketRegime } from "@/lib/types";
 
 export default function PortfolioPage() {
   const { address, isConnected } = useAccount();
+  const { network, isTestnet } = useNetwork();
   const { data, loading, refresh } = useDashboard(isConnected ? address : undefined);
   const analysis = data?.analysis;
   const positions = data?.topPositions ?? [];
@@ -24,8 +26,8 @@ export default function PortfolioPage() {
 
   return (
     <AppShell
-      title="Portfolio"
-      subtitle="Full wallet balance across chains · Zerion · GoldRush · CoinGecko"
+      title="Adaptive Portfolio"
+      subtitle="Regime-based targets · multichain USDC · Arc testnet balances via RPC"
     >
       <MarketTicker />
       <div className="mt-4">
@@ -46,14 +48,18 @@ export default function PortfolioPage() {
 
       {isConnected && (
         <>
-          <div className="mt-6 flex items-center gap-3">
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-200">
+              Viewing {data?.networkMode ?? network} only
+              {isTestnet ? " · includes Arc RPC USDC" : ""}
+            </span>
             <button
               type="button"
               onClick={() => refresh()}
               className="flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-400 hover:text-white"
             >
               <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
-              Refresh multichain
+              Refresh
             </button>
             {data?.health?.sources && (
               <span className="text-xs text-slate-500">
@@ -111,15 +117,18 @@ export default function PortfolioPage() {
                 </div>
               </div>
 
-              <div className="luxury-card rounded-2xl p-6">
-                <div className="flex items-center justify-between">
+              <div id="rebalance" className="luxury-card rounded-2xl p-6 scroll-mt-24">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-lg font-semibold text-white">
                     Suggested rebalances
                   </h3>
-                  <Link href="/insights" className="text-sm text-cyan-300">
-                    Why these? →
-                  </Link>
+                  <p className="text-xs text-slate-500">
+                    CoinGecko macro + your {data?.networkMode ?? network} balances
+                  </p>
                 </div>
+                {analysis.arcAdvantage && (
+                  <p className="mt-3 text-sm text-slate-400">{analysis.arcAdvantage}</p>
+                )}
                 {analysis.rebalanceActions.length === 0 ? (
                   <p className="mt-4 text-slate-400">Portfolio aligned with market regime.</p>
                 ) : (

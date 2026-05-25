@@ -11,6 +11,7 @@ import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { PortfolioHero } from "@/components/portfolio/portfolio-hero";
 import { ChainBalanceGrid } from "@/components/portfolio/chain-balance-grid";
 import { useDashboard } from "@/hooks/use-dashboard";
+import { useNetwork } from "@/providers/network-context";
 import {
   Wallet,
   TrendingUp,
@@ -25,6 +26,7 @@ import type { MarketRegime } from "@/lib/types";
 
 export default function HomePage() {
   const { address, isConnected } = useAccount();
+  const { network } = useNetwork();
   const { data, loading, refresh } = useDashboard(isConnected ? address : undefined);
 
   const analysis = data?.analysis;
@@ -75,6 +77,10 @@ export default function HomePage() {
 
       {isConnected && (
         <div className="space-y-8">
+          <span className="inline-block rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-200">
+            {data?.networkMode ?? network} balances only
+          </span>
+
           {data?.hint && (
             <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
               {data.hint}{" "}

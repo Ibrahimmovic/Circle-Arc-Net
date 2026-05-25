@@ -16,6 +16,8 @@ import { installCircleProxyFetch } from "@/lib/circle-proxy-fetch";
 import {
   getBridgeKitConfig,
   getBridgeDestination,
+  summarizeBridgeEstimate,
+  BRIDGE_WALLET_STEPS,
 } from "@/lib/kit-operations";
 import { defaultWalletChainId } from "@/providers/wagmi-config";
 import { useNetwork } from "@/providers/network-context";
@@ -54,7 +56,10 @@ export function BridgePanel() {
   >([]);
   const [estimate, setEstimate] = useState<{
     estimatedMinutes?: number;
+    totalHint?: string;
   } | null>(null);
+  const [feeLines, setFeeLines] = useState<string[]>([]);
+  const [confirmExecute, setConfirmExecute] = useState(false);
 
   const effectiveFrom = arcOnly
     ? inboundMode
@@ -90,6 +95,8 @@ export function BridgePanel() {
     setEstimate(null);
     setMessage(null);
     setGasLines([]);
+    setFeeLines([]);
+    setConfirmExecute(false);
   }, [network]);
 
   const runEstimate = useCallback(async () => {
@@ -119,15 +126,13 @@ export function BridgePanel() {
           config: getBridgeKitConfig(),
         });
         setGasLines(formatKitGasFees(live.gasFees));
-        const protocol = live.fees
-          ?.map((f) => `${f.type}: ${f.amount ?? "—"} USDC`)
-          .join(" · ");
-        setMessage(
-          protocol
-            ? `Circle CCTP quote · ${protocol}`
-            : "Circle CCTP route ready — fees per chain below.",
-        );
-        setEstimate({ estimatedMinutes: 2 });
+        const summary = summarizeBridgeEstimate({
+          gasFees: live.gasFees,
+          fees: live.fees,
+        });
+        setFeeLines(summary.lines);
+        setMessage(summary.totalHint);
+        setEstimate({ estimatedMinutes: 15, totalHint: summary.totalHint });
       } else {
         setMessage("Connect wallet on Arc Testnet (or source chain) for live fee breakdown.");
       }
@@ -139,6 +144,12 @@ export function BridgePanel() {
   }, [effectiveFrom, effectiveTo, amount, isConnected, network, recipient]);
 
   const runBridge = useCallback(async () => {
+    if (!confirmExecute) {
+      setConfirmExecute(true);
+      setMessage(BRIDGE_WALLET_STEPS);
+      return;
+    }
+
     if (!isConnected || !window.ethereum) {
       setStatus("error");
       setMessage("Connect wallet first. Fund USDC on the source chain (Fund tab).");
@@ -208,6 +219,7 @@ export function BridgePanel() {
     network,
     arcOnly,
     recipient,
+    confirmExecute,
   ]);
 
   return (
@@ -238,6 +250,8 @@ export function BridgePanel() {
         toLabel={toMeta?.label ?? effectiveTo}
         amount={amount}
       />
+
+      <p className="mb-3 text-xs text-slate-500">{BRIDGE_WALLET_STEPS}</p>
 
       <RecipientField value={recipient} onChange={setRecipient} />
 
@@ -338,12 +352,15 @@ export function BridgePanel() {
         />
       </label>
 
-      {gasLines.length > 0 && (
-        <div className="mt-4 rounded-xl border border-slate-700 bg-slate-950/80 p-4 text-xs text-slate-300">
+      {(feeLines.length > 0 || gasLines.length > 0) && (
+        <div className="mt-4 rounded-xl border border-slate-700 bg-slate-950/80 p-3 text-xs text-slate-300">
           <p className="mb-2 font-semibold uppercase tracking-wide text-slate-400">
-            Circle fee breakdown
+            Fee estimate (not deducted from amount)
           </p>
           <ul className="space-y-1">
+            {feeLines.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
             {gasLines.map((g) => (
               <li key={`${g.step}-${g.chain}`}>
                 {g.step}: {g.token} on {g.chain}
@@ -354,8 +371,9 @@ export function BridgePanel() {
       )}
 
       {estimate && (
-        <div className="mt-4 rounded-xl bg-cyan-950/50 border border-cyan-500/20 p-4 text-sm text-cyan-100">
-          ~{estimate.estimatedMinutes ?? 2} min · Circle CCTP v2
+        <div className="mt-3 rounded-lg border border-cyan-500/20 bg-cyan-950/40 px-3 py-2 text-xs text-cyan-100">
+          SLOW CCTP · ~{estimate.estimatedMinutes ?? 15} min
+          {estimate.totalHint ? ` · ${estimate.totalHint}` : ""}
         </div>
       )}
 
@@ -376,10 +394,24 @@ export function BridgePanel() {
         >
           {status === "executing" ? (
             <Loader2 className="h-4 w-4 animate-spin" />
+          ) : confirmExecute ? (
+            "Confirm & sign in wallet"
           ) : (
             "Execute Bridge"
           )}
         </button>
+        {confirmExecute && (
+          <button
+            type="button"
+            onClick={() => {
+              setConfirmExecute(false);
+              setMessage(null);
+            }}
+            className="text-xs text-slate-400 hover:text-white"
+          >
+            Cancel
+          </button>
+        )}
       </div>
     </div>
   );
