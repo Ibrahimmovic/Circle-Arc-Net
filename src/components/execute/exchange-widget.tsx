@@ -22,6 +22,7 @@ import {
   createWalletViemAdapter,
   executeCircleBridge,
 } from "@/lib/circle-bridge-exec";
+import { ensureCctpUsdcAllowance } from "@/lib/cctp-usdc-approve";
 import { useNetwork } from "@/providers/network-context";
 import { pushTx } from "@/lib/tx-store";
 import {
@@ -670,6 +671,29 @@ export function ExchangeWidget() {
         setStep(null);
         setMessage(`Swap complete · fee paid on Arc`);
       } else if (route.kind === "circle-cctp") {
+        let preApproveTx: string | undefined;
+        if (fromToken === "USDC") {
+          setStep(`2/${testnetWalletSteps} · Approve USDC`);
+          const allowance = await ensureCctpUsdcAllowance(
+            address,
+            route.signChain,
+            amount,
+            (msg) => setMessage(msg),
+          );
+          preApproveTx = allowance.approveTx;
+          if (preApproveTx) {
+            collected.push(scanStep("Approve USDC", preApproveTx, signChainId));
+            setMessage(
+              `Step 2/${testnetWalletSteps} done · approved ${amount} USDC for CCTP`,
+            );
+          }
+        }
+
+        setStep(`3/${testnetWalletSteps} · Bridge burn`);
+        setMessage(
+          `Step 3/${testnetWalletSteps}: confirm bridge burn on ${signLabel} in your wallet`,
+        );
+
         installCircleProxyFetch();
         const { AppKit } = await import("@circle-fin/app-kit");
         const kit = new AppKit();
@@ -683,21 +707,25 @@ export function ExchangeWidget() {
             token: "USDC",
           },
           (msg) => {
-            if (msg.toLowerCase().includes("approve")) {
-              setStep(`2/${testnetWalletSteps} · Approve USDC`);
-            } else if (msg.toLowerCase().includes("burn")) {
+            if (msg.toLowerCase().includes("burn")) {
               setStep(`3/${testnetWalletSteps} · Bridge burn`);
             }
             setMessage(msg);
           },
+          { preApproved: Boolean(preApproveTx) },
         );
+        const captureMerged = {
+          ...capture,
+          approveTx: preApproveTx ?? capture.approveTx,
+          approveBundled: false,
+        };
         const submitted = bridgeSubmitStatus(
           typeof result.state === "string" ? result.state : undefined,
-          Boolean(capture.burnTx),
+          Boolean(captureMerged.burnTx),
         );
         const bridgeScans = buildBridgeScanSteps(
           collected,
-          capture,
+          captureMerged,
           result,
           fromChain,
           toChain,
@@ -708,7 +736,7 @@ export function ExchangeWidget() {
           status: submitted.uiStatus,
           summary: `${fromMeta?.label}→${toMeta?.label}`,
           feeUsd: "Arc USDC",
-          hash: capture.burnTx ?? capture.approveTx,
+          hash: captureMerged.burnTx ?? captureMerged.approveTx,
         });
         setStatus(submitted.uiStatus);
         setStep(null);
@@ -749,7 +777,21 @@ export function ExchangeWidget() {
           const h = await sendLifi(swapData, signChainId);
           stepA.push(scanStep("Swap to USDC", h, signChainId));
         }
-        setMessage("Step B: bridge USDC → Arc (Circle)…");
+        let preApproveTx: string | undefined;
+        setStep(`2/${testnetWalletSteps} · Approve USDC`);
+        const allowance = await ensureCctpUsdcAllowance(
+          address,
+          fromChain,
+          usdcAmount,
+          (msg) => setMessage(`Step B: ${msg}`),
+        );
+        preApproveTx = allowance.approveTx;
+        if (preApproveTx) {
+          stepA.push(scanStep("Approve USDC (CCTP)", preApproveTx, signChainId));
+        }
+
+        setStep(`3/${testnetWalletSteps} · Bridge burn`);
+        setMessage(`Step B: confirm USDC bridge burn on ${signLabel}…`);
         installCircleProxyFetch();
         const { AppKit } = await import("@circle-fin/app-kit");
         const kit = new AppKit();
@@ -763,20 +805,23 @@ export function ExchangeWidget() {
             token: "USDC",
           },
           (msg) => {
-            if (msg.toLowerCase().includes("approve")) {
-              setStep(`2/${testnetWalletSteps} · Approve USDC`);
-            } else if (msg.toLowerCase().includes("burn")) {
+            if (msg.toLowerCase().includes("burn")) {
               setStep(`3/${testnetWalletSteps} · Bridge burn`);
             }
-            setMessage(msg);
+            setMessage(`Step B: ${msg}`);
           },
+          { preApproved: Boolean(preApproveTx) },
         );
+        const captureMerged = {
+          ...capture,
+          approveTx: preApproveTx ?? capture.approveTx,
+        };
         const allSteps = mergeScanSteps(
           collected,
           stepA,
           buildBridgeScanSteps(
             [],
-            capture,
+            captureMerged,
             result,
             fromChain,
             TESTNET_HOME_CHAIN,

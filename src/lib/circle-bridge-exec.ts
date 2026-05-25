@@ -37,25 +37,32 @@ function pendingBridgeResult(amount: string, burnTx: string): BridgeResult {
   };
 }
 
+const BURN_WAIT_MS = 180_000;
+const BURN_POLL_MS = 250;
+
 /**
  * Circle `kit.bridge()` can stay pending while CCTP attestation/mint runs (~15 min SLOW).
- * Resolve the UI once the user has signed approve/burn, not when mint completes.
+ * Resolve the UI once the user has signed burn, not when mint completes.
+ * Do not treat kit "error" as failure if burn tx is already on-chain.
  */
 export async function executeCircleBridge(
   kit: AppKit,
   params: BridgeParams,
   onStep?: (msg: string) => void,
+  options?: { preApproved?: boolean },
 ): Promise<{ result: BridgeResult; capture: BridgeCapture }> {
   const amount = String(params.amount ?? "");
   let burnTx: string | undefined;
-  let approveTx: string | undefined;
+  let kitApproveTx: string | undefined;
 
   const onApprove = (payload: unknown) => {
     const h = txHashFromBridgeEvent(payload);
-    if (h) approveTx = h;
-    onStep?.(
-      "Wallet: approve USDC — MetaMask will ask how much USDC the bridge can spend.",
-    );
+    if (h) kitApproveTx = h;
+    if (!options?.preApproved) {
+      onStep?.(
+        "Wallet: approve USDC — MetaMask will ask how much USDC the bridge can spend.",
+      );
+    }
   };
   const onBurn = (payload: unknown) => {
     const h = txHashFromBridgeEvent(payload);
@@ -70,46 +77,68 @@ export async function executeCircleBridge(
   kit.on("bridge.approve", onApprove);
   kit.on("bridge.burn", onBurn as never);
 
+  try {
+  onStep?.("Wallet: confirm bridge burn on source chain…");
+
   const full = kit.bridge(params);
 
-  const afterBurn = (async (): Promise<BridgeResult> => {
-    for (let i = 0; i < 400; i++) {
-      if (burnTx) {
-        try {
-          return await withTimeout(full, 25_000, "CCTP settlement");
-        } catch {
-          return pendingBridgeResult(amount, burnTx);
-        }
-      }
-      await new Promise((r) => setTimeout(r, 250));
-    }
-    throw new Error("Bridge wallet steps timed out — open your wallet or try again.");
-  })();
-
-  const capture = (): BridgeCapture => ({
-    approveTx,
-    burnTx,
-    approveBundled:
-      Boolean(approveTx && burnTx && approveTx === burnTx) ||
-      Boolean(burnTx && !approveTx),
-  });
-
-  try {
-    const result = await Promise.race([
-      full,
-      afterBurn,
-      withTimeout(full, 120_000, "Circle bridge"),
-    ]);
-    return { result, capture: capture() };
-  } catch (e) {
+  const started = Date.now();
+  while (Date.now() - started < BURN_WAIT_MS) {
     if (burnTx) {
-      onStep?.(`Bridge submitted · burn ${burnTx.slice(0, 10)}… — see scanner links below.`);
-      return {
-        result: pendingBridgeResult(amount, burnTx),
-        capture: capture(),
-      };
+      try {
+        const settled = await withTimeout(full, 30_000, "CCTP settlement");
+        return {
+          result: settled,
+          capture: {
+            approveTx: kitApproveTx,
+            burnTx,
+            approveBundled: false,
+          },
+        };
+      } catch {
+        return {
+          result: pendingBridgeResult(amount, burnTx),
+          capture: {
+            approveTx: kitApproveTx,
+            burnTx,
+            approveBundled: false,
+          },
+        };
+      }
     }
-    throw e;
+    await new Promise((r) => setTimeout(r, BURN_POLL_MS));
+  }
+
+  let kitResult: BridgeResult | undefined;
+  try {
+    kitResult = await withTimeout(full, 5_000, "Circle bridge finalize");
+  } catch {
+    /* use kitResult undefined */
+  }
+
+  if (burnTx) {
+    return {
+      result: kitResult ?? pendingBridgeResult(amount, burnTx),
+      capture: { approveTx: kitApproveTx, burnTx, approveBundled: false },
+    };
+  }
+
+  if (kitApproveTx && !burnTx) {
+    throw new Error(
+      "USDC approve confirmed but bridge burn did not start. Stay on the source chain, open your wallet, and click Exchange again — only the burn step should appear.",
+    );
+  }
+
+  const state = String(kitResult?.state ?? "error").toLowerCase();
+  if (state === "error" || state === "failed") {
+    throw new Error(
+      "Bridge burn was not confirmed. Check wallet is on the source chain and try Exchange again.",
+    );
+  }
+
+  throw new Error(
+    "Bridge timed out waiting for burn — confirm the burn transaction in your wallet or retry.",
+  );
   } finally {
     kit.off("bridge.approve", onApprove);
     kit.off("bridge.burn", onBurn as never);
