@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import {
   ArrowRight,
@@ -18,6 +18,10 @@ import {
   getBridgeDestination,
   getSwapKitConfig,
 } from "@/lib/kit-operations";
+import {
+  createWalletViemAdapter,
+  executeCircleBridge,
+} from "@/lib/circle-bridge-exec";
 import { useNetwork } from "@/providers/network-context";
 import { pushTx } from "@/lib/tx-store";
 import {
@@ -29,7 +33,17 @@ import {
 import { formatLifiOutput } from "@/lib/lifi";
 import { bridgeSubmitStatus } from "@/lib/bridge-status";
 import { planRoute } from "@/lib/route-engine";
-import { debitArcPlatformFee, ARC_PLATFORM_FEE_LABEL } from "@/lib/arc-platform-fee";
+import {
+  debitArcPlatformFee,
+  ARC_PLATFORM_FEE_LABEL,
+  ARC_CHAIN_ID,
+} from "@/lib/arc-platform-fee";
+import {
+  chainIdToHex,
+  isUserRejected,
+  switchWalletToChain,
+  withTimeout,
+} from "@/lib/wallet-chain";
 import { TokenAvatar } from "./token-avatar";
 import { TokenPicker } from "./token-picker";
 import { ArcFeeBadge } from "./arc-fee-badge";
@@ -62,6 +76,8 @@ export function ExchangeWidget() {
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [quoteOut, setQuoteOut] = useState<string | null>(null);
+  const [step, setStep] = useState<string | null>(null);
+  const cancelRef = useRef(false);
 
   const fromMeta = chains.find((c) => c.appKitChain === fromChain);
   const toMeta = chains.find((c) => c.appKitChain === toChain);
@@ -72,8 +88,22 @@ export function ExchangeWidget() {
 
   const route = useMemo(() => {
     if (!fromTokenMeta || !toTokenMeta) return null;
-    return planRoute(fromChain, toChain, fromTokenMeta, toTokenMeta);
-  }, [fromChain, toChain, fromTokenMeta, toTokenMeta]);
+    const plan = planRoute(fromChain, toChain, fromTokenMeta, toTokenMeta);
+    if (
+      fromChain !== toChain &&
+      fromToken === "USDC" &&
+      toToken === "USDC"
+    ) {
+      return {
+        ...plan,
+        kind: "circle-cctp" as const,
+        signChain: fromChain,
+        label: "Circle CCTP bridge",
+        hint: "Fee on Arc Testnet, then bridge signs on source chain",
+      };
+    }
+    return plan;
+  }, [fromChain, toChain, fromTokenMeta, toTokenMeta, fromToken, toToken]);
 
   const signChainId =
     wagmiChainIdForAppKit(route?.signChain ?? fromChain) ?? defaultWalletChainId;
@@ -99,13 +129,7 @@ export function ExchangeWidget() {
     setQuoteOut(null);
   };
 
-  const getAdapter = useCallback(async () => {
-    if (!window.ethereum) throw new Error("Connect wallet");
-    const { createViemAdapterFromProvider } = await import(
-      "@circle-fin/adapter-viem-v2"
-    );
-    return createViemAdapterFromProvider({ provider: window.ethereum as never });
-  }, []);
+  const getAdapter = useCallback(async () => createWalletViemAdapter(), []);
 
   const runQuote = useCallback(async () => {
     if (!isConnected || !address || !route) {
@@ -227,12 +251,6 @@ export function ExchangeWidget() {
       setMessage("Connect wallet.");
       return;
     }
-    if (needsSwitch) {
-      switchChain({ chainId: signChainId });
-      const signLabel = chains.find((c) => c.appKitChain === route.signChain)?.label;
-      setMessage(`Switch to ${signLabel ?? "source chain"} to sign. Arc fee is paid first.`);
-      return;
-    }
     if (!amount || Number(amount) <= 0) {
       setStatus("error");
       setMessage("Enter amount.");
@@ -240,6 +258,8 @@ export function ExchangeWidget() {
     }
 
     setStatus("loading");
+    setStep(null);
+    cancelRef.current = false;
     try {
       const fetchLifi = async (fc: string, tc: string, fSym: string, tSym: string, amt: string) => {
         const fromCfg = getSwapChain(fc);
@@ -260,104 +280,163 @@ export function ExchangeWidget() {
         return data;
       };
 
-      const sendLifi = async (data: {
-        transactionRequest?: { to?: string; data?: string; value?: string };
-      }) => {
+      const sendLifi = async (
+        data: { transactionRequest?: { to?: string; data?: string; value?: string } },
+        onChainId: number,
+      ) => {
         const tx = data.transactionRequest;
         if (!tx?.to || !tx?.data) throw new Error("No transaction");
-        await (
-          window.ethereum as {
-            request: (args: { method: string; params: unknown[] }) => Promise<string>;
-          }
-        ).request({
-          method: "eth_sendTransaction",
-          params: [{ from: address, to: tx.to, data: tx.data, value: tx.value ?? "0x0" }],
-        });
+        const hash = (await withTimeout(
+          (
+            window.ethereum as {
+              request: (args: { method: string; params: unknown[] }) => Promise<string>;
+            }
+          ).request({
+            method: "eth_sendTransaction",
+            params: [
+              {
+                chainId: chainIdToHex(onChainId),
+                from: address,
+                to: tx.to,
+                data: tx.data,
+                value: tx.value ?? "0x0",
+              },
+            ],
+          }),
+          180_000,
+          "Transaction",
+        )) as string;
+        return hash;
       };
 
       if (isTestnet) {
-        setMessage(`Pay ${ARC_PLATFORM_FEE_LABEL} on Arc Testnet…`);
+        if (cancelRef.current) throw new Error("Cancelled.");
+        setStep("1/2 · Arc fee");
+        setMessage(
+          `Confirm ${ARC_PLATFORM_FEE_LABEL} on Arc Testnet (chain ${ARC_CHAIN_ID}) in your wallet — not Base Sepolia.`,
+        );
         const fee = await debitArcPlatformFee(address);
-        if (!fee.ok && !fee.skipped) throw new Error(fee.message);
-      }
-      if (chainId !== signChainId) {
-        switchChain({ chainId: signChainId });
-        await new Promise((r) => setTimeout(r, 800));
+        if (!fee.ok) throw new Error(fee.message);
+        pushTx({
+          type: "bridge",
+          status: "success",
+          summary: `Arc fee ${ARC_PLATFORM_FEE_LABEL}`,
+          feeUsd: "Arc USDC",
+        });
+        if (fee.txHash) {
+          setMessage(`Arc fee sent · ${fee.txHash.slice(0, 10)}…`);
+        }
       }
 
+      if (cancelRef.current) throw new Error("Cancelled.");
+
+      const signLabel = chains.find((c) => c.appKitChain === route.signChain)?.label;
+      setStep(isTestnet ? "2/2 · Bridge" : "Execute");
+      setMessage(`Switch to ${signLabel ?? "source chain"} and confirm bridge…`);
+      await switchWalletToChain(signChainId);
+      switchChain({ chainId: signChainId });
+      const adapter = await getAdapter();
+
       if (route.kind === "circle-swap" && kitKey) {
-          installCircleProxyFetch();
-          const { AppKit } = await import("@circle-fin/app-kit");
-          const kit = new AppKit();
-          const adapter = await getAdapter();
-          await kit.swap({
+        setMessage("Confirm swap in wallet (Arc Testnet)…");
+        installCircleProxyFetch();
+        const { AppKit } = await import("@circle-fin/app-kit");
+        const kit = new AppKit();
+        await withTimeout(
+          kit.swap({
             from: { adapter, chain: fromChain as never },
             tokenIn: fromTokenMeta!.circleKey as never,
             tokenOut: toTokenMeta!.circleKey as never,
             amountIn: amount,
             config: getSwapKitConfig(kitKey),
-          });
-          pushTx({ type: "swap", status: "success", summary: `${fromToken}→${toToken}`, feeUsd: "Arc USDC" });
-          setStatus("success");
-          setMessage(`Swap done · ${ARC_PLATFORM_FEE_LABEL} fee on Arc`);
-        } else if (route.kind === "circle-cctp") {
-          installCircleProxyFetch();
-          const { AppKit } = await import("@circle-fin/app-kit");
-          const kit = new AppKit();
-          const adapter = await getAdapter();
-          const result = await kit.bridge({
+          }),
+          180_000,
+          "Swap",
+        );
+        pushTx({ type: "swap", status: "success", summary: `${fromToken}→${toToken}`, feeUsd: "Arc USDC" });
+        setStatus("success");
+        setStep(null);
+        setMessage(`Swap complete · fee paid on Arc`);
+      } else if (route.kind === "circle-cctp") {
+        setMessage(
+          `Confirm bridge on ${signLabel} in wallet (approve + burn — Rabby may show “Unknown Signature Type”, that is normal).`,
+        );
+        installCircleProxyFetch();
+        const { AppKit } = await import("@circle-fin/app-kit");
+        const kit = new AppKit();
+        const result = await executeCircleBridge(
+          kit,
+          {
             from: { adapter, chain: fromChain as never },
             to: getBridgeDestination(toChain, adapter, network, recipient) as never,
             amount,
             config: getBridgeKitConfig(),
             token: "USDC",
-          });
-          const submitted = bridgeSubmitStatus(
-            typeof result.state === "string" ? result.state : undefined,
-          );
-          pushTx({
-            type: "bridge",
-            status: submitted.uiStatus === "error" ? "error" : "success",
-            summary: `${fromMeta?.label}→${toMeta?.label}`,
-            feeUsd: "Arc USDC",
-          });
-          setStatus(submitted.uiStatus === "error" ? "error" : "success");
-          setMessage(submitted.label);
-        } else if (route.kind === "compound-swap-bridge") {
-          setMessage("Step 1/2: Swap to USDC…");
-          const swapData = await fetchLifi(fromChain, fromChain, fromToken, "USDC", amount);
-          await sendLifi(swapData);
-          setMessage("Step 2/2: Bridge USDC → Arc…");
-          installCircleProxyFetch();
-          const { AppKit } = await import("@circle-fin/app-kit");
-          const kit = new AppKit();
-          const adapter = await getAdapter();
-          const bridgeAmt = swapData.estimate?.toAmountMin ?? amount;
-          await kit.bridge({
+          },
+          (msg) => setMessage(msg),
+        );
+        const submitted = bridgeSubmitStatus(
+          typeof result.state === "string" ? result.state : undefined,
+        );
+        pushTx({
+          type: "bridge",
+          status: submitted.uiStatus === "error" ? "error" : "success",
+          summary: `${fromMeta?.label}→${toMeta?.label}`,
+          feeUsd: "Arc USDC",
+        });
+        setStatus(submitted.uiStatus === "error" ? "error" : "success");
+        setStep(null);
+        setMessage(submitted.label);
+      } else if (route.kind === "compound-swap-bridge") {
+        setMessage("Step A: swap to USDC on source chain…");
+        const swapData = await fetchLifi(fromChain, fromChain, fromToken, "USDC", amount);
+        await sendLifi(swapData, signChainId);
+        setMessage("Step B: bridge USDC → Arc (Circle)…");
+        installCircleProxyFetch();
+        const { AppKit } = await import("@circle-fin/app-kit");
+        const kit = new AppKit();
+        const bridgeAmt = swapData.estimate?.toAmountMin ?? amount;
+        await executeCircleBridge(
+          kit,
+          {
             from: { adapter, chain: fromChain as never },
             to: getBridgeDestination(TESTNET_HOME_CHAIN, adapter, network, recipient) as never,
             amount: bridgeAmt,
             config: getBridgeKitConfig(),
             token: "USDC",
-          });
-          pushTx({ type: "bridge", status: "success", summary: `${fromToken}→Arc`, feeUsd: "Arc USDC" });
-          setStatus("success");
-          setMessage(`Done · ${fromToken}→USDC→Arc`);
-        } else {
-          const data = await fetchLifi(fromChain, toChain, fromToken, toToken, amount);
-          await sendLifi(data);
-          pushTx({
-            type: fromChain === toChain ? "swap" : "bridge",
-            status: "success",
-            summary: `${fromToken}→${toToken}`,
-            feeUsd: "Arc USDC",
-          });
-          setStatus("success");
-          setMessage(`Done · ${ARC_PLATFORM_FEE_LABEL} on Arc`);
-        }
+          },
+          (msg) => setMessage(msg),
+        );
+        pushTx({ type: "bridge", status: "success", summary: `${fromToken}→Arc`, feeUsd: "Arc USDC" });
+        setStatus("success");
+        setStep(null);
+        setMessage(`Done · ${fromToken}→USDC→Arc`);
+      } else {
+        setMessage(`Confirm ${route.label} on ${signLabel}…`);
+        const data = await fetchLifi(fromChain, toChain, fromToken, toToken, amount);
+        const hash = await sendLifi(data, signChainId);
+        pushTx({
+          type: fromChain === toChain ? "swap" : "bridge",
+          status: "success",
+          summary: `${fromToken}→${toToken} · ${hash.slice(0, 10)}`,
+          feeUsd: "Arc USDC",
+        });
+        setStatus("success");
+        setStep(null);
+        setMessage(`Submitted · ${hash.slice(0, 10)}… · Arc fee already paid`);
+      }
     } catch (e) {
-      setStatus("error");
-      setMessage(e instanceof Error ? e.message : "Failed");
+      setStep(null);
+      if (cancelRef.current) {
+        setStatus("error");
+        setMessage("Cancelled.");
+      } else if (isUserRejected(e)) {
+        setStatus("error");
+        setMessage("Cancelled in wallet.");
+      } else {
+        setStatus("error");
+        setMessage(e instanceof Error ? e.message : "Failed");
+      }
     }
   }, [
     isConnected,
@@ -497,7 +576,11 @@ export function ExchangeWidget() {
           </p>
         )}
 
-        {needsSwitch && isConnected && (
+        {status === "loading" && step && (
+          <p className="mt-2 text-center text-sm font-semibold text-cyan-200">{step}</p>
+        )}
+
+        {needsSwitch && isConnected && status !== "loading" && (
           <button
             type="button"
             disabled={switching}
@@ -527,27 +610,42 @@ export function ExchangeWidget() {
           <button
             type="button"
             onClick={runQuote}
-            className="btn-secondary flex-1 py-3 text-sm"
+            disabled={status === "loading"}
+            className="btn-secondary flex-1 py-3 text-sm disabled:opacity-50"
           >
-            {status === "loading" && !quoteOut ? (
-              <Loader2 className="mx-auto h-4 w-4 animate-spin" />
-            ) : (
-              "Quote"
-            )}
+            Quote
           </button>
           <button
             type="button"
             onClick={runExchange}
-            className="btn-primary flex-[2] rounded-2xl py-3 text-sm font-bold text-white"
+            disabled={status === "loading"}
+            className="btn-primary flex-[2] rounded-2xl py-3 text-sm font-bold text-white disabled:opacity-70"
           >
             {status === "loading" ? (
-              <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                {step ?? "Working…"}
+              </span>
             ) : (
               <>
                 Exchange <ArrowRight className="ml-1 inline h-4 w-4" />
               </>
             )}
           </button>
+          {status === "loading" && (
+            <button
+              type="button"
+              onClick={() => {
+                cancelRef.current = true;
+                setStatus("error");
+                setStep(null);
+                setMessage("Cancelled.");
+              }}
+              className="text-xs text-slate-400 underline"
+            >
+              Cancel
+            </button>
+          )}
         </div>
       </div>
 

@@ -47,10 +47,12 @@ export function planRoute(
     };
   }
 
+  /** USDC cross-chain via Circle CCTP whenever possible (incl. Base ↔ Arc). */
   if (
     !sameChain &&
-    useCircleCctpBridge(fromChain, toChain, fromToken, toToken) &&
-    fromToken.symbol === "USDC"
+    fromToken.symbol === "USDC" &&
+    toToken.symbol === "USDC" &&
+    useCircleCctpBridge(fromChain, toChain, fromToken, toToken)
   ) {
     return {
       kind: "circle-cctp",

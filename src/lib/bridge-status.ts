@@ -27,10 +27,11 @@ export function bridgeSubmitStatus(state: string | undefined): {
     };
   }
 
-  if (SUCCESS_STATES.has(raw) || !raw) {
+  if (raw === "pending" || SUCCESS_STATES.has(raw) || !raw) {
     return {
       uiStatus: "success",
-      label: "Bridge submitted — settlement in progress (~15 min SLOW CCTP).",
+      label:
+        "Bridge submitted — USDC mints on destination in ~15 min (SLOW CCTP). Track burn on source explorer.",
     };
   }
 
