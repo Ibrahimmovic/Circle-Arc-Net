@@ -23,21 +23,49 @@ export function PortfolioAdaptivePanel({
           <AllocationChart data={analysis.chainAllocations} />
         </div>
         <div className="luxury-card rounded-2xl p-5 sm:p-6">
-          <h3 className="text-lg font-semibold text-white">Regime targets</h3>
+          <h3 className="text-lg font-semibold text-white">Adaptive vs now</h3>
           <ul className="mt-4 space-y-2">
-            {analysis.targetAllocations.map((t) => (
-              <li
-                key={t.chain}
-                className="flex justify-between rounded-xl bg-slate-900/50 px-4 py-3"
-              >
-                <span className="text-slate-200">{t.chain}</span>
-                <span className="font-mono text-cyan-300">{t.targetPercent}%</span>
-              </li>
-            ))}
+            {analysis.targetAllocations.map((t) => {
+              const current = analysis.chainAllocations.find(
+                (c) => c.chain.toLowerCase() === t.chain.toLowerCase(),
+              );
+              const currentPct = current?.percent ?? 0;
+              const drift = currentPct - t.targetPercent;
+              return (
+                <li
+                  key={t.chain}
+                  className="rounded-xl bg-slate-900/50 px-4 py-3"
+                >
+                  <div className="flex justify-between">
+                    <span className="text-slate-200">{t.chain}</span>
+                    <span className="font-mono text-cyan-300">
+                      {currentPct.toFixed(1)}% → {t.targetPercent}%
+                    </span>
+                  </div>
+                  <p
+                    className={`mt-1 text-[10px] ${
+                      Math.abs(drift) < 5
+                        ? "text-emerald-400/80"
+                        : drift > 0
+                          ? "text-amber-300/90"
+                          : "text-violet-300/90"
+                    }`}
+                  >
+                    {Math.abs(drift) < 5
+                      ? "On target"
+                      : drift > 0
+                        ? `Overweight +${drift.toFixed(1)}%`
+                        : `Underweight ${drift.toFixed(1)}%`}
+                  </p>
+                </li>
+              );
+            })}
           </ul>
           <p className="mt-3 text-xs text-slate-500">
-            Concentration risk:{" "}
+            Concentration:{" "}
             <span className="text-violet-300">{analysis.concentrationRisk}</span>
+            {" · "}
+            Regime <span className="text-cyan-300/90">{analysis.regime}</span>
           </p>
         </div>
       </div>

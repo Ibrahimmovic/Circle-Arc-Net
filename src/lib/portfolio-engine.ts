@@ -12,6 +12,7 @@ const CHAIN_LABELS: Record<string, string> = {
   "eth-mainnet": "Ethereum",
   base: "Base",
   "base-mainnet": "Base",
+  "base sepolia": "Base Sepolia",
   arbitrum: "Arbitrum",
   "arbitrum-mainnet": "Arbitrum",
   polygon: "Polygon",
@@ -159,17 +160,36 @@ export function analyzePortfolio(params: {
   };
 }
 
+/** Canonical chain key for merging Zerion + GoldRush (avoids duplicate "Base"). */
+export function canonicalChainKey(chainId: string): string {
+  const c = chainId.toLowerCase().replace(/_/g, "-");
+  if (c.includes("base")) return "base";
+  if (c.includes("ethereum") || c === "eth" || c.startsWith("eth-")) return "ethereum";
+  if (c.includes("arbitrum") || c === "arb") return "arbitrum";
+  if (c.includes("optimism") || c === "op") return "optimism";
+  if (c.includes("polygon") || c === "matic") return "polygon";
+  if (c.includes("avalanche") || c === "avax") return "avalanche";
+  if (c.includes("arc")) return "arc";
+  return c.replace(/-mainnet$/, "").replace(/-sepolia$/, "");
+}
+
 export function mergeChainData(
   zerionChains: Record<string, number>,
   goldrushChains: Record<string, number>,
 ): Record<string, number> {
-  const merged = { ...zerionChains };
+  const merged: Record<string, number> = {};
 
+  const add = (rawKey: string, quote: number) => {
+    if (quote <= 0) return;
+    const key = canonicalChainKey(rawKey);
+    merged[key] = (merged[key] ?? 0) + quote;
+  };
+
+  for (const [name, quote] of Object.entries(zerionChains)) {
+    add(name, quote);
+  }
   for (const [name, quote] of Object.entries(goldrushChains)) {
-    const key = name.replace(/-mainnet$/i, "").replace(/-/g, "_");
-    if (quote > 0) {
-      merged[key] = (merged[key] ?? 0) + quote;
-    }
+    add(name, quote);
   }
 
   return merged;

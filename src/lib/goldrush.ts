@@ -28,9 +28,16 @@ export interface GoldRushTokenBalance {
   chain_display_name?: string;
   contract_ticker_symbol?: string;
   contract_name?: string;
+  contract_address?: string;
+  contract_decimals?: number;
+  balance?: string;
   quote?: number;
   quote_24h?: number;
   is_spam?: boolean;
+  logo_url?: string;
+  type?: string;
+  native_token?: boolean;
+  nft_data?: Array<{ external_data?: { image?: string } }>;
 }
 
 export interface GoldRushAllChainsBalance {
@@ -97,19 +104,54 @@ export async function getAllChainsBalances(
 export async function getChainBalancesV2(
   chainName: string,
   address: string,
+  options?: { includeSpam?: boolean },
 ): Promise<GoldRushTokenBalance[]> {
   const encoded = encodeURIComponent(address);
+  const spamParam = options?.includeSpam ? "" : "&no-spam=true";
   const data = await goldrushFetch<{
-    data?: { items?: Array<GoldRushTokenBalance & { quote?: number; is_spam?: boolean }> };
-  }>(`/${chainName}/address/${encoded}/balances_v2/?quote-currency=USD&no-spam=true`);
+    data?: { items?: GoldRushTokenBalance[] };
+  }>(
+    `/${chainName}/address/${encoded}/balances_v2/?quote-currency=USD${spamParam}`,
+  );
 
   return (data.data?.items ?? []).map((i) => ({
+    ...i,
     chain_name: chainName,
-    contract_ticker_symbol: i.contract_ticker_symbol,
-    contract_name: i.contract_name,
-    quote: i.quote,
-    is_spam: i.is_spam,
+    chain_display_name: i.chain_display_name ?? chainName,
   }));
+}
+
+const MAINNET_CHAINS = [
+  "base-mainnet",
+  "eth-mainnet",
+  "arbitrum-mainnet",
+  "optimism-mainnet",
+  "polygon-mainnet",
+];
+
+/** Full mainnet scan: all tokens + spam on Base/Ethereum and more. */
+export async function getMainnetBalancesFull(address: string): Promise<{
+  clean: GoldRushTokenBalance[];
+  spam: GoldRushTokenBalance[];
+}> {
+  const results = await Promise.all(
+    MAINNET_CHAINS.map(async (chain) => {
+      const [allItems, cleanItems] = await Promise.all([
+        getChainBalancesV2(chain, address, { includeSpam: true }).catch(
+          () => [] as GoldRushTokenBalance[],
+        ),
+        getChainBalancesV2(chain, address, { includeSpam: false }).catch(
+          () => [] as GoldRushTokenBalance[],
+        ),
+      ]);
+      const spam = allItems.filter((i) => i.is_spam);
+      return { clean: cleanItems, spam };
+    }),
+  );
+  return {
+    clean: results.flatMap((r) => r.clean),
+    spam: results.flatMap((r) => r.spam),
+  };
 }
 
 /** Balances scoped to testnet OR mainnet — never both at once. */
@@ -120,11 +162,14 @@ export async function getBalancesForNetworkMode(
   if (testnet) {
     const chains = ["eth-sepolia", "base-sepolia"];
     const perChain = await Promise.all(
-      chains.map((c) => getChainBalancesV2(c, address).catch(() => [])),
+      chains.map((c) =>
+        getChainBalancesV2(c, address, { includeSpam: true }).catch(() => []),
+      ),
     );
     return { data: { items: perChain.flat() } };
   }
-  return getAllChainsBalances(address);
+  const { clean, spam } = await getMainnetBalancesFull(address);
+  return { data: { items: [...clean, ...spam] } };
 }
 
 export async function getMultichainBalancesIncludingTestnet(

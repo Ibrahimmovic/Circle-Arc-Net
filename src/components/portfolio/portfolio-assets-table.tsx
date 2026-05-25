@@ -1,8 +1,29 @@
 "use client";
 
 import { formatPct, formatUsd } from "@/lib/utils";
+import { tokenIcon } from "@/lib/token-visuals";
 import type { PortfolioAsset } from "@/lib/portfolio-wallet-types";
-import { TrendingDown, TrendingUp, ShieldAlert } from "lucide-react";
+import { TrendingDown, TrendingUp, ShieldAlert, AlertTriangle } from "lucide-react";
+
+function AssetIcon({ asset }: { asset: PortfolioAsset }) {
+  const src = asset.logoUrl ?? tokenIcon(asset.symbol);
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt=""
+        className="h-9 w-9 shrink-0 rounded-full bg-slate-800 object-cover ring-1 ring-white/10"
+        loading="lazy"
+      />
+    );
+  }
+  return (
+    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500/30 to-violet-600/30 text-xs font-bold text-white ring-1 ring-white/10">
+      {asset.symbol.slice(0, 3)}
+    </div>
+  );
+}
 
 export function PortfolioAssetsTable({
   assets,
@@ -39,9 +60,7 @@ export function PortfolioAssetsTable({
               >
                 <td className="py-3.5 pl-1">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500/30 to-violet-600/30 text-xs font-bold text-white">
-                      {a.symbol.slice(0, 3)}
-                    </div>
+                    <AssetIcon asset={a} />
                     <div className="min-w-0">
                       <p className="font-semibold text-white">{a.symbol}</p>
                       <p className="truncate text-xs text-slate-500">{a.name}</p>
@@ -49,10 +68,15 @@ export function PortfolioAssetsTable({
                     {a.isSpam && (
                       <ShieldAlert className="h-4 w-4 shrink-0 text-amber-400" />
                     )}
+                    {a.unverified && !a.isSpam && (
+                      <span title="No USD price">
+                        <AlertTriangle className="h-4 w-4 shrink-0 text-slate-500" />
+                      </span>
+                    )}
                   </div>
                 </td>
                 <td className="py-3.5 text-slate-400">{a.chain}</td>
-                <td className="py-3.5 text-right font-mono text-xs text-slate-300">
+                <td className="py-3.5 text-right font-mono text-xs text-slate-200">
                   {a.balance ?? "—"}
                 </td>
                 <td className="py-3.5 text-right">

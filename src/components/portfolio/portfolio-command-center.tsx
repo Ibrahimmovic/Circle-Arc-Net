@@ -99,6 +99,11 @@ export function PortfolioCommandCenter() {
             {data.sources.join(" · ")}
           </span>
         )}
+        {!data?.zerionAvailable && (
+          <span className="text-[10px] text-amber-400/90">
+            Add ZERION_API_KEY for NFTs + tx history
+          </span>
+        )}
       </div>
 
       {loading && !data?.totalUsd && (
@@ -183,7 +188,7 @@ export function PortfolioCommandCenter() {
                 All tokens
               </h3>
               <p className="mb-4 text-xs text-slate-500">
-                Clean holdings — spam hidden (see Flagged tab)
+                All Base/Ethereum tokens with balances · net worth = sum of values
               </p>
               <PortfolioAssetsTable assets={data.assets} />
             </div>
@@ -226,8 +231,7 @@ export function PortfolioCommandCenter() {
                   Flagged tokens
                 </h3>
                 <p className="mt-1 mb-4 text-xs text-slate-500">
-                  Low-quality or airdrop spam — hidden from net worth (Zerion +
-                  GoldRush)
+                  GoldRush is_spam + suspicious memecoins — excluded from net worth
                 </p>
                 <PortfolioAssetsTable
                   assets={data.spamAssets}

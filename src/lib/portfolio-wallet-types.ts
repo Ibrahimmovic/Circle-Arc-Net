@@ -12,6 +12,7 @@ export type PortfolioAsset = {
   isSpam: boolean;
   isNft: false;
   positionType?: "wallet" | "deposited" | "staked" | "locked" | "reward";
+  unverified?: boolean;
 };
 
 export type PortfolioNft = {

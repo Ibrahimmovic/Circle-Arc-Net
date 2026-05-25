@@ -29,11 +29,21 @@ export function AllocationChart({ data }: { data: ChainAllocation[] }) {
     );
   }
 
-  const chartData = data.map((d) => ({
-    name: d.chain,
-    value: d.valueUsd ?? 0,
-    percent: d.percent ?? 0,
-  }));
+  const merged = new Map<string, { name: string; value: number; percent: number }>();
+  for (const d of data) {
+    const prev = merged.get(d.chain);
+    if (prev) {
+      prev.value += d.valueUsd ?? 0;
+      prev.percent += d.percent ?? 0;
+    } else {
+      merged.set(d.chain, {
+        name: d.chain,
+        value: d.valueUsd ?? 0,
+        percent: d.percent ?? 0,
+      });
+    }
+  }
+  const chartData = [...merged.values()].filter((d) => d.value > 0.001);
 
   return (
     <ResponsiveContainer width="100%" height={280}>
