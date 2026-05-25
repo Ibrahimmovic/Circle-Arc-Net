@@ -18,7 +18,12 @@ const CHAIN_COLORS: Record<string, string> = {
 export function ChainBalanceGrid({
   chains,
 }: {
-  chains: Array<{ chain: string; valueUsd: number; percent: number }>;
+  chains: Array<{
+    chain: string;
+    chainId?: string;
+    valueUsd: number;
+    percent: number;
+  }>;
 }) {
   if (!chains.length) {
     return (
@@ -30,7 +35,7 @@ export function ChainBalanceGrid({
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {chains.map((c) => (
         <div
-          key={c.chain}
+          key={c.chainId ?? c.chain}
           className={`rounded-2xl border border-slate-800/80 bg-gradient-to-br p-4 ${
             CHAIN_COLORS[c.chain] ?? "from-slate-800/50 to-slate-900/30"
           }`}

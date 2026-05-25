@@ -96,15 +96,25 @@ export function analyzePortfolio(params: {
   const { address, totalUsd, change24hPct, chainDistribution } = params;
   const { regime, score } = detectRegime(change24hPct);
 
-  const chainAllocations: ChainAllocation[] = Object.entries(chainDistribution)
-    .map(([chain, valueUsd]) => ({
-      chain: normalizeChain(chain),
+  const allocationByChain = new Map<string, { valueUsd: number; percent: number }>();
+  for (const [chain, valueUsd] of Object.entries(chainDistribution)) {
+    const label = normalizeChain(canonicalChainKey(chain));
+    const prev = allocationByChain.get(label) ?? { valueUsd: 0, percent: 0 };
+    prev.valueUsd += valueUsd;
+    allocationByChain.set(label, prev);
+  }
+  const chainAllocations: ChainAllocation[] = [...allocationByChain.entries()]
+    .map(([chain, { valueUsd }]) => ({
+      chain,
       valueUsd,
       percent: totalUsd > 0 ? (valueUsd / totalUsd) * 100 : 0,
     }))
     .sort((a, b) => b.valueUsd - a.valueUsd);
 
-  const targetAllocations = buildTargetAllocations(regime);
+  const heldChains = new Set(chainAllocations.map((c) => c.chain.toLowerCase()));
+  const targetAllocations = buildTargetAllocations(regime).filter((t) =>
+    heldChains.has(t.chain.toLowerCase()),
+  );
   const rebalanceActions: RebalanceAction[] = [];
   let actionIdx = 0;
 

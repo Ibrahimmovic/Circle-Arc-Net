@@ -35,9 +35,29 @@ export interface GoldRushTokenBalance {
   quote_24h?: number;
   is_spam?: boolean;
   logo_url?: string;
+  logo_urls?: {
+    token_logo_url?: string;
+    protocol_logo_url?: string;
+    chain_logo_url?: string;
+  };
   type?: string;
   native_token?: boolean;
-  nft_data?: Array<{ external_data?: { image?: string } }>;
+  is_native_token?: boolean;
+  nft_data?: Array<{ external_data?: { image?: string; name?: string } }>;
+}
+
+export function goldRushTokenLogo(t: GoldRushTokenBalance): string | undefined {
+  return (
+    t.logo_urls?.token_logo_url ??
+    t.logo_urls?.protocol_logo_url ??
+    t.logo_url ??
+    undefined
+  );
+}
+
+export function goldRushRawBalance(t: GoldRushTokenBalance): string | undefined {
+  if (t.balance == null) return undefined;
+  return typeof t.balance === "number" ? String(t.balance) : t.balance;
 }
 
 export interface GoldRushAllChainsBalance {

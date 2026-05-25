@@ -1,7 +1,8 @@
 import { getArcTestnetUsdBalances } from "@/lib/arc-balance";
 import {
   getBalancesForNetworkMode,
-  getMainnetBalancesFull,
+  goldRushRawBalance,
+  goldRushTokenLogo,
   type GoldRushTokenBalance,
 } from "@/lib/goldrush";
 import {
@@ -57,20 +58,35 @@ function formatTokenBalance(raw: string | undefined, decimals: number): string |
   }
 }
 
+const MAJOR_SYMBOLS = new Set([
+  "ETH",
+  "WETH",
+  "USDC",
+  "USDT",
+  "DAI",
+  "EURC",
+  "WBTC",
+  "CBETH",
+  "ZORA",
+]);
+
 function isLikelySpamToken(t: GoldRushTokenBalance): boolean {
   if (t.is_spam) return true;
-  const sym = (t.contract_ticker_symbol ?? "").toLowerCase();
+  if (t.type === "dust") return true;
+  const sym = (t.contract_ticker_symbol ?? "").toUpperCase();
   const quote = t.quote ?? 0;
-  if (quote > 1) return false;
-  const spamPatterns = /airdrop|claim|visit|\.com|http|reward|voucher|www\./i;
+  if (quote > 1 && MAJOR_SYMBOLS.has(sym)) return false;
+  const spamPatterns =
+    /airdrop|claim|visit|\.com|http|reward|voucher|www\.|blep|degen point|super meme|based usa/i;
   if (spamPatterns.test(sym) || spamPatterns.test(t.contract_name ?? "")) return true;
-  if (quote === 0 && t.balance && t.balance !== "0") {
+  const raw = goldRushRawBalance(t);
+  if (quote === 0 && raw && raw !== "0" && !MAJOR_SYMBOLS.has(sym)) {
     const dec = t.contract_decimals ?? 18;
     try {
-      const n = Number(BigInt(t.balance)) / 10 ** dec;
-      if (n > 1000 && quote === 0) return true;
+      const n = Number(BigInt(raw)) / 10 ** dec;
+      if (n > 0 && quote === 0) return true;
     } catch {
-      /* ignore */
+      return true;
     }
   }
   return false;
@@ -110,7 +126,7 @@ function goldRushToAsset(t: GoldRushTokenBalance): PortfolioAsset | null {
   const isSpam = isLikelySpamToken(t);
   const quote = t.quote ?? 0;
   const decimals = t.contract_decimals ?? 18;
-  const bal = formatTokenBalance(t.balance, decimals);
+  const bal = formatTokenBalance(goldRushRawBalance(t), decimals);
   const hasBalance = bal != null && bal !== "0";
 
   if (t.type === "nft" || (t.nft_data && t.nft_data.length > 0)) {
@@ -135,7 +151,7 @@ function goldRushToAsset(t: GoldRushTokenBalance): PortfolioAsset | null {
     valueUsd: Math.max(quote, 0),
     balance: bal,
     change24hPct: change24h,
-    logoUrl: t.logo_url ?? tokenIcon(symbol),
+    logoUrl: goldRushTokenLogo(t) ?? tokenIcon(symbol),
     isSpam,
     isNft: false,
     unverified: quote <= 0 && hasBalance,
@@ -145,7 +161,10 @@ function goldRushToAsset(t: GoldRushTokenBalance): PortfolioAsset | null {
 
 function goldRushToNft(t: GoldRushTokenBalance): PortfolioNft | null {
   if (t.type !== "nft" && !t.nft_data?.length) return null;
-  const img = t.nft_data?.[0]?.external_data?.image ?? t.logo_url;
+  const img =
+    t.nft_data?.[0]?.external_data?.image ??
+    goldRushTokenLogo(t) ??
+    t.logo_url;
   return {
     id: `gr-nft-${t.contract_address ?? t.contract_ticker_symbol}`,
     name: t.contract_name ?? t.contract_ticker_symbol ?? "NFT",
@@ -218,12 +237,35 @@ function rebuildTotals(assets: PortfolioAsset[]): {
   return { totalUsd, chainDistribution };
 }
 
+function mergeAsset(prev: PortfolioAsset, next: PortfolioAsset): PortfolioAsset {
+  const pick =
+    next.valueUsd > prev.valueUsd
+      ? next
+      : prev.valueUsd > next.valueUsd
+        ? prev
+        : next.balance && !prev.balance
+          ? next
+          : prev;
+  const other = pick === prev ? next : prev;
+  return {
+    ...pick,
+    valueUsd: Math.max(prev.valueUsd, next.valueUsd),
+    balance: pick.balance ?? other.balance,
+    logoUrl: pick.logoUrl ?? other.logoUrl,
+    change24hPct:
+      Math.abs(pick.change24hPct) >= Math.abs(other.change24hPct)
+        ? pick.change24hPct
+        : other.change24hPct,
+    isSpam: pick.isSpam || other.isSpam,
+  };
+}
+
 function dedupeAssets(list: PortfolioAsset[]): PortfolioAsset[] {
   const byKey = new Map<string, PortfolioAsset>();
   for (const a of list) {
     const key = `${canonicalChainKey(a.chainId ?? a.chain)}:${a.symbol.toUpperCase()}`;
     const prev = byKey.get(key);
-    if (!prev || a.valueUsd > prev.valueUsd) byKey.set(key, a);
+    byKey.set(key, prev ? mergeAsset(prev, a) : a);
   }
   return [...byKey.values()];
 }
@@ -245,7 +287,7 @@ export async function buildPortfolioWalletFeed(
   const activities: PortfolioActivity[] = [];
   const spamActivities: PortfolioActivity[] = [];
 
-  const [portfolio, positionsClean, positionsSpam, txs, nftPos, goldrush, mainnetExtra] =
+  const [portfolio, positionsClean, positionsSpam, txs, nftPos, goldrush] =
     await Promise.all([
       getWalletPortfolio(address, testnet).catch(() => null),
       getWalletPositions(address, testnet, "only_non_trash").catch(() => null),
@@ -253,7 +295,6 @@ export async function buildPortfolioWalletFeed(
       getWalletTransactions(address, testnet, "no_filter").catch(() => null),
       getWalletNftPositions(address, testnet).catch(() => null),
       getBalancesForNetworkMode(address, testnet).catch(() => null),
-      !testnet ? getMainnetBalancesFull(address).catch(() => null) : Promise.resolve(null),
     ]);
 
   if (portfolio?.data) {
@@ -298,11 +339,7 @@ export async function buildPortfolioWalletFeed(
     }
   }
 
-  const goldItems: GoldRushTokenBalance[] = [
-    ...(goldrush?.data?.items ?? []),
-    ...(mainnetExtra?.clean ?? []),
-    ...(mainnetExtra?.spam ?? []),
-  ];
+  const goldItems: GoldRushTokenBalance[] = goldrush?.data?.items ?? [];
 
   if (goldItems.length > 0) {
     sources.push(testnet ? "GoldRush testnet" : "GoldRush Base+ETH+…");
@@ -353,7 +390,22 @@ export async function buildPortfolioWalletFeed(
   }
 
   const cleanAssets = dedupeAssets(assets);
-  const { totalUsd, chainDistribution } = rebuildTotals(cleanAssets);
+  let { totalUsd, chainDistribution } = rebuildTotals(cleanAssets);
+
+  const zerionTotal = portfolio?.data?.attributes?.total?.positions;
+  if (
+    portfolio?.data &&
+    typeof zerionTotal === "number" &&
+    zerionTotal > totalUsd + 0.5 &&
+    zerionTotal < totalUsd * 2
+  ) {
+    totalUsd = zerionTotal;
+    const zChains =
+      portfolio.data.attributes?.positions_distribution_by_chain;
+    if (zChains && Object.keys(zChains).length > 0) {
+      chainDistribution = mergeChainData(zChains, chainDistribution);
+    }
+  }
 
   cleanAssets.sort((a, b) => b.valueUsd - a.valueUsd);
   spamAssets.sort((a, b) => b.valueUsd - a.valueUsd);
@@ -371,6 +423,23 @@ export async function buildPortfolioWalletFeed(
       chainId,
       valueUsd,
       percent: totalUsd > 0 ? (valueUsd / totalUsd) * 100 : 0,
+    }))
+    .reduce<
+      Array<{ chain: string; chainId: string; valueUsd: number; percent: number }>
+    >((acc, row) => {
+      const key = canonicalChainKey(row.chainId);
+      const existing = acc.find((r) => canonicalChainKey(r.chainId) === key);
+      if (existing) {
+        existing.valueUsd += row.valueUsd;
+        existing.percent += row.percent;
+      } else {
+        acc.push({ ...row, chainId: key });
+      }
+      return acc;
+    }, [])
+    .map((r) => ({
+      ...r,
+      percent: totalUsd > 0 ? (r.valueUsd / totalUsd) * 100 : r.percent,
     }))
     .sort((a, b) => b.valueUsd - a.valueUsd);
 

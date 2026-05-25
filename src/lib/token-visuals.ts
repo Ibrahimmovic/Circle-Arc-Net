@@ -7,6 +7,11 @@ export const TOKEN_ICONS: Record<string, string> = {
   ETH: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
   WETH: "https://assets.coingecko.com/coins/images/2518/small/weth.png",
   BTC: "https://assets.coingecko.com/coins/images/1/small/bitcoin.png",
+  ZORA: "https://assets.coingecko.com/coins/images/34653/small/zora.png",
+  DAI: "https://assets.coingecko.com/coins/images/9956/small/Badge_Dai.png",
+  WBTC: "https://assets.coingecko.com/coins/images/7598/small/wrapped_bitcoin_wbtc.png",
+  cbETH: "https://assets.coingecko.com/coins/images/27008/small/cbeth.png",
+  AERO: "https://assets.coingecko.com/coins/images/31745/small/token.png",
 };
 
 export const CHAIN_ICONS: Record<string, string> = {
