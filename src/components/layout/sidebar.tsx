@@ -10,6 +10,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getNetworkMode } from "@/lib/network";
 
 const nav = [
   { href: "/", label: "Command", icon: LayoutDashboard },
@@ -64,6 +65,9 @@ export function Sidebar() {
         <p className="px-2 text-[10px] uppercase tracking-wider text-slate-500">
           Built for Agora Hackathon
         </p>
+        <span className="mx-2 mt-1 inline-block rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-semibold text-cyan-300 uppercase">
+          {getNetworkMode()} mode
+        </span>
         <a
           href="https://docs.arc.network/app-kit"
           target="_blank"

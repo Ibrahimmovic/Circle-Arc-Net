@@ -1,5 +1,6 @@
 import { Sidebar } from "./sidebar";
 import { WalletButton } from "./wallet-button";
+import { MeshBackground } from "@/components/ui/mesh-background";
 
 export function AppShell({
   children,
@@ -11,7 +12,8 @@ export function AppShell({
   subtitle?: string;
 }) {
   return (
-    <div className="flex min-h-screen flex-col lg:flex-row">
+    <div className="flex min-h-screen flex-col lg:flex-row relative">
+      <MeshBackground />
       <Sidebar />
       <div className="flex flex-1 flex-col">
         <header className="sticky top-0 z-20 border-b border-slate-800/60 bg-slate-950/80 backdrop-blur-xl">

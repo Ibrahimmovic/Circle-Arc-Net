@@ -6,12 +6,18 @@ function zerionAuth(): string {
   return Buffer.from(`${key}:`).toString("base64");
 }
 
-export async function zerionFetch<T>(path: string): Promise<T> {
+export async function zerionFetch<T>(
+  path: string,
+  options?: { testnet?: boolean },
+): Promise<T> {
+  const headers: Record<string, string> = {
+    accept: "application/json",
+    authorization: `Basic ${zerionAuth()}`,
+  };
+  if (options?.testnet) headers["X-Env"] = "testnet";
+
   const res = await fetch(`${ZERION_BASE}${path}`, {
-    headers: {
-      accept: "application/json",
-      authorization: `Basic ${zerionAuth()}`,
-    },
+    headers,
     cache: "no-store",
     next: { revalidate: 60 },
   });
@@ -57,16 +63,24 @@ export interface ZerionPositionsResponse {
   links?: { next?: string };
 }
 
-export async function getWalletPortfolio(address: string) {
+export async function getWalletPortfolio(
+  address: string,
+  testnet = false,
+) {
   const encoded = encodeURIComponent(address);
   return zerionFetch<ZerionPortfolioResponse>(
     `/wallets/${encoded}/portfolio?currency=usd`,
+    { testnet },
   );
 }
 
-export async function getWalletPositions(address: string) {
+export async function getWalletPositions(
+  address: string,
+  testnet = false,
+) {
   const encoded = encodeURIComponent(address);
   return zerionFetch<ZerionPositionsResponse>(
     `/wallets/${encoded}/positions/?currency=usd&sort=-value&filter[positions]=only_simple&filter[trash]=only_non_trash&page[size]=50`,
+    { testnet },
   );
 }

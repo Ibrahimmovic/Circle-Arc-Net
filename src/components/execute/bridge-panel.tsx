@@ -5,23 +5,23 @@ import { useAccount } from "wagmi";
 import { AppKit } from "@circle-fin/app-kit";
 import { createViemAdapterFromProvider } from "@circle-fin/adapter-viem-v2";
 import { ArrowRightLeft, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { getChains } from "@/lib/network";
+import { pushTx } from "@/lib/tx-store";
 
-const CHAINS = [
-  "Ethereum",
-  "Base",
-  "Arbitrum",
-  "Polygon",
-  "Optimism",
-] as const;
-
-type ChainName = (typeof CHAINS)[number];
+type ChainName = string;
 
 type Status = "idle" | "estimating" | "executing" | "success" | "error";
 
 export function BridgePanel() {
   const { address, isConnected } = useAccount();
-  const [fromChain, setFromChain] = useState<ChainName>("Ethereum");
-  const [toChain, setToChain] = useState<ChainName>("Base");
+  const chains = getChains();
+  const chainNames = chains.map((c) => c.appKitName);
+  const [fromChain, setFromChain] = useState<ChainName>(
+    chainNames[0] ?? "Base Sepolia",
+  );
+  const [toChain, setToChain] = useState<ChainName>(
+    chainNames[1] ?? "Ethereum Sepolia",
+  );
   const [amount, setAmount] = useState("10");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string | null>(null);
@@ -52,8 +52,8 @@ export function BridgePanel() {
         });
         try {
           const live = await kit.estimateBridge({
-            from: { adapter, chain: fromChain },
-            to: { adapter, chain: toChain },
+            from: { adapter, chain: fromChain as never },
+            to: { adapter, chain: toChain as never },
             amount,
           });
           setMessage(
@@ -91,21 +91,34 @@ export function BridgePanel() {
       });
 
       const result = await kit.bridge({
-        from: { adapter, chain: fromChain },
-        to: { adapter, chain: toChain },
+        from: { adapter, chain: fromChain as never },
+        to: { adapter, chain: toChain as never },
         amount,
       });
 
+      pushTx({
+        type: "bridge",
+        status: "success",
+        summary: `Bridge ${amount} USDC ${fromChain} → ${toChain}`,
+        chain: fromChain,
+        feeUsd: "~0.01",
+      });
       setStatus("success");
       setMessage(
-        `Bridge submitted via Circle App Kit. State: ${result.state ?? "pending"}`,
+        `Bridge submitted via Circle CCTP. State: ${result.state ?? "pending"} · ~$0.01 USDC fee on Arc.`,
       );
     } catch (e) {
-      setStatus("error");
       const err = e instanceof Error ? e.message : String(e);
+      pushTx({
+        type: "bridge",
+        status: "error",
+        summary: `Bridge failed ${fromChain}→${toChain}`,
+        chain: fromChain,
+      });
+      setStatus("error");
       setMessage(
         err.includes("insufficient") || err.includes("balance")
-          ? `${err} — Fund testnet USDC or use Circle faucet.`
+          ? `${err} — Open Fund tab → Circle faucet (Base Sepolia).`
           : err,
       );
     }
@@ -133,7 +146,7 @@ export function BridgePanel() {
             onChange={(e) => setFromChain(e.target.value as ChainName)}
             className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-white"
           >
-            {CHAINS.map((c) => (
+            {chainNames.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>
@@ -147,7 +160,7 @@ export function BridgePanel() {
             onChange={(e) => setToChain(e.target.value as ChainName)}
             className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-white"
           >
-            {CHAINS.map((c) => (
+            {chainNames.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>

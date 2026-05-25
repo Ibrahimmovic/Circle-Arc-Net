@@ -49,3 +49,48 @@ export async function listCircleWallets(): Promise<CircleWalletsResponse> {
 export function getKitKey(): string | undefined {
   return process.env.NEXT_PUBLIC_CIRCLE_KIT_KEY;
 }
+
+export type CircleFaucetBlockchain =
+  | "ETH-SEPOLIA"
+  | "BASE-SEPOLIA"
+  | "ARB-SEPOLIA"
+  | "ARC-TESTNET"
+  | "OP-SEPOLIA"
+  | "MATIC-AMOY";
+
+export async function requestCircleFaucet(params: {
+  address: string;
+  blockchain: CircleFaucetBlockchain;
+  usdc?: boolean;
+  native?: boolean;
+}): Promise<{ ok: boolean; message: string }> {
+  const res = await fetch(`${CIRCLE_BASE}/v1/faucet/drips`, {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "content-type": "application/json",
+      authorization: getCircleAuthHeader(),
+    },
+    body: JSON.stringify({
+      address: params.address,
+      blockchain: params.blockchain,
+      usdc: params.usdc ?? true,
+      native: params.native ?? true,
+    }),
+  });
+
+  if (res.status === 204) {
+    return { ok: true, message: "Testnet tokens requested — arrive in ~30s." };
+  }
+
+  const text = await res.text();
+  let message = text.slice(0, 400);
+  try {
+    const json = JSON.parse(text) as { message?: string };
+    message = json.message ?? message;
+  } catch {
+    /* keep raw */
+  }
+
+  return { ok: false, message };
+}

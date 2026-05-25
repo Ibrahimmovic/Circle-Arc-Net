@@ -19,6 +19,15 @@ The Next.js app runs from the **repository root** (not `agora-forge/`).
 | `GOLDRUSH_API_KEY` | Yes |
 | `NEXT_PUBLIC_APP_URL` | `https://circle-arc-net.vercel.app` |
 | `NEXT_PUBLIC_DEMO_WALLET` | Optional |
+| `NEXT_PUBLIC_NETWORK` | `testnet` (default for hackathon) |
+
+## Demo flow (3 min video)
+
+1. Connect wallet on **Base Sepolia** in MetaMask  
+2. **Execute → Fund** → Circle faucet (BASE-SEPOLIA)  
+3. **Execute → Bridge** or **Swap** → estimate fees → execute  
+4. **Portfolio** → see allocation + rebalance queue  
+5. **Command** → regime + activity log  
 
 4. **Deployments → Redeploy** after saving env vars.
 

@@ -60,13 +60,17 @@ export function aggregateGoldRushByChain(
   return { chainDistribution, totalUsd, tokens };
 }
 
-const DEFAULT_CHAINS =
-  "eth-mainnet,base-mainnet,arbitrum-mainnet,optimism-mainnet";
-
-export async function getAllChainsBalances(address: string) {
+export async function getAllChainsBalances(
+  address: string,
+  chains?: string,
+) {
   const encoded = encodeURIComponent(address);
+  const chainList =
+    chains ??
+    process.env.GOLDRUSH_CHAINS ??
+    "base-sepolia-mainnet,eth-sepolia,arbitrum-sepolia";
   return goldrushFetch<GoldRushAllChainsBalance>(
-    `/allchains/address/${encoded}/balances/?chains=${DEFAULT_CHAINS}&quote-currency=USD`,
+    `/allchains/address/${encoded}/balances/?chains=${chainList}&quote-currency=USD`,
   );
 }
 
