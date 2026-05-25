@@ -51,9 +51,12 @@ import {
   switchWalletToChain,
   withTimeout,
 } from "@/lib/wallet-chain";
+import { formatUnits } from "viem";
 import { TokenAvatar } from "./token-avatar";
 import { TokenPicker } from "./token-picker";
 import { ArcFeeBadge } from "./arc-fee-badge";
+import { TokenBalanceLine } from "./token-balance-line";
+import type { TokenBalanceRow } from "@/lib/wallet-balances";
 import { RecipientField } from "@/components/ui/recipient-field";
 import { TxScannerPanel } from "./tx-scanner-panel";
 import { chainIdsForRoute } from "@/lib/explorers";
@@ -94,8 +97,10 @@ export function ExchangeWidget() {
   const [quoteOut, setQuoteOut] = useState<string | null>(null);
   const [step, setStep] = useState<string | null>(null);
   const [scanSteps, setScanSteps] = useState<TxScanStep[]>([]);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [balances, setBalances] = useState<TokenBalanceRow[]>([]);
+  const [balancesLoading, setBalancesLoading] = useState(false);
   const cancelRef = useRef(false);
-
   const walletChainIds = useMemo(
     () => chainIdsForRoute(fromChain, toChain),
     [fromChain, toChain],
@@ -134,7 +139,7 @@ export function ExchangeWidget() {
         kind: "circle-cctp" as const,
         signChain: fromChain,
         label: "Circle CCTP bridge",
-        hint: "Fee on Arc Testnet, then bridge signs on source chain",
+        hint: "3 wallet steps on Arc: fee → approve → burn",
       };
     }
     return plan;
@@ -179,20 +184,52 @@ export function ExchangeWidget() {
 
   const getAdapter = useCallback(async () => createWalletViemAdapter(), []);
 
-  const runQuote = useCallback(async () => {
+  useEffect(() => {
+    if (!isConnected || !address) {
+      setBalances([]);
+      return;
+    }
+    const chains = [...new Set([fromChain, toChain, TESTNET_HOME_CHAIN])].join(",");
+    const id = window.setTimeout(async () => {
+      setBalancesLoading(true);
+      try {
+        const res = await fetch(
+          `/api/execute/balances?address=${address}&chains=${encodeURIComponent(chains)}`,
+        );
+        const data = await res.json();
+        if (res.ok && Array.isArray(data.balances)) {
+          setBalances(data.balances);
+        }
+      } catch {
+        /* keep previous balances */
+      } finally {
+        setBalancesLoading(false);
+      }
+    }, 600);
+    return () => window.clearTimeout(id);
+  }, [address, isConnected, fromChain, toChain]);
+
+  const runQuote = useCallback(async (userInitiated = false) => {
     if (!isConnected || !address || !route) {
-      setStatus("error");
-      setMessage("Connect wallet first.");
+      if (userInitiated) {
+        setStatus("error");
+        setMessage("Connect wallet first.");
+      }
       return;
     }
     if (!amount || Number(amount) <= 0) {
-      setStatus("error");
-      setMessage("Enter an amount.");
+      if (userInitiated) {
+        setStatus("error");
+        setMessage("Enter an amount.");
+      }
       return;
     }
 
-    setStatus("loading");
-    setMessage(null);
+    setQuoteLoading(true);
+    if (userInitiated) {
+      setStatus("idle");
+      setMessage(null);
+    }
     setQuoteOut(null);
 
     try {
@@ -239,7 +276,6 @@ export function ExchangeWidget() {
         });
         setQuoteOut(`${est.estimatedOutput?.amount ?? "—"} ${toToken}`);
         setMessage(route.hint);
-        setStatus("idle");
         return;
       }
 
@@ -257,14 +293,12 @@ export function ExchangeWidget() {
         });
         setQuoteOut(`~${amount} ${toToken} on ${toMeta?.label}`);
         setMessage(route.hint);
-        setStatus("idle");
         return;
       }
 
       if (route.kind === "eth-wrap") {
         setQuoteOut(`~${amount} WETH (1:1 wrap)`);
         setMessage(route.hint);
-        setStatus("idle");
         return;
       }
 
@@ -283,7 +317,6 @@ export function ExchangeWidget() {
         const quote = uniswapQuoteFromApi(data);
         setQuoteOut(formatUniswapQuoteOut(quote));
         setMessage(route.hint);
-        setStatus("idle");
         return;
       }
 
@@ -303,7 +336,6 @@ export function ExchangeWidget() {
               const quote = uniswapQuoteFromApi(data);
               setQuoteOut(`${formatUniswapQuoteOut(quote)} → Arc via CCTP`);
               setMessage(route.hint);
-              setStatus("idle");
               return;
             }
           } catch {
@@ -312,17 +344,19 @@ export function ExchangeWidget() {
         }
         setQuoteOut(`USDC on ${fromMeta?.label} → Arc`);
         setMessage(route.hint);
-        setStatus("idle");
         return;
       }
 
       const data = await fetchLifi(fromChain, toChain, fromToken, toToken, amount);
       setQuoteOut(formatLifiOutput(data, toToken));
       setMessage(route.hint);
-      setStatus("idle");
     } catch (e) {
-      setStatus("error");
-      setMessage(e instanceof Error ? e.message : "Quote failed");
+      if (userInitiated) {
+        setStatus("error");
+        setMessage(e instanceof Error ? e.message : "Quote failed");
+      }
+    } finally {
+      setQuoteLoading(false);
     }
   }, [
     isConnected,
@@ -343,15 +377,6 @@ export function ExchangeWidget() {
     getAdapter,
   ]);
 
-  useEffect(() => {
-    if (!isConnected || !address || !route || !amount || Number(amount) <= 0) return;
-    if (status === "loading") return;
-    const id = window.setTimeout(() => {
-      void runQuote();
-    }, 700);
-    return () => window.clearTimeout(id);
-  }, [fromChain, toChain, fromToken, toToken, amount, route?.kind, isConnected, address, runQuote, status]);
-
   const runExchange = useCallback(async () => {
     if (!isConnected || !address || !route) {
       setStatus("error");
@@ -369,6 +394,9 @@ export function ExchangeWidget() {
     setScanSteps([]);
     cancelRef.current = false;
     const collected: TxScanStep[] = [];
+    const isBridgeFlow =
+      route.kind === "circle-cctp" || route.kind === "compound-swap-bridge";
+    const testnetSteps = isTestnet && isBridgeFlow ? 3 : isTestnet ? 2 : 1;
     try {
       const fetchLifi = async (fc: string, tc: string, fSym: string, tSym: string, amt: string) => {
         const fromCfg = getSwapChain(fc);
@@ -420,28 +448,30 @@ export function ExchangeWidget() {
 
       if (isTestnet) {
         if (cancelRef.current) throw new Error("Cancelled.");
-        setStep("1/2 · Arc fee");
+        setStep(`1/${testnetSteps} · Arc platform fee`);
         setMessage(
-          `Confirm ${ARC_PLATFORM_FEE_LABEL} on Arc Testnet (chain ${ARC_CHAIN_ID}) in your wallet — not Base Sepolia.`,
+          `Confirm ${ARC_PLATFORM_FEE_LABEL} on Arc Testnet (chain ${ARC_CHAIN_ID}) in your wallet.`,
         );
         const fee = await debitArcPlatformFee(address);
         if (!fee.ok) throw new Error(fee.message);
         if (fee.txHash) {
           collected.push(arcFeeScanStep(fee.txHash));
-          setScanSteps([...collected]);
-          setMessage(`Arc fee sent · ${fee.txHash.slice(0, 10)}…`);
+          setMessage(`Step 1/${testnetSteps} done · Arc fee confirmed`);
         }
       }
 
       if (cancelRef.current) throw new Error("Cancelled.");
 
       const signLabel = chains.find((c) => c.appKitChain === route.signChain)?.label;
-      const isBridgeStep =
-        route.kind === "circle-cctp" || route.kind === "compound-swap-bridge";
-      setStep(isTestnet ? (isBridgeStep ? "2/2 · Bridge" : "2/2 · Swap") : "Execute");
+      const bridgeWalletStep = isBridgeFlow && isTestnet ? 2 : testnetSteps;
+      setStep(
+        isTestnet
+          ? `${bridgeWalletStep}/${testnetSteps} · ${isBridgeFlow ? "Approve + burn" : "Swap"}`
+          : "Execute",
+      );
       setMessage(
-        isBridgeStep
-          ? `Switch to ${signLabel ?? "source chain"} and confirm bridge…`
+        isBridgeFlow
+          ? `Switch to ${signLabel ?? "source chain"} and confirm bridge (steps 2–3)…`
           : `Switch to ${signLabel ?? "source chain"} and confirm swap…`,
       );
       await switchWalletToChain(signChainId);
@@ -548,7 +578,14 @@ export function ExchangeWidget() {
             config: getBridgeKitConfig(),
             token: "USDC",
           },
-          (msg) => setMessage(msg),
+          (msg) => {
+            if (msg.toLowerCase().includes("approve")) {
+              setStep(`2/${testnetSteps} · Approve USDC`);
+            } else if (msg.toLowerCase().includes("burn")) {
+              setStep(`3/${testnetSteps} · Bridge burn`);
+            }
+            setMessage(msg);
+          },
         );
         const submitted = bridgeSubmitStatus(
           typeof result.state === "string" ? result.state : undefined,
@@ -669,6 +706,7 @@ export function ExchangeWidget() {
       }
     } catch (e) {
       setStep(null);
+      if (collected.length > 0) setScanSteps(mergeScanSteps(collected));
       if (cancelRef.current) {
         setStatus("error");
         setMessage("Cancelled.");
@@ -706,6 +744,18 @@ export function ExchangeWidget() {
   ]);
 
   const pct = (p: number) => {
+    const row = balances.find(
+      (b) => b.chain === fromChain && b.symbol.toUpperCase() === fromToken.toUpperCase(),
+    );
+    if (row && fromTokenMeta && row.balanceRaw !== "0") {
+      const raw = BigInt(row.balanceRaw);
+      const slice = (raw * BigInt(Math.floor(p * 10000))) / BigInt(10000);
+      const human = formatUnits(slice, fromTokenMeta.decimals);
+      const n = parseFloat(human);
+      setAmount(n < 1e-8 ? "0" : String(Number(n.toPrecision(8))));
+      setQuoteOut(null);
+      return;
+    }
     const v = parseFloat(amount || "0");
     if (!v) return;
     setAmount(String(v * p));
@@ -733,6 +783,12 @@ export function ExchangeWidget() {
               <div className="min-w-0">
                 <p className="font-bold text-white">{fromToken}</p>
                 <p className="truncate text-xs text-slate-400">{fromMeta?.label}</p>
+                <TokenBalanceLine
+                  chain={fromChain}
+                  symbol={fromToken}
+                  balances={balances}
+                  loading={balancesLoading}
+                />
               </div>
               <ChevronDown className="ml-auto h-4 w-4 text-slate-500" />
             </div>
@@ -758,6 +814,12 @@ export function ExchangeWidget() {
               <div className="min-w-0">
                 <p className="font-bold text-white">{toToken}</p>
                 <p className="truncate text-xs text-slate-400">{toMeta?.label}</p>
+                <TokenBalanceLine
+                  chain={toChain}
+                  symbol={toToken}
+                  balances={balances}
+                  loading={balancesLoading}
+                />
               </div>
               <ChevronDown className="ml-auto h-4 w-4 text-slate-500" />
             </div>
@@ -765,7 +827,15 @@ export function ExchangeWidget() {
         </div>
 
         <div className="exchange-tile mt-3 rounded-2xl p-4">
-          <p className="text-[10px] text-slate-500">Send</p>
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] text-slate-500">Send</p>
+            <TokenBalanceLine
+              chain={fromChain}
+              symbol={fromToken}
+              balances={balances}
+              loading={balancesLoading}
+            />
+          </div>
           <div className="mt-2 flex items-center gap-3">
             <TokenAvatar symbol={fromToken} chainKey={fromChain} size={44} />
             <input
@@ -796,7 +866,11 @@ export function ExchangeWidget() {
           <ArcFeeBadge />
         </div>
 
-        {quoteOut && (
+        {quoteLoading && (
+          <p className="mt-2 text-center text-xs text-slate-500">Updating quote…</p>
+        )}
+
+        {quoteOut && !quoteLoading && (
           <p className="mt-2 text-center text-sm text-emerald-300/90">
             → {quoteOut}
           </p>
@@ -828,7 +902,9 @@ export function ExchangeWidget() {
           </div>
         )}
 
-        {(scanSteps.length > 0 || (address && (status === "success" || status === "error"))) && (
+        {(scanSteps.length > 0 ||
+          (address && (status === "success" || status === "error"))) &&
+          status !== "loading" && (
           <TxScannerPanel
             walletAddress={address}
             walletChainIds={walletChainIds}
@@ -873,11 +949,11 @@ export function ExchangeWidget() {
         <div className="mt-4 flex gap-2">
           <button
             type="button"
-            onClick={runQuote}
-            disabled={status === "loading"}
+            onClick={() => void runQuote(true)}
+            disabled={status === "loading" || quoteLoading}
             className="btn-secondary flex-1 py-3 text-sm disabled:opacity-50"
           >
-            Quote
+            {quoteLoading ? "…" : "Quote"}
           </button>
           <button
             type="button"
