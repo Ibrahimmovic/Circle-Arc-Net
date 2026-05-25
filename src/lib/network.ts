@@ -1,62 +1,141 @@
-export type NetworkMode = "testnet" | "mainnet";
+/** Circle App Kit chain IDs — must match enum exactly (underscores, not spaces). */
 
-export function getNetworkMode(): NetworkMode {
-  const mode = process.env.NEXT_PUBLIC_NETWORK ?? "testnet";
-  return mode === "mainnet" ? "mainnet" : "testnet";
-}
+export type NetworkMode = "testnet" | "mainnet";
 
 export interface ChainOption {
   id: string;
   label: string;
-  appKitName: string;
+  /** Value passed to App Kit bridge/swap */
+  appKitChain: string;
   circleFaucet?: string;
   goldrushChain?: string;
+  isArc?: boolean;
+  bridge: boolean;
+  swap: boolean;
 }
 
-export const TESTNET_CHAINS: ChainOption[] = [
+/** CCTP bridge — testnet */
+export const BRIDGE_CHAINS_TESTNET: ChainOption[] = [
+  {
+    id: "arc",
+    label: "Arc Testnet",
+    appKitChain: "Arc_Testnet",
+    circleFaucet: "ARC-TESTNET",
+    isArc: true,
+    bridge: true,
+    swap: true,
+  },
   {
     id: "base-sepolia",
     label: "Base Sepolia",
-    appKitName: "Base Sepolia",
+    appKitChain: "Base_Sepolia",
     circleFaucet: "BASE-SEPOLIA",
-    goldrushChain: "base-sepolia-mainnet",
+    goldrushChain: "eth-sepolia",
+    bridge: true,
+    swap: false,
   },
   {
     id: "eth-sepolia",
     label: "Ethereum Sepolia",
-    appKitName: "Ethereum Sepolia",
+    appKitChain: "Ethereum_Sepolia",
     circleFaucet: "ETH-SEPOLIA",
     goldrushChain: "eth-sepolia",
+    bridge: true,
+    swap: false,
   },
   {
     id: "arb-sepolia",
     label: "Arbitrum Sepolia",
-    appKitName: "Arbitrum Sepolia",
+    appKitChain: "Arbitrum_Sepolia",
     circleFaucet: "ARB-SEPOLIA",
-    goldrushChain: "arbitrum-sepolia",
+    bridge: true,
+    swap: false,
   },
   {
-    id: "arc-testnet",
-    label: "Arc Testnet",
-    appKitName: "Arc Testnet",
-    circleFaucet: "ARC-TESTNET",
+    id: "op-sepolia",
+    label: "Optimism Sepolia",
+    appKitChain: "Optimism_Sepolia",
+    circleFaucet: "OP-SEPOLIA",
+    bridge: true,
+    swap: false,
+  },
+  {
+    id: "avax-fuji",
+    label: "Avalanche Fuji",
+    appKitChain: "Avalanche_Fuji",
+    bridge: true,
+    swap: false,
   },
 ];
 
-export const MAINNET_CHAINS: ChainOption[] = [
-  { id: "ethereum", label: "Ethereum", appKitName: "Ethereum", goldrushChain: "eth-mainnet" },
-  { id: "base", label: "Base", appKitName: "Base", goldrushChain: "base-mainnet" },
-  { id: "arbitrum", label: "Arbitrum", appKitName: "Arbitrum", goldrushChain: "arbitrum-mainnet" },
-  { id: "polygon", label: "Polygon", appKitName: "Polygon", goldrushChain: "polygon-mainnet" },
-  { id: "optimism", label: "Optimism", appKitName: "Optimism", goldrushChain: "optimism-mainnet" },
+/** CCTP bridge + swap — mainnet */
+export const BRIDGE_CHAINS_MAINNET: ChainOption[] = [
+  {
+    id: "ethereum",
+    label: "Ethereum",
+    appKitChain: "Ethereum",
+    goldrushChain: "eth-mainnet",
+    bridge: true,
+    swap: true,
+  },
+  {
+    id: "base",
+    label: "Base",
+    appKitChain: "Base",
+    goldrushChain: "base-mainnet",
+    bridge: true,
+    swap: true,
+  },
+  {
+    id: "arbitrum",
+    label: "Arbitrum",
+    appKitChain: "Arbitrum",
+    goldrushChain: "arbitrum-mainnet",
+    bridge: true,
+    swap: true,
+  },
+  {
+    id: "polygon",
+    label: "Polygon",
+    appKitChain: "Polygon",
+    goldrushChain: "polygon-mainnet",
+    bridge: true,
+    swap: true,
+  },
+  {
+    id: "optimism",
+    label: "Optimism",
+    appKitChain: "Optimism",
+    goldrushChain: "optimism-mainnet",
+    bridge: true,
+    swap: true,
+  },
+  {
+    id: "avalanche",
+    label: "Avalanche",
+    appKitChain: "Avalanche",
+    bridge: true,
+    swap: true,
+  },
+  {
+    id: "solana",
+    label: "Solana",
+    appKitChain: "Solana",
+    bridge: true,
+    swap: true,
+  },
 ];
 
-export function getChains(): ChainOption[] {
-  return getNetworkMode() === "testnet" ? TESTNET_CHAINS : MAINNET_CHAINS;
+export function getBridgeChains(mode: NetworkMode): ChainOption[] {
+  return mode === "testnet" ? BRIDGE_CHAINS_TESTNET : BRIDGE_CHAINS_MAINNET;
 }
 
-/** GoldRush allchains testnet slugs often 501 — use mainnet + per-chain sepolia. */
-export function getGoldRushChainList(): string {
+export function getSwapChains(mode: NetworkMode): ChainOption[] {
+  const chains = getBridgeChains(mode);
+  return chains.filter((c) => c.swap);
+}
+
+export function getGoldRushChainList(_mode: NetworkMode): string {
   return "eth-mainnet,base-mainnet,arbitrum-mainnet,optimism-mainnet";
 }
 
@@ -64,8 +143,4 @@ export function getGoldRushSepoliaChains(): string[] {
   return ["eth-sepolia"];
 }
 
-export function findChainByAppKit(name: string): ChainOption | undefined {
-  return getChains().find(
-    (c) => c.appKitName.toLowerCase() === name.toLowerCase(),
-  );
-}
+export const ARC_FEE_USDC = "~$0.01 USDC on Arc";

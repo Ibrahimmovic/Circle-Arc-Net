@@ -5,7 +5,8 @@ import {
   aggregateGoldRushByChain,
   getMultichainBalancesIncludingTestnet,
 } from "@/lib/goldrush";
-import { getNetworkMode, getGoldRushSepoliaChains } from "@/lib/network";
+import type { NetworkMode } from "@/lib/network";
+import { getGoldRushSepoliaChains } from "@/lib/network";
 import { analyzePortfolio, mergeChainData, detectRegime } from "@/lib/portfolio-engine";
 import { getWalletPortfolio, getWalletPositions } from "@/lib/zerion";
 
@@ -18,7 +19,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "address required" }, { status: 400 });
   }
 
-  const testnet = getNetworkMode() === "testnet";
+  const networkParam = req.nextUrl.searchParams.get("network");
+  const testnet =
+    networkParam === "mainnet"
+      ? false
+      : networkParam === "testnet" || process.env.NEXT_PUBLIC_NETWORK !== "mainnet";
   const sources: string[] = [];
   let totalUsd = 0;
   let change24hPct = 0;
@@ -122,7 +127,7 @@ export async function GET(req: NextRequest) {
       topPositions: [],
       markets,
       health: {
-        network: getNetworkMode(),
+        network: (networkParam as NetworkMode) ?? (testnet ? "testnet" : "mainnet"),
         kitKeyPresent: Boolean(getKitKey()),
         walletCount: wallets?.data?.wallets?.length ?? 0,
         sources,
@@ -154,7 +159,7 @@ export async function GET(req: NextRequest) {
       ? detectRegime((markets.ethChange24h + markets.btcChange24h) / 2).regime
       : analysis.regime,
     health: {
-      network: getNetworkMode(),
+      network: (networkParam as NetworkMode) ?? (testnet ? "testnet" : "mainnet"),
       kitKeyPresent: Boolean(getKitKey()),
       walletCount: wallets?.data?.wallets?.length ?? 0,
       sources,

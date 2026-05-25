@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { PortfolioAnalysis } from "@/lib/types";
+import { useNetwork } from "@/providers/network-context";
 
 interface DashboardData {
   analysis: PortfolioAnalysis | null;
@@ -29,14 +30,22 @@ interface DashboardData {
   error?: string;
 }
 
-export function useDashboard(address: string) {
+export function useDashboard(address: string | undefined) {
+  const { network } = useNetwork();
   const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
+    if (!address) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const res = await fetch(`/api/dashboard?address=${address}`);
+      const res = await fetch(
+        `/api/dashboard?address=${address}&network=${network}`,
+      );
       const json = await res.json();
       if (!res.ok && json.error) {
         setData({ analysis: null, topPositions: [], error: json.error });
@@ -52,10 +61,16 @@ export function useDashboard(address: string) {
     } finally {
       setLoading(false);
     }
-  }, [address]);
+  }, [address, network]);
 
   useEffect(() => {
     refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    const onNet = () => refresh();
+    window.addEventListener("agora-network-change", onNet);
+    return () => window.removeEventListener("agora-network-change", onNet);
   }, [refresh]);
 
   return { data, loading, refresh };

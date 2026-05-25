@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { Repeat, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
-import { getChains } from "@/lib/network";
+import { getSwapChains, ARC_FEE_USDC } from "@/lib/network";
+import { useNetwork } from "@/providers/network-context";
 import { pushTx } from "@/lib/tx-store";
 
 type Status = "idle" | "estimating" | "executing" | "success" | "error";
@@ -11,44 +12,59 @@ type Status = "idle" | "estimating" | "executing" | "success" | "error";
 const SWAP_PAIRS = [
   { tokenIn: "USDC" as const, tokenOut: "USDT" as const },
   { tokenIn: "USDT" as const, tokenOut: "USDC" as const },
-  { tokenIn: "NATIVE" as const, tokenOut: "USDC" as const },
+  { tokenIn: "USDC" as const, tokenOut: "EURC" as const },
 ];
 
 export function SwapPanel() {
-  const { address, isConnected } = useAccount();
-  const chains = getChains();
-  const [chain, setChain] = useState(chains[0]?.appKitName ?? "Base Sepolia");
+  const { isConnected } = useAccount();
+  const { network } = useNetwork();
+  const swapChains = getSwapChains(network);
+  const defaultChain =
+    swapChains.find((c) => c.isArc)?.appKitChain ??
+    swapChains[0]?.appKitChain ??
+    "Arc_Testnet";
+
+  const [chain, setChain] = useState(defaultChain);
   const [pairIdx, setPairIdx] = useState(0);
   const [amountIn, setAmountIn] = useState("5");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [estimatedOut, setEstimatedOut] = useState<string | null>(null);
-  const [fees, setFees] = useState<string | null>(null);
 
-  const pair = SWAP_PAIRS[pairIdx];
   const kitKey = process.env.NEXT_PUBLIC_CIRCLE_KIT_KEY;
+  const pair = SWAP_PAIRS[pairIdx];
+  const chainMeta = swapChains.find((c) => c.appKitChain === chain);
+
+  useEffect(() => {
+    const list = getSwapChains(network);
+    const def =
+      list.find((c) => c.isArc)?.appKitChain ?? list[0]?.appKitChain ?? "Arc_Testnet";
+    setChain(def);
+    setMessage(null);
+    setEstimatedOut(null);
+  }, [network]);
 
   const getAdapter = useCallback(async () => {
-    if (!window.ethereum) throw new Error("No wallet provider");
+    if (!window.ethereum) throw new Error("Connect wallet first");
     const { createViemAdapterFromProvider } = await import(
       "@circle-fin/adapter-viem-v2"
     );
-    return createViemAdapterFromProvider({
-      provider: window.ethereum as never,
-    });
+    return createViemAdapterFromProvider({ provider: window.ethereum as never });
   }, []);
 
   const runEstimate = useCallback(async () => {
     setStatus("estimating");
-    setMessage(null);
+    if (!kitKey) {
+      setStatus("error");
+      setMessage("KIT_KEY missing in Vercel env.");
+      return;
+    }
+    if (!isConnected) {
+      setStatus("error");
+      setMessage("Connect wallet to estimate swap on Circle Swap Kit.");
+      return;
+    }
     try {
-      if (!isConnected || !kitKey) {
-        throw new Error(
-          !kitKey
-            ? "NEXT_PUBLIC_CIRCLE_KIT_KEY missing on server."
-            : "Connect wallet for live Swap Kit quote.",
-        );
-      }
       const { AppKit } = await import("@circle-fin/app-kit");
       const kit = new AppKit();
       const adapter = await getAdapter();
@@ -61,19 +77,18 @@ export function SwapPanel() {
       });
       const out = est.estimatedOutput?.amount ?? "—";
       setEstimatedOut(`${out} ${est.estimatedOutput?.token ?? pair.tokenOut}`);
-      setFees(JSON.stringify(est.fees ?? { note: "~$0.01 USDC on Arc" }));
-      setMessage("Circle Swap Kit estimate ready.");
+      setMessage(`Swap on ${chainMeta?.label ?? chain} · ${ARC_FEE_USDC}`);
       setStatus("idle");
     } catch (e) {
       setStatus("error");
-      setMessage(e instanceof Error ? e.message : "Swap estimate failed");
+      setMessage(e instanceof Error ? e.message : "Estimate failed");
     }
-  }, [isConnected, kitKey, chain, pair, amountIn, getAdapter]);
+  }, [isConnected, kitKey, chain, pair, amountIn, getAdapter, chainMeta]);
 
   const runSwap = useCallback(async () => {
     if (!isConnected || !kitKey) {
       setStatus("error");
-      setMessage("Connect wallet and configure KIT_KEY for Swap Kit.");
+      setMessage("Connect wallet + configure KIT_KEY.");
       return;
     }
     setStatus("executing");
@@ -91,64 +106,64 @@ export function SwapPanel() {
       pushTx({
         type: "swap",
         status: "success",
-        summary: `Swap ${amountIn} ${pair.tokenIn} → ${pair.tokenOut} on ${chain}`,
-        chain,
-        feeUsd: "~0.01",
+        summary: `Swap ${amountIn} ${pair.tokenIn}→${pair.tokenOut} on ${chainMeta?.label}`,
+        feeUsd: "0.01",
       });
       setStatus("success");
-      setMessage(`Swap submitted via Circle Swap Kit. ${JSON.stringify(result).slice(0, 120)}`);
+      setMessage(`Swap submitted on ${chainMeta?.label} · ${ARC_FEE_USDC}`);
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e);
-      pushTx({
-        type: "swap",
-        status: "error",
-        summary: `Swap failed: ${pair.tokenIn}→${pair.tokenOut}`,
-        chain,
-      });
       setStatus("error");
       setMessage(
-        err.includes("balance") || err.includes("insufficient")
-          ? `${err} — Use Fund tab for testnet USDC.`
-          : err,
+        err.includes("balance") ? `${err} — Fund USDC via Fund tab first.` : err,
       );
     }
-  }, [isConnected, kitKey, chain, pair, amountIn, getAdapter]);
+  }, [isConnected, kitKey, chain, pair, amountIn, getAdapter, chainMeta]);
+
+  if (swapChains.length === 0) {
+    return (
+      <div className="panel-elevated rounded-2xl p-6 text-slate-300">
+        No swap chains for {network}. Switch network or use Bridge.
+      </div>
+    );
+  }
 
   return (
-    <div className="glass-panel glow-border rounded-2xl p-6 ring-1 ring-violet-500/20">
+    <div className="panel-elevated rounded-2xl p-6">
       <div className="mb-6 flex items-center gap-3">
-        <div className="rounded-xl bg-emerald-500/15 p-3 text-emerald-300">
+        <div className="rounded-xl bg-emerald-500/20 p-3 text-emerald-300">
           <Repeat className="h-6 w-6" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-white">Same-Chain Swap</h3>
-          <p className="text-sm text-slate-400">
-            Circle Swap Kit · USDC-native fees · testnet supported
+          <h3 className="font-display text-lg font-bold text-white">Same-Chain Swap</h3>
+          <p className="text-sm text-slate-300">
+            Circle Swap Kit · USDC / USDT / EURC · {ARC_FEE_USDC}
           </p>
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="block sm:col-span-2">
-          <span className="text-xs uppercase text-slate-500">Chain</span>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <label className="block sm:col-span-1">
+          <span className="text-xs uppercase text-slate-400">Chain</span>
           <select
             value={chain}
             onChange={(e) => setChain(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-white"
+            className="mt-1 w-full rounded-xl border border-slate-600 bg-slate-950 px-3 py-3 text-white"
           >
-            {chains.map((c) => (
-              <option key={c.id} value={c.appKitName}>
+            {swapChains.map((c) => (
+              <option key={c.id} value={c.appKitChain}>
                 {c.label}
+                {c.isArc ? " ★" : ""}
               </option>
             ))}
           </select>
         </label>
         <label className="block">
-          <span className="text-xs uppercase text-slate-500">Pair</span>
+          <span className="text-xs uppercase text-slate-400">Pair</span>
           <select
             value={pairIdx}
             onChange={(e) => setPairIdx(Number(e.target.value))}
-            className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-white"
+            className="mt-1 w-full rounded-xl border border-slate-600 bg-slate-950 px-3 py-3 text-white"
           >
             {SWAP_PAIRS.map((p, i) => (
               <option key={i} value={i}>
@@ -158,71 +173,47 @@ export function SwapPanel() {
           </select>
         </label>
         <label className="block">
-          <span className="text-xs uppercase text-slate-500">Amount in</span>
+          <span className="text-xs uppercase text-slate-400">Amount</span>
           <input
             value={amountIn}
             onChange={(e) => setAmountIn(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-3 font-mono text-white"
+            className="mt-1 w-full rounded-xl border border-slate-600 bg-slate-950 px-3 py-3 font-mono text-white"
           />
         </label>
       </div>
 
-      {address && (
-        <p className="mt-3 font-mono text-xs text-slate-500">Wallet: {address}</p>
+      {network === "testnet" && (
+        <p className="mt-3 text-xs text-cyan-300/80">
+          Testnet swaps: use <strong>Arc Testnet</strong> (★) — fees in Arc USDC.
+        </p>
       )}
 
       {estimatedOut && (
-        <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm">
-          <p className="text-emerald-200">Est. output: {estimatedOut}</p>
-          {fees && (
-            <p className="mt-1 font-mono text-xs text-slate-400">Fees: {fees}</p>
-          )}
+        <div className="mt-4 rounded-xl border border-emerald-500/25 bg-emerald-950/40 p-3 text-sm text-emerald-100">
+          Est. output: {estimatedOut}
         </div>
       )}
 
       {message && (
         <div
-          className={`mt-4 flex items-start gap-2 rounded-xl p-4 text-sm ${
+          className={`mt-4 rounded-xl p-4 text-sm ${
             status === "error"
-              ? "bg-rose-500/10 text-rose-200"
+              ? "bg-rose-950/80 text-rose-100"
               : status === "success"
-                ? "bg-emerald-500/10 text-emerald-200"
-                : "bg-slate-800/80 text-slate-300"
+                ? "bg-emerald-950/80 text-emerald-100"
+                : "bg-slate-900 text-slate-200"
           }`}
         >
-          {status === "success" ? (
-            <CheckCircle2 className="h-5 w-5 shrink-0" />
-          ) : status === "error" ? (
-            <AlertCircle className="h-5 w-5 shrink-0" />
-          ) : null}
           {message}
         </div>
       )}
 
-      <div className="mt-6 flex flex-wrap gap-3">
-        <button
-          type="button"
-          onClick={runEstimate}
-          disabled={status === "estimating" || status === "executing"}
-          className="rounded-xl border border-emerald-500/40 px-5 py-2.5 text-sm font-medium text-emerald-200 hover:bg-emerald-500/10 disabled:opacity-50"
-        >
-          {status === "estimating" ? (
-            <Loader2 className="inline h-4 w-4 animate-spin" />
-          ) : (
-            "Estimate Swap + Fees"
-          )}
+      <div className="mt-6 flex gap-3">
+        <button type="button" onClick={runEstimate} className="btn-secondary">
+          Estimate + Fees
         </button>
-        <button
-          type="button"
-          onClick={runSwap}
-          disabled={status === "executing"}
-          className="rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-600 px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-        >
-          {status === "executing" ? (
-            <Loader2 className="inline h-4 w-4 animate-spin" />
-          ) : (
-            "Execute Swap"
-          )}
+        <button type="button" onClick={runSwap} className="btn-primary px-6 py-2.5 rounded-xl text-sm font-bold text-white">
+          Execute Swap
         </button>
       </div>
     </div>

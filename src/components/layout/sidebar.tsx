@@ -10,7 +10,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getNetworkMode } from "@/lib/network";
+import { useNetwork } from "@/providers/network-context";
 
 const nav = [
   { href: "/", label: "Command", icon: LayoutDashboard },
@@ -21,6 +21,7 @@ const nav = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { network } = useNetwork();
 
   return (
     <aside className="glass-panel flex w-64 shrink-0 flex-col border-r border-cyan-500/10 rounded-none lg:min-h-screen z-10">
@@ -67,7 +68,7 @@ export function Sidebar() {
           Built for Agora Hackathon
         </p>
         <span className="mx-2 mt-1 inline-block rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-semibold text-cyan-300 uppercase">
-          {getNetworkMode()} mode
+          {network}
         </span>
         <a
           href="https://docs.arc.network/app-kit"

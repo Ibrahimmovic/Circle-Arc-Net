@@ -2,6 +2,7 @@ import { Sidebar } from "./sidebar";
 import { WalletButton } from "./wallet-button";
 import { MeshBackground } from "@/components/ui/mesh-background";
 import { ApiStatusBar } from "./api-status-bar";
+import { NetworkToggle } from "./network-toggle";
 
 export function AppShell({
   children,
@@ -13,27 +14,30 @@ export function AppShell({
   subtitle?: string;
 }) {
   return (
-    <div className="flex min-h-screen flex-col lg:flex-row relative">
+    <div className="relative flex min-h-screen flex-col lg:flex-row bg-[#030712]">
       <MeshBackground />
       <Sidebar />
-      <div className="flex flex-1 flex-col">
-        <header className="sticky top-0 z-20 border-b border-slate-800/60 bg-slate-950/80 backdrop-blur-xl">
-          <div className="flex items-center justify-between gap-4 px-6 py-5 lg:px-10">
-            <div>
-              <h1 className="font-display text-xl font-bold tracking-tight text-white lg:text-2xl">
-                {title}
-              </h1>
-              {subtitle && (
-                <p className="mt-1 text-sm text-slate-400">{subtitle}</p>
-              )}
-              <div className="mt-3 hidden sm:block">
-                <ApiStatusBar />
-              </div>
-            </div>
+      <div className="relative z-10 flex flex-1 flex-col min-w-0">
+        <div className="border-b border-slate-800 bg-slate-950/95 px-4 py-3 lg:px-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <NetworkToggle />
             <WalletButton />
           </div>
+        </div>
+        <header className="border-b border-slate-800/80 bg-slate-950/90 px-6 py-5 lg:px-10">
+          <h1 className="font-display text-xl font-bold text-white lg:text-2xl">
+            {title}
+          </h1>
+          {subtitle && (
+            <p className="mt-1 text-sm text-slate-300">{subtitle}</p>
+          )}
+          <div className="mt-3">
+            <ApiStatusBar />
+          </div>
         </header>
-        <main className="grid-mesh flex-1 px-6 py-8 lg:px-10">{children}</main>
+        <main className="relative z-10 flex-1 px-6 py-8 lg:px-10 grid-mesh">
+          {children}
+        </main>
       </div>
     </div>
   );

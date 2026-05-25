@@ -9,16 +9,11 @@ import { useDashboard } from "@/hooks/use-dashboard";
 import { formatUsd, formatPct } from "@/lib/utils";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Zap, RefreshCw, AlertTriangle } from "lucide-react";
-
-const DEMO =
-  process.env.NEXT_PUBLIC_DEMO_WALLET ??
-  "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
+import { Zap, RefreshCw, AlertTriangle, Wallet } from "lucide-react";
 
 export default function PortfolioPage() {
-  const { address } = useAccount();
-  const watchAddress = address ?? DEMO;
-  const { data, loading, refresh } = useDashboard(watchAddress);
+  const { address, isConnected } = useAccount();
+  const { data, loading, refresh } = useDashboard(isConnected ? address : undefined);
   const analysis = data?.analysis;
   const positions = data?.topPositions ?? [];
 
@@ -29,7 +24,25 @@ export default function PortfolioPage() {
     >
       <MarketTicker />
 
-      {data?.hint && !analysis && (
+      {!isConnected && (
+        <div className="panel-elevated mt-6 rounded-2xl p-8 text-center">
+          <Wallet className="mx-auto h-10 w-10 text-cyan-400" />
+          <p className="mt-4 font-display text-xl font-bold text-white">
+            Connect wallet to view portfolio
+          </p>
+          <p className="mt-2 text-slate-300">
+            Use Connect Wallet top-right · Toggle testnet/mainnet for your network
+          </p>
+          <Link
+            href="/execute"
+            className="btn-primary mt-6 inline-block rounded-xl px-8 py-3 text-sm font-bold text-white"
+          >
+            Fund & Bridge on Execute
+          </Link>
+        </div>
+      )}
+
+      {isConnected && data?.hint && !analysis && (
         <div className="mt-6 flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
           <AlertTriangle className="h-5 w-5" />
           {data.hint}
@@ -39,6 +52,8 @@ export default function PortfolioPage() {
         </div>
       )}
 
+      {isConnected && (
+      <>
       <div className="mt-6 flex items-center gap-3">
         <button
           type="button"
@@ -178,6 +193,8 @@ export default function PortfolioPage() {
             </div>
           )}
         </div>
+      )}
+      </>
       )}
     </AppShell>
   );

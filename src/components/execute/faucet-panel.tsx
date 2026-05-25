@@ -3,13 +3,15 @@
 import { useState } from "react";
 import { useAccount } from "wagmi";
 import { Droplets, Loader2, ExternalLink } from "lucide-react";
-import { getChains, getNetworkMode } from "@/lib/network";
+import { getBridgeChains } from "@/lib/network";
+import { useNetwork } from "@/providers/network-context";
 import { pushTx } from "@/lib/tx-store";
 import type { CircleFaucetBlockchain } from "@/lib/circle";
 
 export function FaucetPanel() {
   const { address, isConnected } = useAccount();
-  const chains = getChains().filter((c) => c.circleFaucet);
+  const { network } = useNetwork();
+  const chains = getBridgeChains(network).filter((c) => c.circleFaucet);
   const [blockchain, setBlockchain] = useState<CircleFaucetBlockchain>(
     (chains[0]?.circleFaucet as CircleFaucetBlockchain) ?? "BASE-SEPOLIA",
   );
@@ -61,7 +63,7 @@ export function FaucetPanel() {
     }
   }
 
-  const isTestnet = getNetworkMode() === "testnet";
+  const isTestnet = network === "testnet";
 
   return (
     <div className="glass-panel rounded-2xl p-6 border border-amber-500/25 bg-gradient-to-br from-amber-500/5 to-transparent">

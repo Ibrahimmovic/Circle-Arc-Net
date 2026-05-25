@@ -5,10 +5,8 @@ import { useAccount } from "wagmi";
 import { AppShell } from "@/components/layout/app-shell";
 import { Bot, RefreshCw, CircleDot } from "lucide-react";
 import type { PortfolioAnalysis } from "@/lib/types";
-
-const DEMO =
-  process.env.NEXT_PUBLIC_DEMO_WALLET ??
-  "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
+import Link from "next/link";
+import { Wallet } from "lucide-react";
 
 const AGENT_STEPS = [
   "Ingest Zerion portfolio + GoldRush multichain balances",
@@ -19,13 +17,17 @@ const AGENT_STEPS = [
 ];
 
 export default function AgentPage() {
-  const { address } = useAccount();
-  const watchAddress = address ?? DEMO;
+  const { address, isConnected } = useAccount();
+  const watchAddress = isConnected ? address : undefined;
   const [analysis, setAnalysis] = useState<PortfolioAnalysis | null>(null);
   const [tick, setTick] = useState(0);
   const [log, setLog] = useState<string[]>([]);
 
   useEffect(() => {
+    if (!watchAddress) {
+      setAnalysis(null);
+      return;
+    }
     fetch(`/api/portfolio/analyze?address=${watchAddress}`)
       .then((r) => r.json())
       .then((j) => {
@@ -48,6 +50,24 @@ export default function AgentPage() {
       title="Agent Console"
       subtitle="Autonomous portfolio participant — 24/7 agora monitoring"
     >
+      {!isConnected && (
+        <div className="panel-elevated mb-6 rounded-2xl p-8 text-center">
+          <Wallet className="mx-auto h-10 w-10 text-violet-300" />
+          <p className="mt-4 font-display text-xl font-bold text-white">
+            Connect wallet to run the agent
+          </p>
+          <p className="mt-2 text-slate-300">
+            Agent cycles analyze your connected wallet only — no demo address.
+          </p>
+          <Link
+            href="/execute"
+            className="btn-primary mt-6 inline-block rounded-xl px-8 py-3 text-sm font-bold text-white"
+          >
+            Get USDC on Execute
+          </Link>
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="glass-panel glow-border rounded-2xl p-8">
           <div className="flex items-center gap-4">
@@ -77,8 +97,9 @@ export default function AgentPage() {
 
           <button
             type="button"
+            disabled={!isConnected}
             onClick={() => setTick((t) => t + 1)}
-            className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600 py-3 text-sm font-semibold text-white"
+            className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600 py-3 text-sm font-semibold text-white disabled:opacity-40"
           >
             <RefreshCw className="h-4 w-4" />
             Run Agent Cycle

@@ -20,14 +20,9 @@ import {
 } from "lucide-react";
 import { formatUsd, formatPct } from "@/lib/utils";
 
-const DEMO =
-  process.env.NEXT_PUBLIC_DEMO_WALLET ??
-  "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
-
 export default function HomePage() {
   const { address, isConnected } = useAccount();
-  const watchAddress = address ?? DEMO;
-  const { data, loading, refresh } = useDashboard(watchAddress);
+  const { data, loading, refresh } = useDashboard(isConnected ? address : undefined);
 
   const analysis = data?.analysis;
   const health = data?.health;
@@ -41,7 +36,23 @@ export default function HomePage() {
     >
       <div className="mb-6 space-y-4">
         <MarketTicker />
-        {data?.hint && (
+        {!isConnected && (
+          <div className="panel-elevated rounded-2xl p-8 text-center">
+            <p className="font-display text-xl font-bold text-white">
+              Connect your wallet to start
+            </p>
+            <p className="mt-2 text-slate-300">
+              Use the button top-right · Testnet: Base Sepolia · Fees in Arc USDC
+            </p>
+            <Link
+              href="/execute"
+              className="btn-primary mt-6 inline-block rounded-xl px-8 py-3 text-sm font-bold text-white"
+            >
+              Bridge & Swap on Execute
+            </Link>
+          </div>
+        )}
+        {isConnected && data?.hint && (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
             <span className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -57,6 +68,7 @@ export default function HomePage() {
         )}
       </div>
 
+      {isConnected && (
       <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
         <section className="space-y-8">
           <div className="glass-panel glow-border overflow-hidden rounded-3xl p-8 lg:p-10 relative">
@@ -179,12 +191,14 @@ export default function HomePage() {
             <p className="text-xs uppercase tracking-wider text-slate-500">
               Watching
             </p>
-            <p className="mt-2 font-mono text-xs text-cyan-300/90 break-all">
-              {watchAddress}
-            </p>
-            <p className="mt-2 text-xs text-slate-500">
-              {isConnected ? "Your wallet · live" : "Demo · connect yours"}
-            </p>
+            {isConnected && address && (
+              <>
+                <p className="mt-2 font-mono text-xs text-cyan-300 break-all">
+                  {address}
+                </p>
+                <p className="mt-2 text-xs text-slate-400">Live portfolio sync</p>
+              </>
+            )}
           </div>
 
           <div className="glass-panel rounded-2xl p-6">
@@ -225,6 +239,7 @@ export default function HomePage() {
           </div>
         </aside>
       </div>
+      )}
     </AppShell>
   );
 }
