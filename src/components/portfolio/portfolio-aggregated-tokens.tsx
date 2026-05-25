@@ -1,6 +1,7 @@
 "use client";
 
 import { formatPct, formatUsd } from "@/lib/utils";
+import { formatQuantityDisplay } from "@/lib/portfolio-display";
 import { tokenIcon } from "@/lib/token-visuals";
 import type { AggregatedAsset } from "@/lib/portfolio-wallet-types";
 import { TrendingDown, TrendingUp } from "lucide-react";
@@ -14,6 +15,7 @@ function TokenLogo({ asset }: { asset: AggregatedAsset }) {
         src={src}
         alt=""
         className="h-10 w-10 rounded-full bg-slate-800 object-cover ring-1 ring-white/10"
+        loading="lazy"
       />
     );
   }
@@ -22,6 +24,26 @@ function TokenLogo({ asset }: { asset: AggregatedAsset }) {
       {asset.symbol.slice(0, 3)}
     </div>
   );
+}
+
+function balanceLabel(a: AggregatedAsset): string {
+  const primary = [...a.holdings].sort((x, y) => y.valueUsd - x.valueUsd)[0];
+  if (a.networkCount <= 1 && primary?.balance) {
+    return `${primary.balance} ${a.symbol}`;
+  }
+  if (a.totalBalance != null && a.totalBalance > 0) {
+    return `${formatQuantityDisplay(a.totalBalance, a.symbol)} ${a.symbol}`;
+  }
+  if (primary?.balance) {
+    return `${primary.balance} ${a.symbol}`;
+  }
+  return "—";
+}
+
+function networkHint(a: AggregatedAsset): string | null {
+  const top = [...a.holdings].sort((x, y) => y.valueUsd - x.valueUsd)[0];
+  if (a.networkCount <= 1) return top?.chain ? `On ${top.chain}` : null;
+  return `Across ${a.networkCount} chains · largest on ${top?.chain ?? "—"}`;
 }
 
 export function PortfolioAggregatedTokens({
@@ -49,11 +71,7 @@ export function PortfolioAggregatedTokens({
         <tbody>
           {assets.map((a) => {
             const up = a.change24hPct >= 0;
-            const primary = a.holdings.sort((x, y) => y.valueUsd - x.valueUsd)[0];
-            const balanceLabel =
-              a.networkCount > 1
-                ? `${a.networkCount} networks`
-                : primary?.balance ?? "—";
+            const hint = networkHint(a);
             return (
               <tr
                 key={a.symbol}
@@ -74,11 +92,11 @@ export function PortfolioAggregatedTokens({
                     : "—"}
                 </td>
                 <td className="py-3.5 text-right">
-                  <p className="font-mono text-xs text-slate-200">{balanceLabel}</p>
-                  {a.networkCount > 1 && primary?.balance && (
-                    <p className="text-[10px] text-slate-500">
-                      e.g. {primary.balance} on {primary.chain}
-                    </p>
+                  <p className="font-mono text-xs text-slate-200">
+                    {balanceLabel(a)}
+                  </p>
+                  {hint && (
+                    <p className="text-[10px] text-slate-500">{hint}</p>
                   )}
                 </td>
                 <td className="py-3.5 pr-1 text-right">
@@ -90,7 +108,11 @@ export function PortfolioAggregatedTokens({
                       up ? "text-emerald-400" : "text-rose-400"
                     }`}
                   >
-                    {up ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
+                    {up ? (
+                      <TrendingUp className="h-2.5 w-2.5" />
+                    ) : (
+                      <TrendingDown className="h-2.5 w-2.5" />
+                    )}
                     {formatPct(a.change24hPct)}
                   </span>
                 </td>

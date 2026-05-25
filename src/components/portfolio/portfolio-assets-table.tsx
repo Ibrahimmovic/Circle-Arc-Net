@@ -45,6 +45,7 @@ export function PortfolioAssetsTable({
           <tr className="border-b border-slate-800/80 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
             <th className="pb-3 pl-1">Asset</th>
             <th className="pb-3">Chain</th>
+            <th className="pb-3 text-right">Price</th>
             <th className="pb-3 text-right">Balance</th>
             <th className="pb-3 text-right">24h</th>
             <th className="pb-3 pr-1 text-right">Value</th>
@@ -76,8 +77,13 @@ export function PortfolioAssetsTable({
                   </div>
                 </td>
                 <td className="py-3.5 text-slate-400">{a.chain}</td>
+                <td className="py-3.5 text-right font-mono text-xs text-slate-300">
+                  {a.priceUsd != null && a.priceUsd > 0
+                    ? formatUsd(a.priceUsd)
+                    : "—"}
+                </td>
                 <td className="py-3.5 text-right font-mono text-xs text-slate-200">
-                  {a.balance ?? "—"}
+                  {a.balance ? `${a.balance} ${a.symbol}` : "—"}
                 </td>
                 <td className="py-3.5 text-right">
                   <span

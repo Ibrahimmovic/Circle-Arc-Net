@@ -26,6 +26,8 @@ export type AggregatedAsset = {
   networkCount: number;
   networks: string[];
   holdings: PortfolioAsset[];
+  /** Sum of numeric balances across holdings (same symbol) */
+  totalBalance?: number;
 };
 
 export type PortfolioNft = {
@@ -97,4 +99,11 @@ export type PortfolioWalletFeed = {
   sources: string[];
   dataFreshness: string;
   zerionAvailable: boolean;
+  /** Human-readable primary indexer label for UI */
+  dataSourceLabel: string;
+  apisConfigured?: {
+    zerion: boolean;
+    goldrush: boolean;
+    coingecko: boolean;
+  };
 };

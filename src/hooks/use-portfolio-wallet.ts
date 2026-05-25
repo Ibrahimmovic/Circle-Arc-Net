@@ -48,6 +48,8 @@ export function usePortfolioWallet(address: string | undefined) {
           sources: [],
           dataFreshness: new Date().toISOString(),
           zerionAvailable: false,
+          dataSourceLabel: "Unavailable",
+          apisConfigured: { zerion: false, goldrush: false, coingecko: false },
           analysis: null,
           error: json.error ?? "Failed to load",
         });
@@ -74,6 +76,8 @@ export function usePortfolioWallet(address: string | undefined) {
         sources: [],
         dataFreshness: new Date().toISOString(),
         zerionAvailable: false,
+        dataSourceLabel: "Unavailable",
+        apisConfigured: { zerion: false, goldrush: false, coingecko: false },
         analysis: null,
         error: e instanceof Error ? e.message : "Failed to load",
       });

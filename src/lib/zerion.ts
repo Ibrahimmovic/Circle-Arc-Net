@@ -1,5 +1,9 @@
 const ZERION_BASE = "https://api.zerion.io/v1";
 
+export function isZerionConfigured(): boolean {
+  return Boolean(process.env.ZERION_API_KEY?.trim());
+}
+
 function zerionAuth(): string {
   const raw = process.env.ZERION_API_KEY;
   if (!raw) throw new Error("ZERION_API_KEY is not configured");
