@@ -23,10 +23,11 @@ export function TxScannerPanel({
   walletAddress,
   walletChainIds,
   steps,
-  title = "On-chain receipts",
+  title = "Receipts",
   variant = "result",
 }: TxScannerPanelProps) {
   const [gasByKey, setGasByKey] = useState<Record<string, string>>({});
+  const compact = variant === "compact";
 
   useEffect(() => {
     if (!steps.length) return;
@@ -57,18 +58,17 @@ export function TxScannerPanel({
   return (
     <div
       className={
-        variant === "compact"
-          ? "mt-2 rounded-xl border border-white/10 bg-black/20 p-2 backdrop-blur-md"
+        compact
+          ? "mt-2 rounded-xl border border-white/10 bg-black/25 px-2.5 py-2 backdrop-blur-md"
           : "mt-3 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-transparent p-3 backdrop-blur-xl"
       }
     >
-      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-        {title}
-      </p>
-
-      {walletAddress && uniqueChains.length > 0 && (
-        <div className="mb-3 flex flex-wrap gap-2">
-          {uniqueChains.map((chainId) => {
+      <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+          {title}
+        </p>
+        {walletAddress &&
+          uniqueChains.map((chainId) => {
             const href = addressExplorerLink(chainId, walletAddress);
             if (!href) return null;
             return (
@@ -77,50 +77,76 @@ export function TxScannerPanel({
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 font-mono text-[10px] text-slate-200 transition hover:border-cyan-400/40 hover:bg-white/10"
+                className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 font-mono text-[9px] text-slate-300 hover:border-cyan-400/40"
               >
-                <Wallet className="h-3 w-3 text-cyan-400/80" />
+                <Wallet className="h-2.5 w-2.5 text-cyan-400/70" />
                 {explorerLabel(chainId)} · {shortAddress(walletAddress)}
-                <ExternalLink className="h-2.5 w-2.5 opacity-50" />
               </a>
             );
           })}
-        </div>
-      )}
+      </div>
 
       {steps.length > 0 && (
-        <ul className="space-y-2">
+        <ul className={compact ? "space-y-0.5" : "space-y-2"}>
           {steps.map((s) => {
             const href = s.hash ? txExplorerLink(s.chainId, s.hash) : undefined;
             const gas = s.hash ? gasByKey[`${s.chainId}:${s.hash}`] : undefined;
             const isSkipped = s.status === "skipped" || !s.hash;
+
+            if (compact) {
+              return (
+                <li
+                  key={`${s.chainId}:${s.label}:${s.hash ?? "x"}`}
+                  className="flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-lg px-1 py-1 text-[11px]"
+                >
+                  <span
+                    className={
+                      isSkipped
+                        ? "text-slate-500"
+                        : s.status === "error"
+                          ? "text-rose-300"
+                          : "text-emerald-200/90"
+                    }
+                  >
+                    {s.label}
+                  </span>
+                  {gas && <span className="text-slate-500">· {gas}</span>}
+                  {href ? (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-0.5 font-mono text-cyan-300/80 hover:text-cyan-200"
+                    >
+                      {shortHash(s.hash!)}
+                      <ExternalLink className="h-2.5 w-2.5" />
+                    </a>
+                  ) : isSkipped ? (
+                    <span className="text-slate-600">bundled</span>
+                  ) : null}
+                </li>
+              );
+            }
+
             return (
               <li
                 key={`${s.chainId}:${s.label}:${s.hash ?? "x"}`}
-                className="rounded-xl border border-white/8 bg-black/25 px-3 py-2.5"
+                className="rounded-xl border border-white/8 bg-black/25 px-3 py-2"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <span
-                      className={`text-xs font-medium ${
-                        isSkipped
-                          ? "text-slate-500"
-                          : s.status === "error"
-                            ? "text-rose-300"
-                            : "text-emerald-200"
-                      }`}
-                    >
-                      {s.label}
-                    </span>
-                    <p className="text-[10px] text-slate-500">
-                      {explorerLabel(s.chainId)}
-                      {s.note ? ` · ${s.note}` : ""}
-                    </p>
-                  </div>
+                  <span
+                    className={`text-xs font-medium ${
+                      isSkipped
+                        ? "text-slate-500"
+                        : s.status === "error"
+                          ? "text-rose-300"
+                          : "text-emerald-200"
+                    }`}
+                  >
+                    {s.label}
+                  </span>
                   {gas && (
-                    <span className="rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] text-slate-400">
-                      Gas {gas}
-                    </span>
+                    <span className="text-[10px] text-slate-500">Gas {gas}</span>
                   )}
                 </div>
                 {href ? (
@@ -128,15 +154,13 @@ export function TxScannerPanel({
                     href={href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-1.5 inline-flex items-center gap-1 font-mono text-[11px] text-cyan-300/90 hover:text-cyan-200"
+                    className="mt-1 inline-flex items-center gap-1 font-mono text-[11px] text-cyan-300/90 hover:text-cyan-200"
                   >
                     {shortHash(s.hash!)}
                     <ExternalLink className="h-3 w-3" />
                   </a>
                 ) : isSkipped ? (
-                  <p className="mt-1 text-[10px] text-slate-600">
-                    Bundled with bridge or already approved
-                  </p>
+                  <p className="mt-0.5 text-[10px] text-slate-600">Bundled with bridge</p>
                 ) : null}
               </li>
             );
@@ -144,11 +168,12 @@ export function TxScannerPanel({
         </ul>
       )}
 
-      {steps.some((s) => s.label.includes("burn") || s.label.includes("Bridge")) && (
-        <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
-          Destination mint (~15 min SLOW CCTP) — track both explorers above.
-        </p>
-      )}
+      {compact &&
+        steps.some((s) => s.label.includes("burn") || s.label.includes("Bridge")) && (
+          <p className="mt-1 text-[9px] text-slate-600">
+            Mint on destination ~15 min (CCTP).
+          </p>
+        )}
     </div>
   );
 }

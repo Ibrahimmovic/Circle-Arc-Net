@@ -943,30 +943,28 @@ export function ExchangeWidget() {
           </div>
         </div>
 
-        <FeePreviewPanel preview={gasPreview} loading={gasPreviewLoading} />
+        {status !== "success" && (
+          <FeePreviewPanel preview={gasPreview} loading={gasPreviewLoading} />
+        )}
 
         {walletProgressSteps.length > 0 && (
           <WalletStepsProgress steps={walletProgressSteps} />
         )}
 
-        {quoteOut && !quoteLoading && (
-          <p className="mt-2 text-center text-sm text-emerald-300/80">
+        {quoteOut && !quoteLoading && status !== "success" && (
+          <p className="mt-2 text-center text-xs text-emerald-300/80">
             Receive → {quoteOut}
           </p>
         )}
 
-        {message && (
-          <p
-            className={`mt-2 rounded-lg px-2 py-1.5 text-center text-xs ${
-              status === "error"
-                ? "bg-rose-950/40 text-rose-200"
-                : status === "success"
-                  ? "bg-emerald-950/30 text-emerald-200"
-                  : "text-slate-400"
-            }`}
-          >
+        {message && status === "error" && (
+          <p className="mt-2 rounded-lg bg-rose-950/40 px-2 py-1.5 text-center text-xs text-rose-200">
             {message}
           </p>
+        )}
+
+        {message && status !== "success" && status !== "error" && (
+          <p className="mt-2 text-center text-xs text-slate-400">{message}</p>
         )}
 
         {status === "loading" && step && !walletProgressSteps.length && (
@@ -974,8 +972,14 @@ export function ExchangeWidget() {
         )}
 
         {status === "success" && (
-          <div className="mt-3 rounded-xl border border-emerald-500/40 bg-emerald-950/50 px-3 py-2 text-center text-sm font-semibold text-emerald-200">
-            Transaction successful
+          <div className="mt-2 rounded-xl border border-emerald-500/35 bg-emerald-950/40 px-3 py-2">
+            <p className="text-sm font-semibold text-emerald-200">Transaction successful</p>
+            {quoteOut && (
+              <p className="text-xs text-emerald-300/80">Receive → {quoteOut}</p>
+            )}
+            {message && (
+              <p className="mt-0.5 text-[11px] leading-snug text-slate-400">{message}</p>
+            )}
           </div>
         )}
 
@@ -986,6 +990,7 @@ export function ExchangeWidget() {
             walletAddress={address}
             walletChainIds={walletChainIds}
             steps={scanSteps}
+            variant={status === "success" ? "compact" : "result"}
           />
         )}
 
