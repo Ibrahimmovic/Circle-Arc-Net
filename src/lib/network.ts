@@ -1,5 +1,7 @@
 /** Circle App Kit chain IDs — must match enum exactly (underscores, not spaces). */
 
+import { getTestnetSwapChains } from "@/lib/execute-tokens";
+
 export type NetworkMode = "testnet" | "mainnet";
 
 export interface ChainOption {
@@ -184,6 +186,7 @@ export function getBridgeChains(mode: NetworkMode): ChainOption[] {
 }
 
 export function getSwapChains(mode: NetworkMode): ChainOption[] {
+  if (mode === "testnet") return getTestnetSwapChains();
   const chains = getBridgeChains(mode);
   return chains.filter((c) => c.swap);
 }

@@ -29,7 +29,7 @@ export default function ExecutePage() {
   return (
     <AppShell
       title="Bridge & Swap"
-      subtitle="Jumper-style routes · send to friends · Arc USDC on testnet"
+      subtitle="Circle CCTP for USDC/EURC · LI.FI for WETH/USDT on Sepolia L2s · multi-chain swap"
     >
       <div className="space-y-6">
         <MarketTicker />

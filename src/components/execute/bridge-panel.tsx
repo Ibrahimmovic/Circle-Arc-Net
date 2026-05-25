@@ -25,11 +25,20 @@ import { pushTx } from "@/lib/tx-store";
 import { FeeHint } from "./fee-hint";
 import { RecipientField } from "@/components/ui/recipient-field";
 import { RouteCard } from "./route-card";
+import { AssetRow } from "./asset-row";
+import {
+  getTokensForChain,
+  getSwapChain,
+  useCircleCctpBridge,
+  toBaseUnits,
+} from "@/lib/execute-tokens";
+import { formatLifiOutput } from "@/lib/lifi";
+import { bridgeSubmitStatus } from "@/lib/bridge-status";
 
 type Status = "idle" | "estimating" | "executing" | "success" | "error";
 
 export function BridgePanel() {
-  const { isConnected } = useAccount();
+  const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChain, isPending: switching } = useSwitchChain();
   const { network, isTestnet } = useNetwork();
@@ -60,6 +69,9 @@ export function BridgePanel() {
   } | null>(null);
   const [feeLines, setFeeLines] = useState<string[]>([]);
   const [confirmExecute, setConfirmExecute] = useState(false);
+  const [fromTokenSym, setFromTokenSym] = useState("USDC");
+  const [toTokenSym, setToTokenSym] = useState("USDC");
+  const [bridgeProvider, setBridgeProvider] = useState<"circle" | "lifi">("circle");
 
   const effectiveFrom = arcOnly
     ? inboundMode
@@ -85,6 +97,34 @@ export function BridgePanel() {
   const toMeta = chains.find((c) => c.appKitChain === effectiveTo);
   const needsSwitch = isConnected && chainId !== requiredChainId;
 
+  const fromTokens = useMemo(
+    () => getTokensForChain(effectiveFrom),
+    [effectiveFrom],
+  );
+  const toTokens = useMemo(() => getTokensForChain(effectiveTo), [effectiveTo]);
+  const fromTokenMeta =
+    fromTokens.find((t) => t.symbol === fromTokenSym) ?? fromTokens[0];
+  const toTokenMeta = toTokens.find((t) => t.symbol === toTokenSym) ?? toTokens[0];
+  const useCctp =
+    fromTokenMeta &&
+    toTokenMeta &&
+    useCircleCctpBridge(effectiveFrom, effectiveTo, fromTokenMeta, toTokenMeta);
+
+  useEffect(() => {
+    setBridgeProvider(useCctp ? "circle" : "lifi");
+  }, [useCctp]);
+
+  useEffect(() => {
+    const ft = getTokensForChain(effectiveFrom);
+    const tt = getTokensForChain(effectiveTo);
+    if (!ft.find((t) => t.symbol === fromTokenSym)) {
+      setFromTokenSym(ft[0]?.symbol ?? "USDC");
+    }
+    if (!tt.find((t) => t.symbol === toTokenSym)) {
+      setToTokenSym(tt[0]?.symbol ?? "USDC");
+    }
+  }, [effectiveFrom, effectiveTo, fromTokenSym, toTokenSym]);
+
   useEffect(() => {
     installCircleProxyFetch();
     const list = getBridgeChains(network);
@@ -103,8 +143,15 @@ export function BridgePanel() {
     setStatus("estimating");
     setMessage(null);
     setGasLines([]);
+    setFeeLines([]);
     try {
-      if (isConnected && window.ethereum) {
+      if (!isConnected || !window.ethereum) {
+        setMessage("Connect wallet for a live quote.");
+        setStatus("idle");
+        return;
+      }
+
+      if (useCctp && fromTokenMeta?.symbol === "USDC") {
         installCircleProxyFetch();
         const { AppKit } = await import("@circle-fin/app-kit");
         const { createViemAdapterFromProvider } = await import(
@@ -124,6 +171,7 @@ export function BridgePanel() {
           ) as never,
           amount,
           config: getBridgeKitConfig(),
+          token: "USDC",
         });
         setGasLines(formatKitGasFees(live.gasFees));
         const summary = summarizeBridgeEstimate(
@@ -135,17 +183,62 @@ export function BridgePanel() {
           summary.walletSteps.length > 0
             ? summary.walletSteps.join(" → ")
             : BRIDGE_WALLET_STEPS;
-        setMessage(`${summary.totalHint} · ${steps}`);
+        setMessage(`Circle CCTP · ${summary.totalHint} · ${steps}`);
         setEstimate({ estimatedMinutes: 15, totalHint: summary.totalHint });
-      } else {
-        setMessage("Connect wallet on Arc Testnet (or source chain) for live fee breakdown.");
+        setBridgeProvider("circle");
+        setStatus("idle");
+        return;
       }
+
+      const fromCfg = getSwapChain(effectiveFrom);
+      const toCfg = getSwapChain(effectiveTo);
+      if (!fromCfg || !toCfg || !fromTokenMeta || !toTokenMeta) {
+        throw new Error("Unsupported chain or token");
+      }
+
+      if (!address) throw new Error("No wallet address");
+
+      const qs = new URLSearchParams({
+        fromChain: String(fromCfg.lifiChainId),
+        toChain: String(toCfg.lifiChainId),
+        fromToken: fromTokenMeta.address,
+        toToken: toTokenMeta.address,
+        fromAmount: toBaseUnits(amount, fromTokenMeta.decimals),
+        fromAddress: address,
+      });
+      const res = await fetch(`/api/lifi/quote?${qs}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "LiFi quote failed");
+
+      setFeeLines([
+        `Cross-chain route: ${fromTokenMeta.symbol} on ${fromMeta?.label} → ${toTokenMeta.symbol} on ${toMeta?.label}`,
+        `Aggregator: ${data.tool ?? "LI.FI"} (same flow as Jumper / Relay)`,
+      ]);
+      setMessage(
+        `Est. receive: ${formatLifiOutput(data, toTokenSym)} · fees shown in wallet before you sign.`,
+      );
+      setEstimate({ estimatedMinutes: 5, totalHint: "LI.FI route" });
+      setBridgeProvider("lifi");
       setStatus("idle");
     } catch (e) {
       setStatus("error");
       setMessage(e instanceof Error ? e.message : "Estimate failed");
     }
-  }, [effectiveFrom, effectiveTo, amount, isConnected, network, recipient]);
+  }, [
+    effectiveFrom,
+    effectiveTo,
+    amount,
+    isConnected,
+    network,
+    recipient,
+    useCctp,
+    fromTokenMeta,
+    toTokenMeta,
+    fromMeta,
+    toMeta,
+    toTokenSym,
+    address,
+  ]);
 
   const runBridge = useCallback(async () => {
     if (!confirmExecute) {
@@ -171,6 +264,52 @@ export function BridgePanel() {
 
     setStatus("executing");
     try {
+      if (bridgeProvider === "lifi" && fromTokenMeta && toTokenMeta) {
+        const fromCfg = getSwapChain(effectiveFrom);
+        const toCfg = getSwapChain(effectiveTo);
+        if (!fromCfg || !toCfg || !address) throw new Error("Invalid LiFi route");
+
+        const qs = new URLSearchParams({
+          fromChain: String(fromCfg.lifiChainId),
+          toChain: String(toCfg.lifiChainId),
+          fromToken: fromTokenMeta.address,
+          toToken: toTokenMeta.address,
+          fromAmount: toBaseUnits(amount, fromTokenMeta.decimals),
+          fromAddress: address,
+        });
+        const res = await fetch(`/api/lifi/quote?${qs}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "LiFi quote failed");
+        const tx = data.transactionRequest;
+        if (!tx?.to || !tx?.data) throw new Error("No transaction from LiFi");
+
+        const hash = await (
+          window.ethereum as {
+            request: (args: { method: string; params: unknown[] }) => Promise<string>;
+          }
+        ).request({
+          method: "eth_sendTransaction",
+          params: [
+            {
+              from: address,
+              to: tx.to,
+              data: tx.data,
+              value: tx.value ?? "0x0",
+            },
+          ],
+        });
+
+        pushTx({
+          type: "bridge",
+          status: "success",
+          summary: `${amount} ${fromTokenSym} ${fromMeta?.label}→${toMeta?.label}`,
+          chain: effectiveFrom,
+        });
+        setStatus("success");
+        setMessage(`Cross-chain transfer sent · LI.FI · ${hash.slice(0, 10)}…`);
+        return;
+      }
+
       installCircleProxyFetch();
       const { AppKit } = await import("@circle-fin/app-kit");
       const { createViemAdapterFromProvider } = await import(
@@ -186,22 +325,24 @@ export function BridgePanel() {
         to: getBridgeDestination(effectiveTo, adapter, network, recipient) as never,
         amount,
         config: getBridgeKitConfig(),
+        token: "USDC",
       });
 
-      const feeNote =
-        effectiveFrom === TESTNET_HOME_CHAIN
-          ? "Signed on Arc · USDC gas · forwarder mints on destination."
-          : `Source gas on ${fromMeta?.label}; Arc receives via CCTP.`;
+      const submitted = bridgeSubmitStatus(
+        typeof result.state === "string" ? result.state : undefined,
+      );
 
       pushTx({
         type: "bridge",
-        status: "success",
-        summary: `Bridge ${amount} USDC ${fromMeta?.label} → ${toMeta?.label}`,
+        status: submitted.uiStatus,
+        summary: `Bridge ${amount} ${fromTokenSym} ${fromMeta?.label} → ${toMeta?.label}`,
         chain: effectiveFrom,
         feeUsd: effectiveFrom === TESTNET_HOME_CHAIN ? "Arc USDC" : "source",
       });
-      setStatus("success");
-      setMessage(`Bridge submitted · ${result.state ?? "pending"} · ${feeNote}`);
+      setStatus(submitted.uiStatus);
+      setMessage(
+        `${submitted.label} Signed on source · forwarder may mint on destination without extra signatures.`,
+      );
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e);
       pushTx({ type: "bridge", status: "error", summary: err.slice(0, 80) });
@@ -224,6 +365,11 @@ export function BridgePanel() {
     arcOnly,
     recipient,
     confirmExecute,
+    bridgeProvider,
+    fromTokenMeta,
+    toTokenMeta,
+    fromTokenSym,
+    address,
   ]);
 
   return (
@@ -250,10 +396,18 @@ export function BridgePanel() {
       />
 
       <RouteCard
-        fromLabel={fromMeta?.label ?? effectiveFrom}
-        toLabel={toMeta?.label ?? effectiveTo}
+        fromLabel={`${fromMeta?.label ?? effectiveFrom} · ${fromTokenSym}`}
+        toLabel={`${toMeta?.label ?? effectiveTo} · ${toTokenSym}`}
         amount={amount}
+        token={fromTokenSym}
       />
+
+      <p className="mb-3 text-xs text-slate-500">
+        Route:{" "}
+        <span className="font-semibold text-violet-300">
+          {useCctp ? "Circle CCTP (USDC/EURC stables)" : "LI.FI cross-chain (any token)"}
+        </span>
+      </p>
 
       <p className="mb-3 text-xs text-slate-500">{BRIDGE_WALLET_STEPS}</p>
 
@@ -347,14 +501,41 @@ export function BridgePanel() {
           />
         </>
       )}
-      <label className="mt-3 block">
-        <span className="text-xs uppercase text-slate-400">USDC amount</span>
-        <input
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          className="mt-1 w-full rounded-xl border border-slate-600 bg-slate-950 px-4 py-3 font-mono text-white"
-        />
-      </label>
+      {arcOnly ? (
+        <div className="mt-3 space-y-2">
+          <AssetRow
+            label="You send"
+            chainValue={effectiveFrom}
+            chains={chains}
+            onChainChange={() => {}}
+            readOnlyChain={fromMeta?.label}
+            tokenValue={fromTokenSym}
+            tokens={fromTokens}
+            onTokenChange={setFromTokenSym}
+            amount={amount}
+            onAmountChange={setAmount}
+          />
+          <AssetRow
+            label="You receive on"
+            chainValue={effectiveTo}
+            chains={chains}
+            onChainChange={() => {}}
+            readOnlyChain={toMeta?.label}
+            tokenValue={toTokenSym}
+            tokens={toTokens}
+            onTokenChange={setToTokenSym}
+          />
+        </div>
+      ) : (
+        <label className="mt-3 block">
+          <span className="text-xs uppercase text-slate-400">USDC amount</span>
+          <input
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="mt-1 w-full rounded-xl border border-slate-600 bg-slate-950 px-4 py-3 font-mono text-white"
+          />
+        </label>
+      )}
 
       {(feeLines.length > 0 || gasLines.length > 0) && (
         <div className="mt-4 rounded-xl border border-slate-700 bg-slate-950/80 p-3 text-xs text-slate-300">
