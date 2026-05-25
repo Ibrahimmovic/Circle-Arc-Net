@@ -188,7 +188,7 @@ export function PortfolioCommandCenter() {
                 All tokens
               </h3>
               <p className="mb-4 text-xs text-slate-500">
-                All Base/Ethereum tokens with balances · net worth = sum of values
+                Every token with a balance or USD price on Base, Ethereum, and major L2s
               </p>
               <PortfolioAssetsTable assets={data.assets} />
             </div>
@@ -231,7 +231,7 @@ export function PortfolioCommandCenter() {
                   Flagged tokens
                 </h3>
                 <p className="mt-1 mb-4 text-xs text-slate-500">
-                  GoldRush is_spam + suspicious memecoins — excluded from net worth
+                  API spam flags and obvious airdrop memecoins only — verified tokens stay in Tokens
                 </p>
                 <PortfolioAssetsTable
                   assets={data.spamAssets}

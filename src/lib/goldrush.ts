@@ -43,6 +43,7 @@ export interface GoldRushTokenBalance {
   type?: string;
   native_token?: boolean;
   is_native_token?: boolean;
+  supports_erc?: string[];
   nft_data?: Array<{ external_data?: { image?: string; name?: string } }>;
 }
 
@@ -149,10 +150,19 @@ const MAINNET_CHAINS = [
   "polygon-mainnet",
 ];
 
-/** Full mainnet scan: all tokens + spam on Base/Ethereum and more. */
+function isGoldRushNftItem(item: GoldRushTokenBalance): boolean {
+  return (
+    item.type === "nft" ||
+    Boolean(item.nft_data?.length) ||
+    (item.supports_erc as string[] | undefined)?.includes("ERC721") === true
+  );
+}
+
+/** Full mainnet scan: fungible balances, API spam flags, and NFT holdings. */
 export async function getMainnetBalancesFull(address: string): Promise<{
   clean: GoldRushTokenBalance[];
   spam: GoldRushTokenBalance[];
+  nfts: GoldRushTokenBalance[];
 }> {
   const results = await Promise.all(
     MAINNET_CHAINS.map(async (chain) => {
@@ -164,21 +174,28 @@ export async function getMainnetBalancesFull(address: string): Promise<{
           () => [] as GoldRushTokenBalance[],
         ),
       ]);
-      const spam = allItems.filter((i) => i.is_spam);
-      return { clean: cleanItems, spam };
+      const spam = allItems.filter((i) => i.is_spam && !isGoldRushNftItem(i));
+      const nfts = allItems.filter(isGoldRushNftItem);
+      return { clean: cleanItems.filter((i) => !isGoldRushNftItem(i)), spam, nfts };
     }),
   );
   return {
     clean: results.flatMap((r) => r.clean),
     spam: results.flatMap((r) => r.spam),
+    nfts: results.flatMap((r) => r.nfts),
   };
 }
+
+export type GoldRushBalancesBundle = {
+  data: { items: GoldRushTokenBalance[] };
+  nfts: GoldRushTokenBalance[];
+};
 
 /** Balances scoped to testnet OR mainnet — never both at once. */
 export async function getBalancesForNetworkMode(
   address: string,
   testnet: boolean,
-) {
+): Promise<GoldRushBalancesBundle> {
   if (testnet) {
     const chains = ["eth-sepolia", "base-sepolia"];
     const perChain = await Promise.all(
@@ -186,10 +203,10 @@ export async function getBalancesForNetworkMode(
         getChainBalancesV2(c, address, { includeSpam: true }).catch(() => []),
       ),
     );
-    return { data: { items: perChain.flat() } };
+    return { data: { items: perChain.flat() }, nfts: [] as GoldRushTokenBalance[] };
   }
-  const { clean, spam } = await getMainnetBalancesFull(address);
-  return { data: { items: [...clean, ...spam] } };
+  const { clean, spam, nfts } = await getMainnetBalancesFull(address);
+  return { data: { items: [...clean, ...spam] }, nfts };
 }
 
 export async function getMultichainBalancesIncludingTestnet(

@@ -8,7 +8,7 @@ export function PortfolioNftGrid({ nfts }: { nfts: PortfolioNft[] }) {
   if (!nfts.length) {
     return (
       <p className="py-10 text-center text-sm text-slate-500">
-        No NFTs on this network — collections appear when Zerion indexes them.
+        No NFTs found — Zerion indexes collections on mainnet; GoldRush scans Base & Ethereum too.
       </p>
     );
   }
