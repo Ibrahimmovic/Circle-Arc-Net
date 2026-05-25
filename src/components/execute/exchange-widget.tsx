@@ -34,6 +34,7 @@ import { formatLifiOutput } from "@/lib/lifi";
 import {
   formatUniswapQuoteOut,
   executeUniswapV3Swap,
+  executeEthToWethWrap,
   uniswapQuoteFromApi,
 } from "@/lib/uniswap-v3";
 import { getAddress } from "viem";
@@ -127,6 +128,19 @@ export function ExchangeWidget() {
     setQuoteOut(null);
   }, [network, isTestnet]);
 
+  /** Same-chain on L2 testnets: default USDC → WETH (demo-friendly). */
+  useEffect(() => {
+    if (
+      isTestnet &&
+      fromChain === toChain &&
+      fromChain !== TESTNET_HOME_CHAIN &&
+      fromToken === "USDC" &&
+      toToken === "USDC"
+    ) {
+      setToToken("WETH");
+    }
+  }, [fromChain, toChain, fromToken, toToken, isTestnet]);
+
   const swapEnds = () => {
     setFromChain(toChain);
     setToChain(fromChain);
@@ -219,6 +233,13 @@ export function ExchangeWidget() {
         return;
       }
 
+      if (route.kind === "eth-wrap") {
+        setQuoteOut(`~${amount} WETH (1:1 wrap)`);
+        setMessage(route.hint);
+        setStatus("idle");
+        return;
+      }
+
       if (route.kind === "uniswap-v3") {
         const cfg = getSwapChain(fromChain);
         if (!cfg) throw new Error("Unsupported chain");
@@ -293,6 +314,15 @@ export function ExchangeWidget() {
     fromMeta,
     getAdapter,
   ]);
+
+  useEffect(() => {
+    if (!isConnected || !address || !route || !amount || Number(amount) <= 0) return;
+    if (status === "loading") return;
+    const id = window.setTimeout(() => {
+      void runQuote();
+    }, 700);
+    return () => window.clearTimeout(id);
+  }, [fromChain, toChain, fromToken, toToken, amount, route?.kind, isConnected, address, runQuote, status]);
 
   const runExchange = useCallback(async () => {
     if (!isConnected || !address || !route) {
@@ -392,7 +422,25 @@ export function ExchangeWidget() {
       switchChain({ chainId: signChainId });
       const adapter = await getAdapter();
 
-      if (route.kind === "uniswap-v3") {
+      if (route.kind === "eth-wrap") {
+        const cfg = getSwapChain(fromChain);
+        if (!cfg) throw new Error("Unsupported chain");
+        const hash = await executeEthToWethWrap(
+          cfg.lifiChainId,
+          amount,
+          getAddress(address),
+          (msg) => setMessage(msg),
+        );
+        pushTx({
+          type: "swap",
+          status: "success",
+          summary: `ETH→WETH · ${hash.slice(0, 10)}`,
+          feeUsd: "Arc USDC",
+        });
+        setStatus("success");
+        setStep(null);
+        setMessage(`Wrapped ${amount} ETH → WETH on ${signLabel}`);
+      } else if (route.kind === "uniswap-v3") {
         const cfg = getSwapChain(fromChain);
         if (!cfg) throw new Error("Unsupported chain");
         const qs = new URLSearchParams({
@@ -687,11 +735,25 @@ export function ExchangeWidget() {
           <p className="mt-2 text-center text-sm font-semibold text-cyan-200">{step}</p>
         )}
 
+        {status === "success" && (
+          <div className="mt-3 rounded-xl border border-emerald-500/40 bg-emerald-950/50 px-3 py-2 text-center text-sm font-semibold text-emerald-200">
+            Transaction successful
+          </div>
+        )}
+
         {needsSwitch && isConnected && status !== "loading" && (
           <button
             type="button"
             disabled={switching}
-            onClick={() => switchChain({ chainId: signChainId })}
+            onClick={async () => {
+              try {
+                await switchWalletToChain(signChainId);
+                switchChain({ chainId: signChainId });
+              } catch (e) {
+                setMessage(e instanceof Error ? e.message : "Switch failed");
+                setStatus("error");
+              }
+            }}
             className="mt-3 w-full rounded-xl border border-amber-500/40 py-2 text-xs font-semibold text-amber-100"
           >
             {switching

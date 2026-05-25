@@ -62,6 +62,52 @@ export function supportsUniswapV3(chainId: number): boolean {
   return chainId in UNISWAP_V3_TESTNET;
 }
 
+const wethAbi = parseAbi([
+  "function deposit() payable",
+  "function balanceOf(address) view returns (uint256)",
+]);
+
+export function isEthToWethWrap(
+  chainId: number,
+  symbolIn: string,
+  symbolOut: string,
+): boolean {
+  return (
+    supportsUniswapV3(chainId) &&
+    symbolIn.toUpperCase() === "ETH" &&
+    symbolOut.toUpperCase() === "WETH"
+  );
+}
+
+export function wethAddress(chainId: number): Address {
+  const w = LIFI_TESTNET_TOKENS[chainId]?.WETH?.address;
+  if (!w) throw new Error("WETH not configured");
+  return getAddress(w);
+}
+
+/** Native ETH → WETH (deposit) on Base/Arb/OP Sepolia. */
+export async function executeEthToWethWrap(
+  chainId: number,
+  amountEth: string,
+  fromAddress: Address,
+  onStep?: (msg: string) => void,
+): Promise<Hex> {
+  const weth = wethAddress(chainId);
+  const [whole, frac = ""] = amountEth.split(".");
+  const padded = (frac + "0".repeat(18)).slice(0, 18);
+  const value = BigInt(`${whole}${padded}`.replace(/^0+/, "") || "0");
+
+  onStep?.("Wallet: wrap ETH → WETH…");
+  const data = encodeFunctionData({ abi: wethAbi, functionName: "deposit", args: [] });
+  return sendTx({
+    from: fromAddress,
+    to: weth,
+    data,
+    value: `0x${value.toString(16)}` as Hex,
+    chainId,
+  });
+}
+
 function resolveToken(chainId: number, symbol: string): { address: Address; decimals: number } | null {
   const entry = LIFI_TESTNET_TOKENS[chainId]?.[symbol.toUpperCase()];
   if (!entry) return null;
