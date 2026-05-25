@@ -10,6 +10,9 @@ const CHAIN_COLORS: Record<string, string> = {
   Optimism: "from-red-500/20 to-rose-600/10",
   Avalanche: "from-rose-500/30 to-red-600/10",
   Arc: "from-cyan-500/40 to-emerald-600/10",
+  "Arc Testnet": "from-cyan-500/40 to-emerald-600/10",
+  "Ethereum Sepolia": "from-blue-500/25 to-slate-600/10",
+  "Base Sepolia": "from-indigo-500/25 to-violet-600/10",
 };
 
 export function ChainBalanceGrid({

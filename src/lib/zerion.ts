@@ -77,10 +77,76 @@ export async function getWalletPortfolio(
 export async function getWalletPositions(
   address: string,
   testnet = false,
+  trash: "only_non_trash" | "only_trash" | "no_filter" = "only_non_trash",
 ) {
   const encoded = encodeURIComponent(address);
   return zerionFetch<ZerionPositionsResponse>(
-    `/wallets/${encoded}/positions/?currency=usd&sort=-value&filter[positions]=only_simple&filter[trash]=only_non_trash&page[size]=50`,
+    `/wallets/${encoded}/positions/?currency=usd&sort=-value&filter[positions]=no_filter&filter[trash]=${trash}&page[size]=80`,
+    { testnet },
+  );
+}
+
+export interface ZerionTransaction {
+  id: string;
+  attributes?: {
+    operation_type?: string;
+    hash?: string;
+    mined_at?: string;
+    is_trash?: boolean;
+    fee?: { value?: number };
+    application_metadata?: { name?: string };
+    transfers?: Array<{
+      direction?: string;
+      quantity?: { float?: number };
+      value?: number;
+      fungible_info?: { symbol?: string; name?: string };
+    }>;
+  };
+  relationships?: {
+    chain?: { data?: { id?: string } };
+  };
+}
+
+export interface ZerionTransactionsResponse {
+  data?: ZerionTransaction[];
+}
+
+export async function getWalletTransactions(
+  address: string,
+  testnet = false,
+  trash: "only_non_trash" | "only_trash" | "no_filter" = "no_filter",
+) {
+  const encoded = encodeURIComponent(address);
+  return zerionFetch<ZerionTransactionsResponse>(
+    `/wallets/${encoded}/transactions/?currency=usd&page[size]=40&filter[trash]=${trash}`,
+    { testnet },
+  );
+}
+
+export interface ZerionNftPosition {
+  id: string;
+  attributes?: {
+    name?: string;
+    amount?: number;
+    floor_price?: number;
+    changed_at?: string;
+    flags?: { is_spam?: boolean };
+    collection_info?: { name?: string };
+    preview?: { url?: string };
+  };
+  relationships?: {
+    chain?: { data?: { id?: string } };
+  };
+}
+
+export interface ZerionNftPositionsResponse {
+  data?: ZerionNftPosition[];
+}
+
+export async function getWalletNftPositions(address: string, testnet = false) {
+  const encoded = encodeURIComponent(address);
+  return zerionFetch<ZerionNftPositionsResponse>(
+    `/wallets/${encoded}/nft-positions/?currency=usd&sort=-floor_price&page[size]=40`,
     { testnet },
   );
 }
