@@ -110,9 +110,9 @@ export default function HomePage() {
               value={loading ? "…" : formatUsd(analysis?.totalUsd ?? 0)}
               sub={
                 analysis
-                  ? formatPct(analysis.change24hPct) + " 24h"
+                  ? formatPct(analysis.change24hPct ?? 0) + " 24h"
                   : data?.markets
-                    ? `ETH ${formatPct(data.markets.ethChange24h)} macro`
+                    ? `ETH ${formatPct(data.markets.ethChange24h ?? 0)} macro`
                     : undefined
               }
               icon={Wallet}

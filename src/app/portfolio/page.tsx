@@ -71,7 +71,7 @@ export default function PortfolioPage() {
                   : "text-rose-400 text-lg"
               }
             >
-              {formatPct(analysis.change24hPct)} 24h
+              {formatPct(analysis.change24hPct ?? 0)} 24h
             </span>
             <span className="rounded-lg bg-slate-800 px-3 py-1 text-xs text-slate-400">
               Risk: {analysis.concentrationRisk}

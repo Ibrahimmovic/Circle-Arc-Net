@@ -14,7 +14,16 @@ export function MarketTicker() {
   useEffect(() => {
     fetch("/api/markets")
       .then((r) => r.json())
-      .then(setData)
+      .then((json) => {
+        const m = json.markets ?? json;
+        if (m?.ethChange24h != null) {
+          setData({
+            ethChange24h: Number(m.ethChange24h) || 0,
+            btcChange24h: Number(m.btcChange24h) || 0,
+            macroRegime: json.macroRegime,
+          });
+        }
+      })
       .catch(() => null);
   }, []);
 

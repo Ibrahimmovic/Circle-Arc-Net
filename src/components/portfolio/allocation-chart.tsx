@@ -31,8 +31,8 @@ export function AllocationChart({ data }: { data: ChainAllocation[] }) {
 
   const chartData = data.map((d) => ({
     name: d.chain,
-    value: d.valueUsd,
-    percent: d.percent,
+    value: d.valueUsd ?? 0,
+    percent: d.percent ?? 0,
   }));
 
   return (

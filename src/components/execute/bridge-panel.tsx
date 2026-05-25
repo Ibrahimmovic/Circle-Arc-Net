@@ -189,8 +189,9 @@ export function BridgePanel() {
 
       {estimate && (
         <div className="mt-4 rounded-xl bg-slate-900/60 p-4 text-sm text-slate-300">
-          Est. fee ~${estimate.estimatedFeeUsd?.toFixed(4)} · ~
-          {estimate.estimatedMinutes} min · Circle CCTP v2
+          Est. fee ~$
+          {(estimate.estimatedFeeUsd ?? 0.01).toFixed(4)} · ~
+          {estimate.estimatedMinutes ?? 2} min · Circle CCTP v2
         </div>
       )}
 
