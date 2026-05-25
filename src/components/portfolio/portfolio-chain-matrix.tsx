@@ -5,7 +5,7 @@ import { formatUsd } from "@/lib/utils";
 import { chainIcon } from "@/lib/token-visuals";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
-const VISIBLE = 12;
+const VISIBLE = 10;
 
 export function PortfolioChainMatrix({
   chains,

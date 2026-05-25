@@ -50,7 +50,9 @@ export function PortfolioHero({
             </span>
             <span className="flex items-center gap-1.5 rounded-full bg-slate-900/80 px-3 py-1 text-xs text-slate-300">
               <Layers className="h-3.5 w-3.5 text-violet-400" />
-              Live · {sources.slice(0, 2).join(" + ")}
+              {sources.includes("Zerion portfolio") || sources.some((s) => s.startsWith("Zerion"))
+                ? "Live · Zerion"
+                : sources.slice(0, 2).join(" + ")}
             </span>
           </div>
         </div>

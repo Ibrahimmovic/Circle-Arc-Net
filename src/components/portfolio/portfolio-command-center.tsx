@@ -47,7 +47,7 @@ export function PortfolioCommandCenter() {
   const [tab, setTab] = useState<TabId>("overview");
   const [chainFilter, setChainFilter] = useState<string>("all");
   const [tokenView, setTokenView] = useState<"aggregated" | "per-chain">(
-    "aggregated",
+    "per-chain",
   );
   const [hideSpam, setHideSpam] = useState(true);
 
@@ -265,9 +265,7 @@ export function PortfolioCommandCenter() {
                   <h3 className="mb-4 text-lg font-semibold text-white">
                     Top assets
                   </h3>
-                  <PortfolioAggregatedTokens
-                    assets={filteredAggregated.slice(0, 8)}
-                  />
+                  <PortfolioAssetsTable assets={filteredAssets.slice(0, 8)} />
                 </div>
                 <div className="luxury-card rounded-2xl p-5 sm:p-6">
                   <div className="mb-4 flex items-center justify-between">
@@ -297,7 +295,7 @@ export function PortfolioCommandCenter() {
                 <div>
                   <h3 className="text-lg font-semibold text-white">Assets</h3>
                   <p className="text-xs text-slate-500">
-                    Zerion-style aggregation · net worth {formatUsd(data.totalUsd)}
+                    Live Zerion positions + prices · net worth {formatUsd(data.totalUsd)}
                   </p>
                 </div>
                 <div className="flex rounded-lg border border-slate-700 p-0.5">

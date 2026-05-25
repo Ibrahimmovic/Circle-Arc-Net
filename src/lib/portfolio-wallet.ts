@@ -6,13 +6,19 @@ import {
   groupNftCollections,
 } from "@/lib/portfolio-aggregate";
 import {
-  getAllChainsBalances,
+  formatQuantityDisplay,
+  MAX_TOKEN_ROWS,
+  MIN_CHAIN_PERCENT,
+  MIN_CHAIN_USD,
+  MIN_POSITION_USD,
+} from "@/lib/portfolio-display";
+import {
   getBalancesForNetworkMode,
+  getMainnetBalancesFull,
   goldRushRawBalance,
   goldRushTokenLogo,
   type GoldRushTokenBalance,
 } from "@/lib/goldrush";
-import { getGoldRushMainnetChains } from "@/lib/network";
 import { analyzePortfolio, canonicalChainKey } from "@/lib/portfolio-engine";
 import {
   resolveTokenLogo,
@@ -98,7 +104,7 @@ function zerionPositionToAsset(p: ZerionPosition, isSpam: boolean): PortfolioAss
   const value = p.attributes?.value ?? 0;
   const qty = p.attributes?.quantity?.float;
   const hasQty = qty != null && qty > 0;
-  if (!isSpam && value < 0.0005 && !hasQty) return null;
+  if (!isSpam && value < MIN_POSITION_USD && !hasQty) return null;
 
   const symbol =
     p.attributes?.fungible_info?.symbol ??
@@ -116,7 +122,7 @@ function zerionPositionToAsset(p: ZerionPosition, isSpam: boolean): PortfolioAss
     chain: chainLabel(chainId),
     chainId,
     valueUsd: value,
-    balance: hasQty ? String(qty) : undefined,
+    balance: hasQty ? formatQuantityDisplay(qty, symbol) : undefined,
     priceUsd: p.attributes?.price,
     change24hPct: p.attributes?.percent_change_24h ?? 0,
     logoUrl: resolveTokenLogo(symbol, iconUrl),
@@ -265,16 +271,6 @@ function hasMeaningfulHolding(a: PortfolioAsset): boolean {
   return !Number.isNaN(n) && n > 0;
 }
 
-function dedupeGoldItems(items: GoldRushTokenBalance[]): GoldRushTokenBalance[] {
-  const seen = new Map<string, GoldRushTokenBalance>();
-  for (const t of items) {
-    const k = `${t.chain_name}:${(t.contract_address ?? t.contract_ticker_symbol)?.toLowerCase()}`;
-    const prev = seen.get(k);
-    if (!prev || (t.quote ?? 0) > (prev.quote ?? 0)) seen.set(k, t);
-  }
-  return [...seen.values()];
-}
-
 export async function buildPortfolioWalletFeed(
   address: string,
   testnet: boolean,
@@ -294,18 +290,19 @@ export async function buildPortfolioWalletFeed(
   const activities: PortfolioActivity[] = [];
   const spamActivities: PortfolioActivity[] = [];
 
-  const [portfolio, positionsClean, positionsSpam, txs, nftPos, goldrush, goldAll] =
+  const [portfolio, positionsClean, positionsSpam, txs, nftPos, goldBundle] =
     await Promise.all([
       getWalletPortfolio(address, testnet).catch(() => null),
       getWalletPositions(address, testnet, "only_non_trash").catch(() => null),
       getWalletPositions(address, testnet, "only_trash").catch(() => null),
       getWalletTransactions(address, testnet, "no_filter").catch(() => null),
       getWalletNftPositions(address, testnet).catch(() => null),
-      getBalancesForNetworkMode(address, testnet).catch(() => null),
-      !testnet
-        ? getAllChainsBalances(address, getGoldRushMainnetChains()).catch(() => null)
-        : Promise.resolve(null),
+      testnet
+        ? getBalancesForNetworkMode(address, true).catch(() => null)
+        : getMainnetBalancesFull(address).catch(() => null),
     ]);
+
+  const zerionPrimary = Boolean(portfolio?.data?.attributes?.total?.positions);
 
   if (portfolio?.data) {
     zerionAvailable = true;
@@ -326,36 +323,44 @@ export async function buildPortfolioWalletFeed(
     }
   }
 
-  const goldItems = dedupeGoldItems([
-    ...(goldrush?.data?.items ?? []),
-    ...(goldAll?.data?.items ?? []),
-    ...(goldrush?.nfts ?? []),
-  ]);
+  const goldClean =
+    goldBundle && "clean" in goldBundle
+      ? goldBundle.clean
+      : (goldBundle as { data?: { items?: GoldRushTokenBalance[] } })?.data?.items ?? [];
+  const goldSpam =
+    goldBundle && "spam" in goldBundle
+      ? goldBundle.spam
+      : [];
+  const goldNfts =
+    goldBundle && "nfts" in goldBundle
+      ? goldBundle.nfts
+      : [];
 
-  if (goldItems.length > 0) {
-    sources.push(testnet ? "GoldRush testnet" : "GoldRush all-chains");
-    for (const t of goldItems) {
-      const nft = goldRushToNft(t);
-      if (nft && !nft.isSpam && !nfts.some((n) => n.id === nft.id)) {
-        nfts.push(nft);
-      }
-      const a = goldRushToAsset(t);
-      if (!a) continue;
-      if (a.isSpam) {
-        if (hasMeaningfulHolding(a)) setAsset(spamMap, a, t.contract_address);
-      } else {
-        const k = assetKey(a.chainId ?? a.chain, a.symbol, t.contract_address);
-        const prev = assetMap.get(k);
-        if (!prev || a.valueUsd >= prev.valueUsd || (a.balance && !prev.balance)) {
-          setAsset(assetMap, a, t.contract_address);
-        }
-      }
-    }
+  if (goldClean.length > 0 || goldSpam.length > 0 || goldNfts.length > 0) {
+    sources.push(testnet ? "GoldRush testnet" : "GoldRush");
   }
 
-  for (const t of goldrush?.nfts ?? []) {
+  for (const t of goldNfts) {
     const nft = goldRushToNft(t);
     if (nft && !nft.isSpam && !nfts.some((n) => n.id === nft.id)) nfts.push(nft);
+  }
+
+  for (const t of [...goldSpam, ...goldClean]) {
+    const a = goldRushToAsset(t);
+    if (!a) continue;
+    if (a.isSpam) {
+      if (hasMeaningfulHolding(a)) setAsset(spamMap, a, t.contract_address);
+      continue;
+    }
+    const k = assetKey(a.chainId ?? a.chain, a.symbol, t.contract_address);
+    const prev = assetMap.get(k);
+    if (zerionPrimary) {
+      if (prev) continue;
+      if (a.valueUsd < MIN_POSITION_USD && !hasMeaningfulHolding(a)) continue;
+      setAsset(assetMap, a, t.contract_address);
+    } else if (!prev || a.valueUsd > prev.valueUsd) {
+      setAsset(assetMap, a, t.contract_address);
+    }
   }
 
   if (positionsSpam?.data) {
@@ -413,8 +418,17 @@ export async function buildPortfolioWalletFeed(
     }
   }
 
-  const cleanAssets = [...assetMap.values()].sort((a, b) => b.valueUsd - a.valueUsd);
-  const spamAssets = [...spamMap.values()].sort((a, b) => b.valueUsd - a.valueUsd);
+  const cleanAssets = [...assetMap.values()]
+    .filter(
+      (a) =>
+        a.valueUsd >= MIN_POSITION_USD ||
+        (a.balance && a.balance !== "0" && a.balance !== "<0.0001"),
+    )
+    .sort((a, b) => b.valueUsd - a.valueUsd)
+    .slice(0, MAX_TOKEN_ROWS);
+  const spamAssets = [...spamMap.values()]
+    .filter((a) => hasMeaningfulHolding(a))
+    .sort((a, b) => b.valueUsd - a.valueUsd);
   const aggregatedAssets = aggregateAssetsBySymbol(cleanAssets);
   const nftCollections = groupNftCollections(nfts);
 
@@ -468,9 +482,10 @@ export async function buildPortfolioWalletFeed(
     chainDistribution,
     totalUsd,
     chainLabel,
+    MIN_CHAIN_USD,
   );
   const chainBalances = allChainBalances.filter(
-    (c) => c.valueUsd >= 0.5 || c.percent >= 0.5,
+    (c) => c.valueUsd >= MIN_CHAIN_USD || c.percent >= MIN_CHAIN_PERCENT,
   );
 
   const feed: PortfolioWalletFeed = {

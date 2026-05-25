@@ -26,6 +26,8 @@ export type AggregatedAsset = {
   networkCount: number;
   networks: string[];
   holdings: PortfolioAsset[];
+  /** Sum of numeric balances across holdings (same symbol) */
+  totalBalance?: number;
 };
 
 export type PortfolioNft = {

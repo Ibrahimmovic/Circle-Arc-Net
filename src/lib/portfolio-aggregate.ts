@@ -1,4 +1,8 @@
 import { canonicalChainKey } from "@/lib/portfolio-engine";
+import {
+  MIN_POSITION_USD,
+  weightedChange24,
+} from "@/lib/portfolio-display";
 import type {
   AggregatedAsset,
   NftCollectionGroup,
@@ -9,11 +13,12 @@ import type {
 
 export function aggregateAssetsBySymbol(
   assets: PortfolioAsset[],
+  minUsd = MIN_POSITION_USD,
 ): AggregatedAsset[] {
   const map = new Map<string, AggregatedAsset>();
 
   for (const a of assets) {
-    if (a.isSpam) continue;
+    if (a.isSpam || a.valueUsd < minUsd) continue;
     const sym = a.symbol.toUpperCase();
     const prev = map.get(sym);
     if (!prev) {
@@ -27,6 +32,7 @@ export function aggregateAssetsBySymbol(
         networkCount: 1,
         networks: [a.chain],
         holdings: [a],
+        totalBalance: parseBalanceFromAsset(a),
       });
       continue;
     }
@@ -35,14 +41,24 @@ export function aggregateAssetsBySymbol(
     prev.networks = [...networks];
     prev.networkCount = networks.size;
     prev.holdings.push(a);
+    prev.totalBalance = sumBalances(prev.totalBalance ?? 0, parseBalanceFromAsset(a));
     if ((a.priceUsd ?? 0) > (prev.priceUsd ?? 0)) prev.priceUsd = a.priceUsd;
     if (a.logoUrl && !prev.logoUrl) prev.logoUrl = a.logoUrl;
-    if (Math.abs(a.change24hPct) > Math.abs(prev.change24hPct)) {
-      prev.change24hPct = a.change24hPct;
-    }
+    prev.change24hPct = weightedChange24(prev.holdings);
   }
 
   return [...map.values()].sort((a, b) => b.valueUsd - a.valueUsd);
+}
+
+function parseBalanceFromAsset(a: PortfolioAsset): number {
+  const b = a.balance;
+  if (!b) return 0;
+  const n = parseFloat(b.replace(/,/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function sumBalances(a: number, b: number): number {
+  return a + b;
 }
 
 export function groupNftCollections(nfts: PortfolioNft[]): NftCollectionGroup[] {
@@ -79,6 +95,7 @@ export function chainBalancesFromDistribution(
   distribution: Record<string, number>,
   totalUsd: number,
   labelFn: (id: string) => string,
+  minUsd = 1,
 ): Array<{ chain: string; chainId: string; valueUsd: number; percent: number }> {
   return Object.entries(distribution)
     .map(([chainId, valueUsd]) => ({
@@ -87,7 +104,7 @@ export function chainBalancesFromDistribution(
       valueUsd,
       percent: totalUsd > 0 ? (valueUsd / totalUsd) * 100 : 0,
     }))
-    .filter((c) => c.valueUsd >= 0.01)
+    .filter((c) => c.valueUsd >= minUsd)
     .sort((a, b) => b.valueUsd - a.valueUsd);
 }
 
