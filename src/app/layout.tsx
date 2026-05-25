@@ -13,7 +13,11 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const appUrl =
+  process.env.NEXT_PUBLIC_APP_URL ?? "https://circle-arc-net.vercel.app";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(appUrl),
   title: "Agora Forge | Adaptive Portfolio & Cross-Chain Execution",
   description:
     "AI-native adaptive portfolio manager with Circle CCTP cross-chain execution for the Agora Agent Hackathon.",
@@ -25,6 +29,13 @@ export const metadata: Metadata = {
     "adaptive portfolio",
     "Agora Hackathon",
   ],
+  openGraph: {
+    title: "Agora Forge",
+    description: "Adaptive portfolio + Circle CCTP cross-chain execution",
+    url: appUrl,
+    siteName: "Agora Forge",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
