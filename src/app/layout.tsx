@@ -24,9 +24,9 @@ const appUrl =
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
-  title: "Agora Forge | Adaptive Portfolio & Cross-Chain Execution",
+  title: "Agora Forge | Multichain Portfolio · Bridge · Swap on Arc",
   description:
-    "AI-native adaptive portfolio manager with Circle CCTP cross-chain execution for the Agora Agent Hackathon.",
+    "Live multichain USDC portfolio (Zerion, GoldRush, CoinGecko) with Circle CCTP bridge, swap, and send on Arc testnet.",
   keywords: [
     "Circle",
     "Arc",
