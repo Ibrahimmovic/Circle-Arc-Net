@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import { Repeat, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
-import { getSwapChains, ARC_FEE_USDC } from "@/lib/network";
+import { getSwapChains, describeSwapFees } from "@/lib/network";
+import { wagmiChainIdForAppKit } from "@/lib/chains";
+import { FeeHint } from "./fee-hint";
 import { useNetwork } from "@/providers/network-context";
 import { pushTx } from "@/lib/tx-store";
 
@@ -17,6 +19,8 @@ const SWAP_PAIRS = [
 
 export function SwapPanel() {
   const { isConnected } = useAccount();
+  const chainId = useChainId();
+  const { switchChain, isPending: switching } = useSwitchChain();
   const { network } = useNetwork();
   const swapChains = getSwapChains(network);
   const defaultChain =
@@ -34,6 +38,12 @@ export function SwapPanel() {
   const kitKey = process.env.NEXT_PUBLIC_CIRCLE_KIT_KEY;
   const pair = SWAP_PAIRS[pairIdx];
   const chainMeta = swapChains.find((c) => c.appKitChain === chain);
+  const swapFeeText = describeSwapFees(chain);
+  const requiredChainId = wagmiChainIdForAppKit(chain);
+  const needsSwitch =
+    isConnected &&
+    requiredChainId != null &&
+    chainId !== requiredChainId;
 
   useEffect(() => {
     const list = getSwapChains(network);
@@ -77,7 +87,7 @@ export function SwapPanel() {
       });
       const out = est.estimatedOutput?.amount ?? "—";
       setEstimatedOut(`${out} ${est.estimatedOutput?.token ?? pair.tokenOut}`);
-      setMessage(`Swap on ${chainMeta?.label ?? chain} · ${ARC_FEE_USDC}`);
+      setMessage(describeSwapFees(chain));
       setStatus("idle");
     } catch (e) {
       setStatus("error");
@@ -89,6 +99,13 @@ export function SwapPanel() {
     if (!isConnected || !kitKey) {
       setStatus("error");
       setMessage("Connect wallet + configure KIT_KEY.");
+      return;
+    }
+    if (needsSwitch && requiredChainId) {
+      setStatus("error");
+      setMessage(
+        `Switch wallet to ${chainMeta?.label ?? chain} — swap gas is paid on that chain.`,
+      );
       return;
     }
     setStatus("executing");
@@ -107,10 +124,10 @@ export function SwapPanel() {
         type: "swap",
         status: "success",
         summary: `Swap ${amountIn} ${pair.tokenIn}→${pair.tokenOut} on ${chainMeta?.label}`,
-        feeUsd: "0.01",
+        feeUsd: chain === "Arc_Testnet" ? "Arc USDC" : "source chain",
       });
       setStatus("success");
-      setMessage(`Swap submitted on ${chainMeta?.label} · ${ARC_FEE_USDC}`);
+      setMessage(`Swap submitted on ${chainMeta?.label} · ${describeSwapFees(chain)}`);
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e);
       setStatus("error");
@@ -118,7 +135,17 @@ export function SwapPanel() {
         err.includes("balance") ? `${err} — Fund USDC via Fund tab first.` : err,
       );
     }
-  }, [isConnected, kitKey, chain, pair, amountIn, getAdapter, chainMeta]);
+  }, [
+    isConnected,
+    kitKey,
+    chain,
+    pair,
+    amountIn,
+    getAdapter,
+    chainMeta,
+    needsSwitch,
+    requiredChainId,
+  ]);
 
   if (swapChains.length === 0) {
     return (
@@ -137,12 +164,27 @@ export function SwapPanel() {
         <div>
           <h3 className="font-display text-lg font-bold text-white">Same-Chain Swap</h3>
           <p className="text-sm text-slate-300">
-            Circle Swap Kit · USDC / USDT / EURC · {ARC_FEE_USDC}
+            Circle Swap Kit · fees on the chain you swap on
           </p>
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <FeeHint summary={swapFeeText} />
+
+      {needsSwitch && requiredChainId && (
+        <button
+          type="button"
+          disabled={switching}
+          onClick={() => switchChain({ chainId: requiredChainId })}
+          className="mt-4 w-full rounded-xl border border-amber-500/40 bg-amber-500/15 py-2.5 text-sm font-semibold text-amber-100"
+        >
+          {switching
+            ? "Switching…"
+            : `Switch wallet to ${chainMeta?.label ?? chain}`}
+        </button>
+      )}
+
+      <div className="grid gap-3 sm:grid-cols-3 mt-4">
         <label className="block sm:col-span-1">
           <span className="text-xs uppercase text-slate-400">Chain</span>
           <select
@@ -184,7 +226,7 @@ export function SwapPanel() {
 
       {network === "testnet" && (
         <p className="mt-3 text-xs text-cyan-300/80">
-          Testnet swaps: use <strong>Arc Testnet</strong> (★) — fees in Arc USDC.
+          Testnet: swap on <strong>Arc Testnet</strong> (★) — all gas in Arc USDC, not Base Sepolia.
         </p>
       )}
 

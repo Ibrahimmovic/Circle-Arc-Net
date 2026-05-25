@@ -35,9 +35,9 @@ export default function ExecutePage() {
         <MarketTicker />
         {!isConnected && (
           <p className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
-            Connect wallet (top-right) · {network} mode · Testnet swaps on Arc
-            Testnet · {ARC_FEE_USDC}
-            {isTestnet ? " · Fund via Fund tab first" : ""}
+            Connect on Arc Testnet (default) · Bridge/swap fees paid on the
+            source chain · Arc USDC when Arc is source · {ARC_FEE_USDC} on Arc
+            {isTestnet ? " · Fund ARC-TESTNET first" : ""}
           </p>
         )}
         <ExecuteHub />

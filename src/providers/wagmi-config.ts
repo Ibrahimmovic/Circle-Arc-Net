@@ -6,17 +6,29 @@ import {
   sepolia,
   arbitrum,
   arbitrumSepolia,
+  optimismSepolia,
+  avalancheFuji,
   polygon,
 } from "wagmi/chains";
 import { injected, walletConnect } from "wagmi/connectors";
+import { arcTestnet } from "@/lib/chains";
 
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_ID;
 const testnet =
   (process.env.NEXT_PUBLIC_NETWORK ?? "testnet") !== "mainnet";
 
+const testnetChains = [
+  arcTestnet,
+  baseSepolia,
+  sepolia,
+  arbitrumSepolia,
+  optimismSepolia,
+  avalancheFuji,
+] as const;
+
 export const wagmiConfig = createConfig({
   chains: testnet
-    ? [baseSepolia, sepolia, arbitrumSepolia, mainnet, base]
+    ? [...testnetChains]
     : [mainnet, base, arbitrum, polygon, baseSepolia],
   connectors: [
     injected(),
@@ -25,6 +37,7 @@ export const wagmiConfig = createConfig({
       : []),
   ],
   transports: {
+    [arcTestnet.id]: http(),
     [mainnet.id]: http(),
     [base.id]: http(),
     [arbitrum.id]: http(),
@@ -32,6 +45,11 @@ export const wagmiConfig = createConfig({
     [baseSepolia.id]: http(),
     [sepolia.id]: http(),
     [arbitrumSepolia.id]: http(),
+    [optimismSepolia.id]: http(),
+    [avalancheFuji.id]: http(),
   },
   ssr: false,
 });
+
+/** Default wallet chain: Arc Testnet on testnet, Ethereum on mainnet. */
+export const defaultWalletChainId = testnet ? arcTestnet.id : mainnet.id;

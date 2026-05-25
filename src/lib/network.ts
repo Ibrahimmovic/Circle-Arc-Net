@@ -144,3 +144,100 @@ export function getGoldRushSepoliaChains(): string[] {
 }
 
 export const ARC_FEE_USDC = "~$0.01 USDC on Arc";
+
+/** Human-readable gas token per chain (Circle CCTP pays gas on the chain where each step runs). */
+const GAS_TOKEN_BY_CHAIN: Record<string, string> = {
+  Arc_Testnet: "USDC",
+  Base_Sepolia: "ETH",
+  Ethereum_Sepolia: "ETH",
+  Arbitrum_Sepolia: "ETH",
+  Optimism_Sepolia: "ETH",
+  Avalanche_Fuji: "AVAX",
+  Ethereum: "ETH",
+  Base: "ETH",
+  Arbitrum: "ETH",
+  Polygon: "MATIC",
+  Optimism: "ETH",
+  Avalanche: "AVAX",
+};
+
+export function getGasToken(appKitChain: string): string {
+  return GAS_TOKEN_BY_CHAIN[appKitChain] ?? "native";
+}
+
+/** Primary chain user should connect to on testnet (Arc-first, not Base Sepolia). */
+export const TESTNET_HOME_CHAIN = "Arc_Testnet";
+
+/**
+ * Fee settlement copy: gas is paid on the chain where approve/burn/mint runs.
+ * - From Arc → Arc USDC gas
+ * - From Base → Base Sepolia ETH gas (+ USDC on Arc only if you mint there)
+ */
+export function describeBridgeFees(
+  fromAppKit: string,
+  toAppKit: string,
+  mode: NetworkMode = "testnet",
+): {
+  summary: string;
+  sourceLine: string;
+  destLine: string;
+  arcPreferred: boolean;
+} {
+  const chains = getBridgeChains(mode);
+  const fromLabel =
+    chains.find((c) => c.appKitChain === fromAppKit)?.label ?? fromAppKit;
+  const toLabel =
+    chains.find((c) => c.appKitChain === toAppKit)?.label ?? toAppKit;
+
+  const fromIsArc = fromAppKit === "Arc_Testnet";
+  const toIsArc = toAppKit === "Arc_Testnet";
+  const fromGas = getGasToken(fromAppKit);
+  const toGas = getGasToken(toAppKit);
+
+  const sourceLine = fromIsArc
+    ? `Source (burn on Arc): gas in Arc USDC (~$0.01 typical)`
+    : `Source (burn on ${fromLabel}): gas in ${fromGas} on that chain`;
+
+  const destLine = toIsArc
+    ? `Destination (mint on Arc): gas in Arc USDC if you submit mint; Circle forwarder can relay`
+    : `Destination (mint on ${toLabel}): gas in ${toGas} on that chain`;
+
+  let summary: string;
+  if (fromIsArc && !toIsArc) {
+    summary = "Fees for this route: paid in Arc USDC on Arc (source). No Base Sepolia tx required for the burn.";
+  } else if (!fromIsArc && toIsArc) {
+    summary = `Fees for this route: source burn paid in ${fromGas} on ${fromLabel}; mint side uses Arc USDC.`;
+  } else if (fromIsArc && toIsArc) {
+    summary = "Fees: Arc USDC only (Arc-native gas).";
+  } else {
+    summary = `Fees: ${fromGas} on ${fromLabel} (source) · ${toGas} on ${toLabel} (destination mint).`;
+  }
+
+  return { summary, sourceLine, destLine, arcPreferred: fromIsArc || toIsArc };
+}
+
+export function describeSwapFees(appKitChain: string): string {
+  if (appKitChain === "Arc_Testnet") {
+    return "Swap gas & protocol fees: Arc Testnet USDC (native gas on Arc).";
+  }
+  const gas = getGasToken(appKitChain);
+  return `Swap fees: paid on ${appKitChain.replace(/_/g, " ")} in ${gas} + USDC where applicable.`;
+}
+
+export type GasFeeLine = {
+  step: string;
+  chain: string;
+  token: string;
+};
+
+/** Format Circle estimateBridge gasFees for UI. */
+export function formatKitGasFees(
+  gasFees: Array<{ name?: string; blockchain?: string; token?: string }> | undefined,
+): GasFeeLine[] {
+  if (!gasFees?.length) return [];
+  return gasFees.map((g) => ({
+    step: g.name ?? "step",
+    chain: String(g.blockchain ?? "").replace(/_/g, " "),
+    token: g.token ?? "native",
+  }));
+}

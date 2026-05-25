@@ -12,8 +12,10 @@ export function FaucetPanel() {
   const { address, isConnected } = useAccount();
   const { network } = useNetwork();
   const chains = getBridgeChains(network).filter((c) => c.circleFaucet);
+  const arcFaucet =
+    chains.find((c) => c.isArc)?.circleFaucet ?? chains[0]?.circleFaucet;
   const [blockchain, setBlockchain] = useState<CircleFaucetBlockchain>(
-    (chains[0]?.circleFaucet as CircleFaucetBlockchain) ?? "BASE-SEPOLIA",
+    (arcFaucet as CircleFaucetBlockchain) ?? "ARC-TESTNET",
   );
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">(
     "idle",
@@ -128,7 +130,7 @@ export function FaucetPanel() {
           )}
 
           <p className="mt-3 text-xs text-slate-500">
-            After funding, wait ~30s then run Bridge or Swap on the same chain.
+            Fund Arc first for Arc-native fees. For Base→Arc bridges, fund Base too.
           </p>
         </div>
       </div>

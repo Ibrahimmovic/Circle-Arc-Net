@@ -42,7 +42,7 @@ export default function HomePage() {
               Connect your wallet to start
             </p>
             <p className="mt-2 text-slate-300">
-              Use the button top-right · Testnet: Base Sepolia · Fees in Arc USDC
+              Use Connect Wallet · Default network: Arc Testnet · Fees on the chain you use
             </p>
             <Link
               href="/execute"

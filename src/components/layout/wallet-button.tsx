@@ -4,7 +4,7 @@ import { useAccount, useConnect, useDisconnect, useChainId } from "wagmi";
 import { Wallet, LogOut, Loader2 } from "lucide-react";
 import { shortenAddress } from "@/lib/utils";
 import { useNetwork } from "@/providers/network-context";
-import { baseSepolia, mainnet } from "wagmi/chains";
+import { defaultWalletChainId } from "@/providers/wagmi-config";
 import { useSwitchChain } from "wagmi";
 
 export function WalletButton() {
@@ -14,7 +14,7 @@ export function WalletButton() {
   const { switchChain } = useSwitchChain();
   const { isTestnet } = useNetwork();
 
-  const targetChainId = isTestnet ? baseSepolia.id : mainnet.id;
+  const targetChainId = defaultWalletChainId;
   const onWrongChain = isConnected && chainId !== targetChainId;
 
   if (isConnected && address) {
@@ -26,7 +26,7 @@ export function WalletButton() {
             onClick={() => switchChain({ chainId: targetChainId })}
             className="rounded-xl border border-amber-500/50 bg-amber-500/15 px-3 py-2 text-xs font-medium text-amber-200"
           >
-            Switch to {isTestnet ? "Base Sepolia" : "Ethereum"}
+            Switch to {isTestnet ? "Arc Testnet" : "Ethereum"}
           </button>
         )}
         <button
