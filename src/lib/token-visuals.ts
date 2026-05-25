@@ -21,7 +21,7 @@ export const CHAIN_ICONS: Record<string, string> = {
 };
 
 export const ARC_FEE_COPY =
-  "All Agora fees settle in Arc USDC (~$0.01). Fund ARC-TESTNET in the Fund tab.";
+  "Every action debits 0.01 USDC on Arc Testnet first — then your swap/bridge signs.";
 
 export function tokenIcon(symbol: string): string | undefined {
   return TOKEN_ICONS[symbol.toUpperCase()] ?? TOKEN_ICONS[symbol];

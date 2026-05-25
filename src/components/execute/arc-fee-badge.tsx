@@ -17,7 +17,7 @@ export function ArcFeeBadge({ compact }: { compact?: boolean }) {
     <div className="rounded-xl border border-cyan-500/25 bg-gradient-to-r from-cyan-950/80 to-violet-950/40 px-3 py-2.5">
       <p className="text-xs font-medium text-cyan-100">{ARC_FEE_COPY}</p>
       <p className="mt-0.5 text-[10px] text-slate-400">
-        Bridge, swap, and send — one fee wallet on Arc Testnet
+        You will sign a small USDC transfer on Arc before each exchange
       </p>
     </div>
   );

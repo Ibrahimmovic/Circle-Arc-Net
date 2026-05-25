@@ -1,3 +1,5 @@
+import { lifiTokenParam } from "@/lib/lifi-tokens";
+
 /** LI.FI aggregator (Jumper-style routes) — server + client helpers */
 
 export interface LifiQuoteParams {
@@ -37,8 +39,17 @@ export async function fetchLifiQuote(
   const url = new URL(`${LIFI_BASE}/quote`);
   url.searchParams.set("fromChain", String(params.fromChain));
   url.searchParams.set("toChain", String(params.toChain));
-  url.searchParams.set("fromToken", params.fromToken);
-  url.searchParams.set("toToken", params.toToken);
+  const fromTok =
+    typeof params.fromToken === "string" && params.fromToken.startsWith("0x")
+      ? params.fromToken
+      : lifiTokenParam(params.fromChain, params.fromToken);
+  const toTok =
+    typeof params.toToken === "string" && params.toToken.startsWith("0x")
+      ? params.toToken
+      : lifiTokenParam(params.toChain, params.toToken);
+
+  url.searchParams.set("fromToken", fromTok);
+  url.searchParams.set("toToken", toTok);
   url.searchParams.set("fromAmount", params.fromAmount);
   url.searchParams.set("fromAddress", params.fromAddress);
   if (params.toAddress) {

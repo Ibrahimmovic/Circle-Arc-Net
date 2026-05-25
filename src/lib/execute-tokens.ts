@@ -1,5 +1,6 @@
 import type { ChainOption } from "@/lib/network";
 import { TESTNET_HOME_CHAIN } from "@/lib/network";
+import { LIFI_TESTNET_TOKENS } from "@/lib/lifi-tokens";
 
 export type ExecuteProvider = "circle" | "lifi";
 
@@ -106,17 +107,10 @@ export const TESTNET_TOKENS: Record<string, ExecuteToken[]> = {
     {
       symbol: "USDC",
       name: "USD Coin",
-      address: "0x036CbD53842c542663c210983784c9c6Ca01eC09",
+      address: LIFI_TESTNET_TOKENS[84532]!.USDC.address,
       decimals: 6,
       circleKey: "USDC",
       cctp: true,
-    },
-    {
-      symbol: "USDT",
-      name: "Tether USD",
-      address: "0x5fd84259d66Cd4612354860Fe1Bc3c7f356E7d56",
-      decimals: 6,
-      cctp: false,
     },
     {
       symbol: "WETH",
@@ -227,7 +221,20 @@ export function getTestnetSwapChains(): SwapChainConfig[] {
 }
 
 export function getTokensForChain(appKitChain: string): ExecuteToken[] {
-  return TESTNET_TOKENS[appKitChain] ?? [];
+  const tokens = TESTNET_TOKENS[appKitChain] ?? [];
+  const cfg = TESTNET_SWAP_CHAINS.find((c) => c.appKitChain === appKitChain);
+  if (!cfg) return tokens;
+  const lifi = LIFI_TESTNET_TOKENS[cfg.lifiChainId];
+  if (!lifi) return tokens;
+  return tokens.map((t) => {
+    const verified = lifi[t.symbol.toUpperCase()];
+    if (!verified) return t;
+    return {
+      ...t,
+      address: verified.address,
+      decimals: verified.decimals,
+    };
+  });
 }
 
 export function getSwapChain(appKitChain: string): SwapChainConfig | undefined {
