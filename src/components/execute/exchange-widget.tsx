@@ -22,6 +22,7 @@ import {
   createWalletViemAdapter,
   executeCircleBridge,
 } from "@/lib/circle-bridge-exec";
+import { ensureCctpUsdcAllowance } from "@/lib/cctp-usdc-approve";
 import { useNetwork } from "@/providers/network-context";
 import { pushTx } from "@/lib/tx-store";
 import {
@@ -150,7 +151,7 @@ export function ExchangeWidget() {
         kind: "circle-cctp" as const,
         signChain: fromChain,
         label: "Circle CCTP bridge",
-        hint: "2 wallet popups: Arc fee, then bridge",
+        hint: "3 wallet steps: Arc fee, approve USDC, bridge burn",
       };
     }
     return plan;
@@ -244,7 +245,7 @@ export function ExchangeWidget() {
             gasPreviewFromBridgeEstimate(
               { gasFees: est.gasFees, fees: est.fees },
               amount,
-              true,
+              false,
             ),
           );
         } else if (route.kind === "uniswap-v3" || route.kind === "eth-wrap") {
@@ -280,23 +281,33 @@ export function ExchangeWidget() {
   const walletProgressSteps = useMemo((): WalletStep[] => {
     if (!isTestnet || status !== "loading") return [];
     const s = step ?? "";
-    const onBridge = s.includes("2/");
+    const m = s.match(/^(\d+)\//);
+    const n = m ? Number.parseInt(m[1], 10) : 0;
+    const isBridgeStepper = s.includes("Approve") || s.includes("Bridge");
+    if (!isBridgeStepper && n <= 1) {
+      return [
+        {
+          id: "fee",
+          title: "Arc fee",
+          state: n === 1 ? "active" : "pending",
+        },
+      ];
+    }
     return [
       {
         id: "fee",
         title: "Arc fee",
-        state: onBridge ? "done" : s.startsWith("1/") ? "active" : "pending",
+        state: n >= 2 ? "done" : n === 1 ? "active" : "pending",
       },
       {
         id: "allow",
-        title: "Allowance",
-        subtitle: "batched",
-        state: onBridge ? "skipped" : "pending",
+        title: "Approve",
+        state: n === 2 ? "active" : n >= 3 ? "done" : "pending",
       },
       {
         id: "bridge",
         title: "Bridge burn",
-        state: onBridge ? "active" : "pending",
+        state: n >= 3 ? "active" : "pending",
       },
     ];
   }, [isTestnet, status, step]);
@@ -488,7 +499,11 @@ export function ExchangeWidget() {
     const collected: TxScanStep[] = [];
     const isBridgeFlow =
       route.kind === "circle-cctp" || route.kind === "compound-swap-bridge";
-    const testnetSteps = isTestnet ? 2 : 1;
+    const testnetWalletSteps = isTestnet
+      ? isBridgeFlow
+        ? 3
+        : 2
+      : 1;
     try {
       const fetchLifi = async (fc: string, tc: string, fSym: string, tSym: string, amt: string) => {
         const fromCfg = getSwapChain(fc);
@@ -540,7 +555,7 @@ export function ExchangeWidget() {
 
       if (isTestnet) {
         if (cancelRef.current) throw new Error("Cancelled.");
-        setStep(`1/${testnetSteps} · Arc platform fee`);
+        setStep(`1/${testnetWalletSteps} · Arc platform fee`);
         setMessage(
           `Confirm ${ARC_PLATFORM_FEE_LABEL} on Arc Testnet (chain ${ARC_CHAIN_ID}) in your wallet.`,
         );
@@ -548,17 +563,23 @@ export function ExchangeWidget() {
         if (!fee.ok) throw new Error(fee.message);
         if (fee.txHash) {
           collected.push(arcFeeScanStep(fee.txHash));
-          setMessage(`Step 1/${testnetSteps} done · Arc fee confirmed`);
+          setMessage(`Step 1/${testnetWalletSteps} done · Arc fee confirmed`);
         }
       }
 
       if (cancelRef.current) throw new Error("Cancelled.");
 
       const signLabel = chains.find((c) => c.appKitChain === route.signChain)?.label;
-      setStep(isTestnet ? `2/${testnetSteps} · Bridge` : "Execute");
+      setStep(
+        isTestnet
+          ? isBridgeFlow
+            ? `2/${testnetWalletSteps} · Approve USDC`
+            : `2/${testnetWalletSteps} · Execute`
+          : "Execute",
+      );
       setMessage(
         isBridgeFlow
-          ? `Confirm bridge on ${signLabel} — approve + burn are usually one wallet popup`
+          ? `Step 2/${testnetWalletSteps}: approve USDC on ${signLabel} — wallet will ask spending limit · then step 3 burns for bridge`
           : `Confirm swap on ${signLabel}…`,
       );
       await switchWalletToChain(signChainId);
@@ -650,6 +671,29 @@ export function ExchangeWidget() {
         setStep(null);
         setMessage(`Swap complete · fee paid on Arc`);
       } else if (route.kind === "circle-cctp") {
+        let preApproveTx: string | undefined;
+        if (fromToken === "USDC") {
+          setStep(`2/${testnetWalletSteps} · Approve USDC`);
+          const allowance = await ensureCctpUsdcAllowance(
+            address,
+            route.signChain,
+            amount,
+            (msg) => setMessage(msg),
+          );
+          preApproveTx = allowance.approveTx;
+          if (preApproveTx) {
+            collected.push(scanStep("Approve USDC", preApproveTx, signChainId));
+            setMessage(
+              `Step 2/${testnetWalletSteps} done · approved ${amount} USDC for CCTP`,
+            );
+          }
+        }
+
+        setStep(`3/${testnetWalletSteps} · Bridge burn`);
+        setMessage(
+          `Step 3/${testnetWalletSteps}: confirm bridge burn on ${signLabel} in your wallet`,
+        );
+
         installCircleProxyFetch();
         const { AppKit } = await import("@circle-fin/app-kit");
         const kit = new AppKit();
@@ -663,17 +707,25 @@ export function ExchangeWidget() {
             token: "USDC",
           },
           (msg) => {
-            setStep(`2/${testnetSteps} · Bridge`);
+            if (msg.toLowerCase().includes("burn")) {
+              setStep(`3/${testnetWalletSteps} · Bridge burn`);
+            }
             setMessage(msg);
           },
+          { preApproved: Boolean(preApproveTx) },
         );
+        const captureMerged = {
+          ...capture,
+          approveTx: preApproveTx ?? capture.approveTx,
+          approveBundled: false,
+        };
         const submitted = bridgeSubmitStatus(
           typeof result.state === "string" ? result.state : undefined,
-          Boolean(capture.burnTx),
+          Boolean(captureMerged.burnTx),
         );
         const bridgeScans = buildBridgeScanSteps(
           collected,
-          capture,
+          captureMerged,
           result,
           fromChain,
           toChain,
@@ -684,7 +736,7 @@ export function ExchangeWidget() {
           status: submitted.uiStatus,
           summary: `${fromMeta?.label}→${toMeta?.label}`,
           feeUsd: "Arc USDC",
-          hash: capture.burnTx ?? capture.approveTx,
+          hash: captureMerged.burnTx ?? captureMerged.approveTx,
         });
         setStatus(submitted.uiStatus);
         setStep(null);
@@ -725,7 +777,21 @@ export function ExchangeWidget() {
           const h = await sendLifi(swapData, signChainId);
           stepA.push(scanStep("Swap to USDC", h, signChainId));
         }
-        setMessage("Step B: bridge USDC → Arc (Circle)…");
+        let preApproveTx: string | undefined;
+        setStep(`2/${testnetWalletSteps} · Approve USDC`);
+        const allowance = await ensureCctpUsdcAllowance(
+          address,
+          fromChain,
+          usdcAmount,
+          (msg) => setMessage(`Step B: ${msg}`),
+        );
+        preApproveTx = allowance.approveTx;
+        if (preApproveTx) {
+          stepA.push(scanStep("Approve USDC (CCTP)", preApproveTx, signChainId));
+        }
+
+        setStep(`3/${testnetWalletSteps} · Bridge burn`);
+        setMessage(`Step B: confirm USDC bridge burn on ${signLabel}…`);
         installCircleProxyFetch();
         const { AppKit } = await import("@circle-fin/app-kit");
         const kit = new AppKit();
@@ -738,14 +804,24 @@ export function ExchangeWidget() {
             config: getBridgeKitConfig(),
             token: "USDC",
           },
-          (msg) => setMessage(msg),
+          (msg) => {
+            if (msg.toLowerCase().includes("burn")) {
+              setStep(`3/${testnetWalletSteps} · Bridge burn`);
+            }
+            setMessage(`Step B: ${msg}`);
+          },
+          { preApproved: Boolean(preApproveTx) },
         );
+        const captureMerged = {
+          ...capture,
+          approveTx: preApproveTx ?? capture.approveTx,
+        };
         const allSteps = mergeScanSteps(
           collected,
           stepA,
           buildBridgeScanSteps(
             [],
-            capture,
+            captureMerged,
             result,
             fromChain,
             TESTNET_HOME_CHAIN,

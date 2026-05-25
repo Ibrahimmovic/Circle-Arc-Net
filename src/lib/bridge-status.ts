@@ -33,7 +33,7 @@ export function bridgeSubmitStatus(
     return {
       uiStatus: "error",
       label:
-        "Bridge may have failed — open the transaction links below. If burn succeeded, USDC arrives on destination in ~15 min (SLOW CCTP).",
+        "Bridge burn not confirmed — if you only see Approve in receipts, click Exchange again for step 3 (burn). If burn succeeded, USDC arrives in ~15 min (SLOW CCTP).",
     };
   }
 
