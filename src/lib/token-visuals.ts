@@ -24,7 +24,7 @@ export const ARC_FEE_COPY =
   "Every action debits 0.01 USDC on Arc Testnet first — then your swap/bridge signs.";
 
 export const ARC_BRIDGE_STEPS_COPY =
-  "Arc bridge: 2 wallet popups — (1) platform fee, (2) bridge (approve + burn often batched).";
+  "Arc bridge: 3 wallet steps — (1) platform fee, (2) approve USDC limit, (3) bridge burn.";
 
 export function tokenIcon(symbol: string): string | undefined {
   return TOKEN_ICONS[symbol.toUpperCase()] ?? TOKEN_ICONS[symbol];

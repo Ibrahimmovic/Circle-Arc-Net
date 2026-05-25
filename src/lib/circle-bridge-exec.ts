@@ -53,7 +53,9 @@ export async function executeCircleBridge(
   const onApprove = (payload: unknown) => {
     const h = txHashFromBridgeEvent(payload);
     if (h) approveTx = h;
-    onStep?.("Wallet: approve USDC on source chain (if prompted)…");
+    onStep?.(
+      "Wallet: approve USDC — MetaMask will ask how much USDC the bridge can spend.",
+    );
   };
   const onBurn = (payload: unknown) => {
     const h = txHashFromBridgeEvent(payload);

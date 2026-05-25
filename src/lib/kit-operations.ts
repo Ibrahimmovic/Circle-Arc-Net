@@ -10,12 +10,12 @@ export function getSwapKitConfig(kitKey: string) {
 }
 
 /**
- * Bridge config: batch approve+burn when wallet supports it.
+ * Bridge config: sequential approve → burn (separate wallet popups).
  * SLOW = no CCTP fast-transfer protocol fee (cheaper; ~15 min).
  */
 export function getBridgeKitConfig(preferFewerFees = true): BridgeConfig {
   return {
-    batchTransactions: true,
+    batchTransactions: false,
     transferSpeed: preferFewerFees ? "SLOW" : "FAST",
     maxFee: "0.05",
   };
@@ -93,4 +93,4 @@ export function summarizeBridgeEstimate(
 }
 
 export const BRIDGE_WALLET_STEPS =
-  "MetaMask may show 1–2 steps on Arc: (1) approve USDC once if needed, (2) bridge burn. Circle forwarder mints on destination — you do not sign on Base.";
+  "Wallet on Arc: (1) approve USDC spending limit, (2) bridge burn. Circle forwarder mints on destination — you do not sign on Base.";

@@ -91,8 +91,8 @@ export function gasPreviewFromBridgeEstimate(
 
   const walletNote =
     batchedApproveBurn && hasApprove
-      ? "Wallet: (1) Arc fee, (2) bridge — approve + burn are often one popup (batched)."
-      : "Wallet: (1) Arc fee, (2) approve USDC if needed, (3) bridge burn.";
+      ? "Wallet: (1) Arc fee, (2) bridge — approve + burn may batch in one popup."
+      : "Wallet: (1) Arc platform fee, (2) approve USDC limit, (3) bridge burn.";
 
   return {
     lines,
