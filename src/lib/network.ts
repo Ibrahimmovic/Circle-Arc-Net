@@ -66,7 +66,60 @@ export const BRIDGE_CHAINS_TESTNET: ChainOption[] = [
     bridge: true,
     swap: false,
   },
+  {
+    id: "linea-sepolia",
+    label: "Linea Sepolia",
+    appKitChain: "Linea_Sepolia",
+    bridge: true,
+    swap: false,
+  },
+  {
+    id: "polygon-amoy",
+    label: "Polygon Amoy",
+    appKitChain: "Polygon_Amoy_Testnet",
+    circleFaucet: "MATIC-AMOY",
+    bridge: true,
+    swap: false,
+  },
+  {
+    id: "unichain-sepolia",
+    label: "Unichain Sepolia",
+    appKitChain: "Unichain_Sepolia",
+    bridge: true,
+    swap: false,
+  },
+  {
+    id: "world-sepolia",
+    label: "World Chain Sepolia",
+    appKitChain: "World_Chain_Sepolia",
+    bridge: true,
+    swap: false,
+  },
+  {
+    id: "sonic-testnet",
+    label: "Sonic Testnet",
+    appKitChain: "Sonic_Testnet",
+    bridge: true,
+    swap: false,
+  },
+  {
+    id: "monad-testnet",
+    label: "Monad Testnet",
+    appKitChain: "Monad_Testnet",
+    bridge: true,
+    swap: false,
+  },
+  {
+    id: "sei-testnet",
+    label: "Sei Testnet",
+    appKitChain: "Sei_Testnet",
+    bridge: true,
+    swap: false,
+  },
 ];
+
+/** Testnet: Arc is the fee hub — swaps only on Arc; bridges out from Arc use Arc USDC. */
+export const TESTNET_ARC_HUB = true;
 
 /** CCTP bridge + swap — mainnet */
 export const BRIDGE_CHAINS_MAINNET: ChainOption[] = [
@@ -173,6 +226,10 @@ export const TESTNET_HOME_CHAIN = "Arc_Testnet";
  * - From Arc → Arc USDC gas
  * - From Base → Base Sepolia ETH gas (+ USDC on Arc only if you mint there)
  */
+export function describeTestnetArcHubFees(): string {
+  return "Testnet Arc hub: keep wallet on Arc Testnet. Swaps & outbound bridges debit Arc USDC (~$0.01). Destination mints use Circle forwarder (fewer extra chain txs).";
+}
+
 export function describeBridgeFees(
   fromAppKit: string,
   toAppKit: string,
@@ -204,7 +261,8 @@ export function describeBridgeFees(
 
   let summary: string;
   if (fromIsArc && !toIsArc) {
-    summary = "Fees for this route: paid in Arc USDC on Arc (source). No Base Sepolia tx required for the burn.";
+    summary =
+      "Arc → other: you sign on Arc only (USDC gas). Circle forwarder handles destination mint.";
   } else if (!fromIsArc && toIsArc) {
     summary = `Fees for this route: source burn paid in ${fromGas} on ${fromLabel}; mint side uses Arc USDC.`;
   } else if (fromIsArc && toIsArc) {

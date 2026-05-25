@@ -47,7 +47,10 @@ export async function listCircleWallets(): Promise<CircleWalletsResponse> {
 }
 
 export function getKitKey(): string | undefined {
-  return process.env.NEXT_PUBLIC_CIRCLE_KIT_KEY;
+  return (
+    process.env.CIRCLE_KIT_KEY ??
+    process.env.NEXT_PUBLIC_CIRCLE_KIT_KEY
+  );
 }
 
 export type CircleFaucetBlockchain =

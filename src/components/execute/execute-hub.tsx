@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { installCircleProxyFetch } from "@/lib/circle-proxy-fetch";
 import { BridgePanel } from "./bridge-panel";
 import { SwapPanel } from "./swap-panel";
 import { FaucetPanel } from "./faucet-panel";
@@ -19,6 +20,10 @@ type TabId = (typeof TABS)[number]["id"];
 
 export function ExecuteHub() {
   const [tab, setTab] = useState<TabId>("bridge");
+
+  useEffect(() => {
+    installCircleProxyFetch();
+  }, []);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">

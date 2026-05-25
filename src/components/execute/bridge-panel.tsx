@@ -6,10 +6,18 @@ import { ArrowRightLeft, Loader2, CheckCircle2, AlertCircle } from "lucide-react
 import {
   getBridgeChains,
   describeBridgeFees,
+  describeTestnetArcHubFees,
   formatKitGasFees,
+  TESTNET_HOME_CHAIN,
   type ChainOption,
 } from "@/lib/network";
 import { wagmiChainIdForAppKit } from "@/lib/chains";
+import { installCircleProxyFetch } from "@/lib/circle-proxy-fetch";
+import {
+  getBridgeKitConfig,
+  getBridgeDestination,
+} from "@/lib/kit-operations";
+import { defaultWalletChainId } from "@/providers/wagmi-config";
 import { useNetwork } from "@/providers/network-context";
 import { pushTx } from "@/lib/tx-store";
 import { FeeHint } from "./fee-hint";
@@ -20,15 +28,21 @@ export function BridgePanel() {
   const { isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChain, isPending: switching } = useSwitchChain();
-  const { network } = useNetwork();
+  const { network, isTestnet } = useNetwork();
   const chains = getBridgeChains(network);
-  const arcChain = chains.find((c) => c.isArc) ?? chains[0];
   const otherChains = chains.filter((c) => !c.isArc);
+  const arcOnly = isTestnet;
 
-  const [fromChain, setFromChain] = useState(arcChain?.appKitChain ?? "Arc_Testnet");
-  const [toChain, setToChain] = useState(
-    otherChains[0]?.appKitChain ?? "Base_Sepolia",
+  const defaultRemote = otherChains[0]?.appKitChain ?? "Base_Sepolia";
+  const [inboundFrom, setInboundFrom] = useState(defaultRemote);
+  const [toChain, setToChain] = useState(defaultRemote);
+  const [mainnetFrom, setMainnetFrom] = useState(
+    chains[0]?.appKitChain ?? "Ethereum",
   );
+  const [mainnetTo, setMainnetTo] = useState(
+    chains[1]?.appKitChain ?? "Base",
+  );
+  const [inboundMode, setInboundMode] = useState(false);
   const [amount, setAmount] = useState("10");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string | null>(null);
@@ -39,25 +53,37 @@ export function BridgePanel() {
     estimatedMinutes?: number;
   } | null>(null);
 
+  const effectiveFrom = arcOnly
+    ? inboundMode
+      ? inboundFrom
+      : TESTNET_HOME_CHAIN
+    : mainnetFrom;
+  const effectiveTo = arcOnly
+    ? inboundMode
+      ? TESTNET_HOME_CHAIN
+      : toChain
+    : mainnetTo;
+
   const feeInfo = useMemo(
-    () => describeBridgeFees(fromChain, toChain, network),
-    [fromChain, toChain, network],
+    () => describeBridgeFees(effectiveFrom, effectiveTo, network),
+    [effectiveFrom, effectiveTo, network],
   );
 
-  const requiredChainId = wagmiChainIdForAppKit(fromChain);
-  const fromMeta = chains.find((c) => c.appKitChain === fromChain);
-  const toMeta = chains.find((c) => c.appKitChain === toChain);
-  const needsSwitch =
-    isConnected &&
-    requiredChainId != null &&
-    chainId !== requiredChainId;
+  const requiredChainId =
+    arcOnly && !inboundMode
+      ? defaultWalletChainId
+      : wagmiChainIdForAppKit(effectiveFrom) ?? defaultWalletChainId;
+  const fromMeta = chains.find((c) => c.appKitChain === effectiveFrom);
+  const toMeta = chains.find((c) => c.appKitChain === effectiveTo);
+  const needsSwitch = isConnected && chainId !== requiredChainId;
 
   useEffect(() => {
+    installCircleProxyFetch();
     const list = getBridgeChains(network);
-    const arc = list.find((c) => c.isArc) ?? list[0];
     const others = list.filter((c) => !c.isArc);
-    setFromChain(arc?.appKitChain ?? "Arc_Testnet");
-    setToChain(others[0]?.appKitChain ?? "Ethereum_Sepolia");
+    setInboundFrom(others[0]?.appKitChain ?? "Base_Sepolia");
+    setToChain(others[0]?.appKitChain ?? "Base_Sepolia");
+    setInboundMode(false);
     setEstimate(null);
     setMessage(null);
     setGasLines([]);
@@ -69,6 +95,7 @@ export function BridgePanel() {
     setGasLines([]);
     try {
       if (isConnected && window.ethereum) {
+        installCircleProxyFetch();
         const { AppKit } = await import("@circle-fin/app-kit");
         const { createViemAdapterFromProvider } = await import(
           "@circle-fin/adapter-viem-v2"
@@ -78,9 +105,14 @@ export function BridgePanel() {
           provider: window.ethereum as never,
         });
         const live = await kit.estimateBridge({
-          from: { adapter, chain: fromChain as never },
-          to: { adapter, chain: toChain as never },
+          from: { adapter, chain: effectiveFrom as never },
+          to: getBridgeDestination(
+            effectiveTo,
+            adapter,
+            network,
+          ) as never,
           amount,
+          config: getBridgeKitConfig(),
         });
         setGasLines(formatKitGasFees(live.gasFees));
         const protocol = live.fees
@@ -100,7 +132,7 @@ export function BridgePanel() {
       setStatus("error");
       setMessage(e instanceof Error ? e.message : "Estimate failed");
     }
-  }, [fromChain, toChain, amount, isConnected]);
+  }, [effectiveFrom, effectiveTo, amount, isConnected, network]);
 
   const runBridge = useCallback(async () => {
     if (!isConnected || !window.ethereum) {
@@ -108,16 +140,19 @@ export function BridgePanel() {
       setMessage("Connect wallet first. Fund USDC on the source chain (Fund tab).");
       return;
     }
-    if (needsSwitch && requiredChainId) {
+    if (needsSwitch) {
       setStatus("error");
       setMessage(
-        `Switch wallet to ${fromMeta?.label ?? fromChain} — fees are paid in gas on the source chain.`,
+        arcOnly
+          ? "Switch wallet to Arc Testnet — testnet hub uses Arc USDC for outbound bridges."
+          : `Switch wallet to ${fromMeta?.label ?? effectiveFrom}.`,
       );
       return;
     }
 
     setStatus("executing");
     try {
+      installCircleProxyFetch();
       const { AppKit } = await import("@circle-fin/app-kit");
       const { createViemAdapterFromProvider } = await import(
         "@circle-fin/adapter-viem-v2"
@@ -128,21 +163,23 @@ export function BridgePanel() {
       });
 
       const result = await kit.bridge({
-        from: { adapter, chain: fromChain as never },
-        to: { adapter, chain: toChain as never },
+        from: { adapter, chain: effectiveFrom as never },
+        to: getBridgeDestination(effectiveTo, adapter, network) as never,
         amount,
+        config: getBridgeKitConfig(),
       });
 
-      const feeNote = fromChain === "Arc_Testnet"
-        ? "Gas paid in Arc USDC on source."
-        : `Gas paid on ${fromMeta?.label} (source); mint fees on ${toMeta?.label} if applicable.`;
+      const feeNote =
+        effectiveFrom === TESTNET_HOME_CHAIN
+          ? "Signed on Arc · USDC gas · forwarder mints on destination."
+          : `Source gas on ${fromMeta?.label}; Arc receives via CCTP.`;
 
       pushTx({
         type: "bridge",
         status: "success",
         summary: `Bridge ${amount} USDC ${fromMeta?.label} → ${toMeta?.label}`,
-        chain: fromChain,
-        feeUsd: fromChain === "Arc_Testnet" ? "Arc USDC" : "source chain",
+        chain: effectiveFrom,
+        feeUsd: effectiveFrom === TESTNET_HOME_CHAIN ? "Arc USDC" : "source",
       });
       setStatus("success");
       setMessage(`Bridge submitted · ${result.state ?? "pending"} · ${feeNote}`);
@@ -157,14 +194,15 @@ export function BridgePanel() {
       );
     }
   }, [
-    fromChain,
-    toChain,
+    effectiveFrom,
+    effectiveTo,
     amount,
     isConnected,
     fromMeta,
     toMeta,
     needsSwitch,
-    requiredChainId,
+    network,
+    arcOnly,
   ]);
 
   return (
@@ -182,11 +220,42 @@ export function BridgePanel() {
       </div>
 
       <FeeHint
-        summary={feeInfo.summary}
-        lines={[feeInfo.sourceLine, feeInfo.destLine]}
+        summary={arcOnly ? describeTestnetArcHubFees() : feeInfo.summary}
+        lines={
+          arcOnly
+            ? undefined
+            : [feeInfo.sourceLine, feeInfo.destLine]
+        }
       />
 
-      {needsSwitch && requiredChainId && (
+      {arcOnly && (
+        <div className="mt-4 flex gap-2 rounded-xl border border-slate-700 bg-slate-950/80 p-1">
+          <button
+            type="button"
+            onClick={() => setInboundMode(false)}
+            className={`flex-1 rounded-lg py-2 text-xs font-semibold ${
+              !inboundMode
+                ? "bg-cyan-500/20 text-cyan-100"
+                : "text-slate-400"
+            }`}
+          >
+            Out from Arc (Arc USDC only)
+          </button>
+          <button
+            type="button"
+            onClick={() => setInboundMode(true)}
+            className={`flex-1 rounded-lg py-2 text-xs font-semibold ${
+              inboundMode
+                ? "bg-amber-500/15 text-amber-100"
+                : "text-slate-400"
+            }`}
+          >
+            Inbound to Arc (source chain gas)
+          </button>
+        </div>
+      )}
+
+      {needsSwitch && (
         <button
           type="button"
           disabled={switching}
@@ -195,24 +264,58 @@ export function BridgePanel() {
         >
           {switching
             ? "Switching…"
-            : `Switch wallet to ${fromMeta?.label} (required for this bridge)`}
+            : arcOnly
+              ? "Switch wallet to Arc Testnet"
+              : `Switch to ${fromMeta?.label}`}
         </button>
       )}
 
-      <ChainSelect
-        label="From"
-        value={fromChain}
-        chains={chains}
-        onChange={setFromChain}
-        className="mt-4"
-      />
-      <ChainSelect
-        label="To"
-        value={toChain}
-        chains={chains}
-        onChange={setToChain}
-        className="mt-3"
-      />
+      {arcOnly && !inboundMode ? (
+        <>
+          <div className="mt-4 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-200">
+            <span className="text-slate-500 text-xs uppercase">From</span>
+            <p className="font-medium text-cyan-100">Arc Testnet ★</p>
+          </div>
+          <ChainSelect
+            label="To"
+            value={toChain}
+            chains={otherChains}
+            onChange={setToChain}
+            className="mt-3"
+          />
+        </>
+      ) : arcOnly && inboundMode ? (
+        <>
+          <ChainSelect
+            label="From (source chain — gas on this chain)"
+            value={inboundFrom}
+            chains={otherChains}
+            onChange={setInboundFrom}
+            className="mt-4"
+          />
+          <div className="mt-3 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm">
+            <span className="text-slate-500 text-xs uppercase">To</span>
+            <p className="font-medium text-cyan-100">Arc Testnet ★</p>
+          </div>
+        </>
+      ) : (
+        <>
+          <ChainSelect
+            label="From"
+            value={mainnetFrom}
+            chains={chains}
+            onChange={setMainnetFrom}
+            className="mt-4"
+          />
+          <ChainSelect
+            label="To"
+            value={mainnetTo}
+            chains={chains}
+            onChange={setMainnetTo}
+            className="mt-3"
+          />
+        </>
+      )}
       <label className="mt-3 block">
         <span className="text-xs uppercase text-slate-400">USDC amount</span>
         <input

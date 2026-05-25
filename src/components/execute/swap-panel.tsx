@@ -2,54 +2,50 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
-import { Repeat, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
-import { getSwapChains, describeSwapFees } from "@/lib/network";
+import { Repeat, Loader2 } from "lucide-react";
+import {
+  getSwapChains,
+  describeSwapFees,
+  describeTestnetArcHubFees,
+  TESTNET_HOME_CHAIN,
+} from "@/lib/network";
 import { wagmiChainIdForAppKit } from "@/lib/chains";
+import { installCircleProxyFetch } from "@/lib/circle-proxy-fetch";
+import { getSwapKitConfig } from "@/lib/kit-operations";
 import { FeeHint } from "./fee-hint";
 import { useNetwork } from "@/providers/network-context";
 import { pushTx } from "@/lib/tx-store";
+import { defaultWalletChainId } from "@/providers/wagmi-config";
 
 type Status = "idle" | "estimating" | "executing" | "success" | "error";
 
+/** Arc testnet: USDC, EURC, cirBTC per Circle docs — USDT not supported on Arc testnet. */
 const SWAP_PAIRS = [
-  { tokenIn: "USDC" as const, tokenOut: "USDT" as const },
-  { tokenIn: "USDT" as const, tokenOut: "USDC" as const },
-  { tokenIn: "USDC" as const, tokenOut: "EURC" as const },
+  { tokenIn: "USDC" as const, tokenOut: "EURC" as const, label: "USDC → EURC" },
+  { tokenIn: "EURC" as const, tokenOut: "USDC" as const, label: "EURC → USDC" },
 ];
 
 export function SwapPanel() {
   const { isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChain, isPending: switching } = useSwitchChain();
-  const { network } = useNetwork();
+  const { network, isTestnet } = useNetwork();
   const swapChains = getSwapChains(network);
-  const defaultChain =
-    swapChains.find((c) => c.isArc)?.appKitChain ??
-    swapChains[0]?.appKitChain ??
-    "Arc_Testnet";
+  const chain = TESTNET_HOME_CHAIN;
 
-  const [chain, setChain] = useState(defaultChain);
   const [pairIdx, setPairIdx] = useState(0);
-  const [amountIn, setAmountIn] = useState("5");
+  const [amountIn, setAmountIn] = useState("1");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [estimatedOut, setEstimatedOut] = useState<string | null>(null);
 
   const kitKey = process.env.NEXT_PUBLIC_CIRCLE_KIT_KEY;
   const pair = SWAP_PAIRS[pairIdx];
-  const chainMeta = swapChains.find((c) => c.appKitChain === chain);
-  const swapFeeText = describeSwapFees(chain);
-  const requiredChainId = wagmiChainIdForAppKit(chain);
-  const needsSwitch =
-    isConnected &&
-    requiredChainId != null &&
-    chainId !== requiredChainId;
+  const arcChainId = wagmiChainIdForAppKit(chain) ?? defaultWalletChainId;
+  const needsSwitch = isConnected && chainId !== arcChainId;
 
   useEffect(() => {
-    const list = getSwapChains(network);
-    const def =
-      list.find((c) => c.isArc)?.appKitChain ?? list[0]?.appKitChain ?? "Arc_Testnet";
-    setChain(def);
+    installCircleProxyFetch();
     setMessage(null);
     setEstimatedOut(null);
   }, [network]);
@@ -64,17 +60,24 @@ export function SwapPanel() {
 
   const runEstimate = useCallback(async () => {
     setStatus("estimating");
+    setMessage(null);
     if (!kitKey) {
       setStatus("error");
-      setMessage("KIT_KEY missing in Vercel env.");
+      setMessage("KIT_KEY missing — add CIRCLE_KIT_KEY in Vercel env.");
       return;
     }
     if (!isConnected) {
       setStatus("error");
-      setMessage("Connect wallet to estimate swap on Circle Swap Kit.");
+      setMessage("Connect wallet on Arc Testnet.");
+      return;
+    }
+    if (needsSwitch) {
+      setStatus("error");
+      setMessage("Switch wallet to Arc Testnet first.");
       return;
     }
     try {
+      installCircleProxyFetch();
       const { AppKit } = await import("@circle-fin/app-kit");
       const kit = new AppKit();
       const adapter = await getAdapter();
@@ -83,74 +86,70 @@ export function SwapPanel() {
         tokenIn: pair.tokenIn,
         tokenOut: pair.tokenOut,
         amountIn,
-        config: { kitKey },
+        config: getSwapKitConfig(kitKey),
       });
       const out = est.estimatedOutput?.amount ?? "—";
       setEstimatedOut(`${out} ${est.estimatedOutput?.token ?? pair.tokenOut}`);
-      setMessage(describeSwapFees(chain));
+      setMessage("Quote ready · one wallet signature if permit works (~1 tx).");
       setStatus("idle");
     } catch (e) {
       setStatus("error");
-      setMessage(e instanceof Error ? e.message : "Estimate failed");
+      const err = e instanceof Error ? e.message : String(e);
+      setMessage(
+        err.includes("Failed to fetch")
+          ? `${err} — redeploy with latest build (Circle API proxy). Try USDC→EURC with funded Arc wallet.`
+          : err,
+      );
     }
-  }, [isConnected, kitKey, chain, pair, amountIn, getAdapter, chainMeta]);
+  }, [isConnected, kitKey, pair, amountIn, getAdapter, needsSwitch]);
 
   const runSwap = useCallback(async () => {
     if (!isConnected || !kitKey) {
       setStatus("error");
-      setMessage("Connect wallet + configure KIT_KEY.");
+      setMessage("Connect wallet + configure KIT_KEY in Vercel.");
       return;
     }
-    if (needsSwitch && requiredChainId) {
+    if (needsSwitch) {
       setStatus("error");
-      setMessage(
-        `Switch wallet to ${chainMeta?.label ?? chain} — swap gas is paid on that chain.`,
-      );
+      setMessage("Switch to Arc Testnet — swap fees are Arc USDC only.");
       return;
     }
     setStatus("executing");
     try {
+      installCircleProxyFetch();
       const { AppKit } = await import("@circle-fin/app-kit");
       const kit = new AppKit();
       const adapter = await getAdapter();
-      const result = await kit.swap({
+      await kit.swap({
         from: { adapter, chain: chain as never },
         tokenIn: pair.tokenIn,
         tokenOut: pair.tokenOut,
         amountIn,
-        config: { kitKey },
+        config: getSwapKitConfig(kitKey),
       });
       pushTx({
         type: "swap",
         status: "success",
-        summary: `Swap ${amountIn} ${pair.tokenIn}→${pair.tokenOut} on ${chainMeta?.label}`,
-        feeUsd: chain === "Arc_Testnet" ? "Arc USDC" : "source chain",
+        summary: `Swap ${amountIn} ${pair.label} on Arc`,
+        feeUsd: "Arc USDC",
       });
       setStatus("success");
-      setMessage(`Swap submitted on ${chainMeta?.label} · ${describeSwapFees(chain)}`);
+      setMessage(`Swap submitted on Arc Testnet · ${describeSwapFees(chain)}`);
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e);
       setStatus("error");
       setMessage(
-        err.includes("balance") ? `${err} — Fund USDC via Fund tab first.` : err,
+        err.includes("balance") || err.includes("insufficient")
+          ? `${err} — Fund tab → ARC-TESTNET faucet.`
+          : err,
       );
     }
-  }, [
-    isConnected,
-    kitKey,
-    chain,
-    pair,
-    amountIn,
-    getAdapter,
-    chainMeta,
-    needsSwitch,
-    requiredChainId,
-  ]);
+  }, [isConnected, kitKey, pair, amountIn, getAdapter, needsSwitch]);
 
-  if (swapChains.length === 0) {
+  if (isTestnet && swapChains.length === 0) {
     return (
       <div className="panel-elevated rounded-2xl p-6 text-slate-300">
-        No swap chains for {network}. Switch network or use Bridge.
+        No swap chains for testnet.
       </div>
     );
   }
@@ -162,43 +161,36 @@ export function SwapPanel() {
           <Repeat className="h-6 w-6" />
         </div>
         <div>
-          <h3 className="font-display text-lg font-bold text-white">Same-Chain Swap</h3>
+          <h3 className="font-display text-lg font-bold text-white">
+            Arc Testnet Swap
+          </h3>
           <p className="text-sm text-slate-300">
-            Circle Swap Kit · fees on the chain you swap on
+            USDC ↔ EURC · fees in Arc USDC · single-chain
           </p>
         </div>
       </div>
 
-      <FeeHint summary={swapFeeText} />
+      <FeeHint
+        summary={isTestnet ? describeTestnetArcHubFees() : describeSwapFees(chain)}
+      />
 
-      {needsSwitch && requiredChainId && (
+      {needsSwitch && (
         <button
           type="button"
           disabled={switching}
-          onClick={() => switchChain({ chainId: requiredChainId })}
+          onClick={() => switchChain({ chainId: arcChainId })}
           className="mt-4 w-full rounded-xl border border-amber-500/40 bg-amber-500/15 py-2.5 text-sm font-semibold text-amber-100"
         >
-          {switching
-            ? "Switching…"
-            : `Switch wallet to ${chainMeta?.label ?? chain}`}
+          {switching ? "Switching…" : "Switch wallet to Arc Testnet"}
         </button>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-3 mt-4">
-        <label className="block sm:col-span-1">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <label className="block">
           <span className="text-xs uppercase text-slate-400">Chain</span>
-          <select
-            value={chain}
-            onChange={(e) => setChain(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-slate-600 bg-slate-950 px-3 py-3 text-white"
-          >
-            {swapChains.map((c) => (
-              <option key={c.id} value={c.appKitChain}>
-                {c.label}
-                {c.isArc ? " ★" : ""}
-              </option>
-            ))}
-          </select>
+          <div className="mt-1 rounded-xl border border-cyan-500/30 bg-cyan-950/30 px-3 py-3 text-sm font-medium text-cyan-100">
+            Arc Testnet ★ · all fees in Arc USDC
+          </div>
         </label>
         <label className="block">
           <span className="text-xs uppercase text-slate-400">Pair</span>
@@ -208,13 +200,13 @@ export function SwapPanel() {
             className="mt-1 w-full rounded-xl border border-slate-600 bg-slate-950 px-3 py-3 text-white"
           >
             {SWAP_PAIRS.map((p, i) => (
-              <option key={i} value={i}>
-                {p.tokenIn} → {p.tokenOut}
+              <option key={p.label} value={i}>
+                {p.label}
               </option>
             ))}
           </select>
         </label>
-        <label className="block">
+        <label className="block sm:col-span-2">
           <span className="text-xs uppercase text-slate-400">Amount</span>
           <input
             value={amountIn}
@@ -223,12 +215,6 @@ export function SwapPanel() {
           />
         </label>
       </div>
-
-      {network === "testnet" && (
-        <p className="mt-3 text-xs text-cyan-300/80">
-          Testnet: swap on <strong>Arc Testnet</strong> (★) — all gas in Arc USDC, not Base Sepolia.
-        </p>
-      )}
 
       {estimatedOut && (
         <div className="mt-4 rounded-xl border border-emerald-500/25 bg-emerald-950/40 p-3 text-sm text-emerald-100">
@@ -252,12 +238,30 @@ export function SwapPanel() {
 
       <div className="mt-6 flex gap-3">
         <button type="button" onClick={runEstimate} className="btn-secondary">
-          Estimate + Fees
+          {status === "estimating" ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            "Estimate"
+          )}
         </button>
-        <button type="button" onClick={runSwap} className="btn-primary px-6 py-2.5 rounded-xl text-sm font-bold text-white">
-          Execute Swap
+        <button
+          type="button"
+          onClick={runSwap}
+          className="btn-primary px-6 py-2.5 rounded-xl text-sm font-bold text-white"
+        >
+          {status === "executing" ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            "Execute Swap"
+          )}
         </button>
       </div>
     </div>
   );
+}
+
+declare global {
+  interface Window {
+    ethereum?: unknown;
+  }
 }
