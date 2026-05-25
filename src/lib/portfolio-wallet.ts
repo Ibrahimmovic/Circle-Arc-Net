@@ -297,23 +297,38 @@ export async function buildPortfolioWalletFeed(
   const spamActivities: PortfolioActivity[] = [];
 
   const zerionOn = isZerionConfigured();
+  let zerionStatus: "ok" | "error" | "off" = zerionOn ? "error" : "off";
+  let zerionMessage: string | undefined;
+
+  const zerionCatch = <T>(label: string) => (e: unknown) => {
+    if (!zerionMessage && e instanceof Error) {
+      zerionMessage = `${label}: ${e.message.slice(0, 120)}`;
+    }
+    return null;
+  };
 
   const [portfolio, positionsClean, positionsSpam, txs, nftPos, goldBundle] =
     await Promise.all([
       zerionOn
-        ? getWalletPortfolio(address, testnet).catch(() => null)
+        ? getWalletPortfolio(address, testnet).catch(zerionCatch("portfolio"))
         : Promise.resolve(null),
       zerionOn
-        ? getWalletPositions(address, testnet, "only_non_trash").catch(() => null)
+        ? getWalletPositions(address, testnet, "only_non_trash").catch(
+            zerionCatch("positions"),
+          )
         : Promise.resolve(null),
       zerionOn
-        ? getWalletPositions(address, testnet, "only_trash").catch(() => null)
+        ? getWalletPositions(address, testnet, "only_trash").catch(
+            zerionCatch("spam"),
+          )
         : Promise.resolve(null),
       zerionOn
-        ? getWalletTransactions(address, testnet, "no_filter").catch(() => null)
+        ? getWalletTransactions(address, testnet, "no_filter").catch(
+            zerionCatch("transactions"),
+          )
         : Promise.resolve(null),
       zerionOn
-        ? getWalletNftPositions(address, testnet).catch(() => null)
+        ? getWalletNftPositions(address, testnet).catch(zerionCatch("nfts"))
         : Promise.resolve(null),
       testnet
         ? getBalancesForNetworkMode(address, true).catch(() => null)
@@ -324,6 +339,8 @@ export async function buildPortfolioWalletFeed(
 
   if (portfolio?.data) {
     zerionAvailable = true;
+    zerionStatus = "ok";
+    zerionMessage = undefined;
     sources.push(testnet ? "Zerion" : "Zerion portfolio");
     const attrs = portfolio.data.attributes;
     change24hPct = attrs?.changes?.percent_1d ?? 0;
@@ -480,9 +497,18 @@ export async function buildPortfolioWalletFeed(
     }
   }
 
+  if (zerionOn && !zerionAvailable) {
+    zerionStatus = "error";
+    if (!zerionMessage) {
+      zerionMessage = "Zerion did not return data — check API key or rate limits.";
+    }
+  }
+
   const dataSourceLabel = zerionAvailable
     ? "Zerion + GoldRush + CoinGecko"
-    : "GoldRush + CoinGecko";
+    : zerionOn
+      ? "GoldRush + CoinGecko (Zerion unavailable)"
+      : "GoldRush + CoinGecko";
 
   let walletUsd = 0;
   let defiUsd = 0;
@@ -546,6 +572,8 @@ export async function buildPortfolioWalletFeed(
       goldrush: Boolean(process.env.GOLDRUSH_API_KEY),
       coingecko: true,
     },
+    zerionStatus,
+    zerionMessage,
   };
 
   const analysis =

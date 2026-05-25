@@ -6,17 +6,25 @@ export function PortfolioSetupBanner({
   zerionAvailable,
   apis,
   dataSourceLabel,
+  zerionStatus,
+  zerionMessage,
 }: {
   zerionAvailable: boolean;
   dataSourceLabel?: string;
   apis?: { zerion: boolean; goldrush: boolean; coingecko: boolean };
+  zerionStatus?: "ok" | "error" | "off";
+  zerionMessage?: string;
 }) {
+  const zerionKeySet = apis?.zerion;
+  const showWarning = !zerionAvailable && zerionKeySet;
   return (
     <div
       className={`rounded-xl border px-4 py-3 text-sm ${
         zerionAvailable
           ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-100"
-          : "border-amber-500/35 bg-amber-500/10 text-amber-50"
+          : showWarning
+            ? "border-rose-500/35 bg-rose-500/10 text-rose-50"
+            : "border-amber-500/35 bg-amber-500/10 text-amber-50"
       }`}
     >
       <div className="flex flex-wrap items-start gap-3">
@@ -29,16 +37,27 @@ export function PortfolioSetupBanner({
           <p className="font-medium">
             {zerionAvailable
               ? "Live portfolio data connected"
-              : "Limited mode — add Zerion for full DeBank/Zerion experience"}
+              : showWarning
+                ? "Zerion key is set but API did not respond"
+                : "Limited mode — add Zerion for full DeBank/Zerion experience"}
           </p>
           <p className="mt-1 text-xs opacity-90">
             {dataSourceLabel ?? "Loading…"}
-            {!zerionAvailable && (
+            {zerionMessage && (
+              <span className="mt-1 block text-rose-200/90">{zerionMessage}</span>
+            )}
+            {!zerionKeySet && (
               <>
                 {" "}
                 · Set <code className="rounded bg-black/30 px-1">ZERION_API_KEY</code> on
                 Vercel for transactions, NFTs, and exact net worth.
               </>
+            )}
+            {showWarning && (
+              <span className="mt-1 block">
+                Redeploy after adding env vars. Use{" "}
+                <code className="rounded bg-black/30 px-1">NEXT_PUBLIC_NETWORK=mainnet</code>.
+              </span>
             )}
           </p>
           {apis && (

@@ -158,6 +158,8 @@ export function PortfolioCommandCenter() {
             zerionAvailable={data.zerionAvailable}
             dataSourceLabel={data.dataSourceLabel}
             apis={data.apisConfigured}
+            zerionStatus={data.zerionStatus}
+            zerionMessage={data.zerionMessage}
           />
 
           <PortfolioHero

@@ -11,6 +11,10 @@ function zerionAuth(): string {
   return Buffer.from(`${key}:`).toString("base64");
 }
 
+async function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 export async function zerionFetch<T>(
   path: string,
   options?: { testnet?: boolean },
@@ -21,17 +25,23 @@ export async function zerionFetch<T>(
   };
   if (options?.testnet) headers["X-Env"] = "testnet";
 
-  const res = await fetch(`${ZERION_BASE}${path}`, {
-    headers,
-    cache: "no-store",
-  });
+  let lastError = "Zerion request failed";
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await sleep(800 * attempt);
 
-  if (!res.ok) {
+    const res = await fetch(`${ZERION_BASE}${path}`, {
+      headers,
+      cache: "no-store",
+    });
+
+    if (res.ok) return res.json() as Promise<T>;
+
     const text = await res.text();
-    throw new Error(`Zerion API ${res.status}: ${text.slice(0, 300)}`);
+    lastError = `Zerion API ${res.status}: ${text.slice(0, 200)}`;
+    if (res.status !== 429) break;
   }
 
-  return res.json() as Promise<T>;
+  throw new Error(lastError);
 }
 
 export interface ZerionPortfolioResponse {

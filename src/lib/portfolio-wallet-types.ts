@@ -106,4 +106,7 @@ export type PortfolioWalletFeed = {
     goldrush: boolean;
     coingecko: boolean;
   };
+  /** ok | error | off — why Zerion data may be missing */
+  zerionStatus?: "ok" | "error" | "off";
+  zerionMessage?: string;
 };

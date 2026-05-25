@@ -13,31 +13,35 @@ export async function GET() {
     kit: Boolean(process.env.NEXT_PUBLIC_CIRCLE_KIT_KEY),
     zerion: false,
     goldrush: false,
+    network: process.env.NEXT_PUBLIC_NETWORK ?? "testnet",
+    zerionKeySet: Boolean(process.env.ZERION_API_KEY?.trim()),
+    goldrushKeySet: Boolean(process.env.GOLDRUSH_API_KEY?.trim()),
     timestamp: new Date().toISOString(),
   };
+  const errors: Record<string, string> = {};
 
   try {
     await listCircleWallets();
     status.circle = true;
-  } catch {
-    /* */
+  } catch (e) {
+    errors.circle = e instanceof Error ? e.message.slice(0, 80) : "failed";
   }
 
   try {
     await getWalletPortfolio(demo, false);
     status.zerion = true;
-  } catch {
-    /* */
+  } catch (e) {
+    errors.zerion = e instanceof Error ? e.message.slice(0, 120) : "failed";
   }
 
   try {
     await getAllChainsBalances(demo);
     status.goldrush = true;
-  } catch {
-    /* */
+  } catch (e) {
+    errors.goldrush = e instanceof Error ? e.message.slice(0, 80) : "failed";
   }
 
   const allOk = status.circle && status.kit && status.zerion && status.goldrush;
 
-  return NextResponse.json({ ok: allOk, services: status });
+  return NextResponse.json({ ok: allOk, services: status, errors });
 }
