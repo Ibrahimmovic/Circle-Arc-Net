@@ -48,8 +48,10 @@ export interface ZerionPosition {
     symbol?: string;
     value?: number;
     price?: number;
-    quantity?: { float?: number };
+    quantity?: { float?: number; numeric?: string };
     percent_change_24h?: number;
+    position_type?: string;
+    protocol?: string;
     fungible_info?: {
       symbol?: string;
       name?: string;
@@ -84,10 +86,24 @@ export async function getWalletPositions(
   trash: "only_non_trash" | "only_trash" | "no_filter" = "only_non_trash",
 ) {
   const encoded = encodeURIComponent(address);
-  return zerionFetch<ZerionPositionsResponse>(
-    `/wallets/${encoded}/positions/?currency=usd&sort=-value&filter[positions]=no_filter&filter[trash]=${trash}&page[size]=100`,
-    { testnet },
-  );
+  const all: ZerionPosition[] = [];
+  let path: string | null =
+    `/wallets/${encoded}/positions/?currency=usd&sort=-value&filter[positions]=no_filter&filter[trash]=${trash}&page[size]=100`;
+
+  while (path) {
+    const res: ZerionPositionsResponse = await zerionFetch<ZerionPositionsResponse>(
+      path,
+      { testnet },
+    );
+    if (res.data?.length) all.push(...res.data);
+    const next = res.links?.next;
+    if (!next) break;
+    path = next.startsWith("http")
+      ? new URL(next).pathname.replace(/^\/v1/, "") + new URL(next).search
+      : next;
+  }
+
+  return { data: all, links: undefined };
 }
 
 export interface ZerionTransaction {
