@@ -2,8 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useAccount } from "wagmi";
-import { AppKit } from "@circle-fin/app-kit";
-import { createViemAdapterFromProvider } from "@circle-fin/adapter-viem-v2";
+/* Circle App Kit loaded on demand to keep initial bundle small */
 import { ArrowRightLeft, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { getChains } from "@/lib/network";
 import { pushTx } from "@/lib/tx-store";
@@ -44,11 +43,13 @@ export function BridgePanel() {
       setEstimate(data);
 
       if (isConnected && typeof window !== "undefined" && window.ethereum) {
+        const { AppKit } = await import("@circle-fin/app-kit");
+        const { createViemAdapterFromProvider } = await import(
+          "@circle-fin/adapter-viem-v2"
+        );
         const kit = new AppKit();
         const adapter = await createViemAdapterFromProvider({
-          provider: window.ethereum as Parameters<
-            typeof createViemAdapterFromProvider
-          >[0]["provider"],
+          provider: window.ethereum as never,
         });
         try {
           const live = await kit.estimateBridge({
@@ -83,11 +84,13 @@ export function BridgePanel() {
     setMessage(null);
 
     try {
+      const { AppKit } = await import("@circle-fin/app-kit");
+      const { createViemAdapterFromProvider } = await import(
+        "@circle-fin/adapter-viem-v2"
+      );
       const kit = new AppKit();
       const adapter = await createViemAdapterFromProvider({
-        provider: window.ethereum as Parameters<
-          typeof createViemAdapterFromProvider
-        >[0]["provider"],
+        provider: window.ethereum as never,
       });
 
       const result = await kit.bridge({

@@ -2,8 +2,6 @@
 
 import { useState, useCallback } from "react";
 import { useAccount } from "wagmi";
-import { AppKit } from "@circle-fin/app-kit";
-import { createViemAdapterFromProvider } from "@circle-fin/adapter-viem-v2";
 import { Repeat, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { getChains } from "@/lib/network";
 import { pushTx } from "@/lib/tx-store";
@@ -32,10 +30,11 @@ export function SwapPanel() {
 
   const getAdapter = useCallback(async () => {
     if (!window.ethereum) throw new Error("No wallet provider");
+    const { createViemAdapterFromProvider } = await import(
+      "@circle-fin/adapter-viem-v2"
+    );
     return createViemAdapterFromProvider({
-      provider: window.ethereum as Parameters<
-        typeof createViemAdapterFromProvider
-      >[0]["provider"],
+      provider: window.ethereum as never,
     });
   }, []);
 
@@ -50,6 +49,7 @@ export function SwapPanel() {
             : "Connect wallet for live Swap Kit quote.",
         );
       }
+      const { AppKit } = await import("@circle-fin/app-kit");
       const kit = new AppKit();
       const adapter = await getAdapter();
       const est = await kit.estimateSwap({
@@ -78,6 +78,7 @@ export function SwapPanel() {
     }
     setStatus("executing");
     try {
+      const { AppKit } = await import("@circle-fin/app-kit");
       const kit = new AppKit();
       const adapter = await getAdapter();
       const result = await kit.swap({

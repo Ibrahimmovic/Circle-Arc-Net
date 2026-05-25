@@ -33,5 +33,5 @@ export const wagmiConfig = createConfig({
     [sepolia.id]: http(),
     [arbitrumSepolia.id]: http(),
   },
-  ssr: true,
+  ssr: false,
 });
