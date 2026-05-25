@@ -1,6 +1,7 @@
 import { Sidebar } from "./sidebar";
 import { WalletButton } from "./wallet-button";
 import { MeshBackground } from "@/components/ui/mesh-background";
+import { ApiStatusBar } from "./api-status-bar";
 
 export function AppShell({
   children,
@@ -19,12 +20,15 @@ export function AppShell({
         <header className="sticky top-0 z-20 border-b border-slate-800/60 bg-slate-950/80 backdrop-blur-xl">
           <div className="flex items-center justify-between gap-4 px-6 py-5 lg:px-10">
             <div>
-              <h1 className="text-xl font-semibold tracking-tight text-white lg:text-2xl">
+              <h1 className="font-display text-xl font-bold tracking-tight text-white lg:text-2xl">
                 {title}
               </h1>
               {subtitle && (
                 <p className="mt-1 text-sm text-slate-400">{subtitle}</p>
               )}
+              <div className="mt-3 hidden sm:block">
+                <ApiStatusBar />
+              </div>
             </div>
             <WalletButton />
           </div>

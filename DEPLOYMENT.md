@@ -21,6 +21,10 @@ The Next.js app runs from the **repository root** (not `agora-forge/`).
 | `NEXT_PUBLIC_DEMO_WALLET` | Optional |
 | `NEXT_PUBLIC_NETWORK` | `testnet` (default for hackathon) |
 
+**Paste your keys in Vercel exactly** (no quotes, no spaces). After saving, click **Redeploy**.
+
+Keys are read from environment variables only — never commit real keys to GitHub.
+
 ## Demo flow (3 min video)
 
 1. Connect wallet on **Base Sepolia** in MetaMask  

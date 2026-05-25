@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --bg-deep: #030712;
-  --bg-panel: rgba(15, 23, 42, 0.72);
-  --border-glow: rgba(56, 189, 248, 0.35);
+  --bg-deep: #020617;
+  --bg-panel: rgba(8, 15, 35, 0.85);
+  --border-glow: rgba(34, 211, 238, 0.45);
   --accent-cyan: #22d3ee;
   --accent-violet: #a78bfa;
   --accent-emerald: #34d399;
   --accent-amber: #fbbf24;
-  --foreground: #e2e8f0;
+  --foreground: #f1f5f9;
   --muted: #94a3b8;
 }
 
@@ -16,6 +16,7 @@
   --color-background: var(--bg-deep);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
+  --font-display: var(--font-outfit);
   --font-mono: var(--font-geist-mono);
 }
 
@@ -31,28 +32,38 @@ body {
   background: var(--bg-deep);
   color: var(--foreground);
   min-height: 100vh;
-  background-image:
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(34, 211, 238, 0.15), transparent),
-    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(167, 139, 250, 0.12), transparent),
-    radial-gradient(ellipse 50% 30% at 0% 100%, rgba(52, 211, 153, 0.08), transparent);
+}
+
+.font-display {
+  font-family: var(--font-outfit), var(--font-geist-sans), system-ui, sans-serif;
 }
 
 .glass-panel {
   background: var(--bg-panel);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  backdrop-filter: blur(20px) saturate(1.2);
+  border: 1px solid rgba(148, 163, 184, 0.1);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
-    0 8px 32px rgba(0, 0, 0, 0.4);
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    0 4px 24px rgba(0, 0, 0, 0.5),
+    0 0 80px rgba(34, 211, 238, 0.03);
 }
 
 .glow-border {
   border: 1px solid var(--border-glow);
-  box-shadow: 0 0 24px rgba(34, 211, 238, 0.12);
+  box-shadow:
+    0 0 32px rgba(34, 211, 238, 0.15),
+    0 0 64px rgba(167, 139, 250, 0.08);
 }
 
 .text-gradient {
-  background: linear-gradient(135deg, #22d3ee 0%, #a78bfa 50%, #34d399 100%);
+  background: linear-gradient(135deg, #67e8f9 0%, #c4b5fd 40%, #6ee7b7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-gold {
+  background: linear-gradient(90deg, #fbbf24, #f472b6, #22d3ee);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -60,18 +71,38 @@ body {
 
 .grid-mesh {
   background-image:
-    linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
-  background-size: 48px 48px;
+    linear-gradient(rgba(56, 189, 248, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.04) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 30%, black, transparent);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 50%, #06b6d4 100%);
+  background-size: 200% 200%;
+  animation: gradient-shift 4s ease infinite;
+  box-shadow: 0 0 24px rgba(34, 211, 238, 0.35);
+}
+
+@keyframes gradient-shift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 @keyframes pulse-glow {
   0%,
   100% {
-    opacity: 0.6;
+    opacity: 0.5;
+    box-shadow: 0 0 12px rgba(34, 211, 238, 0.2);
   }
   50% {
     opacity: 1;
+    box-shadow: 0 0 28px rgba(34, 211, 238, 0.45);
   }
 }
 
@@ -85,12 +116,12 @@ body {
     transform: translate(0, 0) scale(1);
   }
   50% {
-    transform: translate(20px, -15px) scale(1.05);
+    transform: translate(24px, -20px) scale(1.08);
   }
 }
 
 .animate-float-slow {
-  animation: float-slow 12s ease-in-out infinite;
+  animation: float-slow 14s ease-in-out infinite;
 }
 
 .delay-500 {
@@ -101,20 +132,20 @@ body {
   animation-delay: 1s;
 }
 
-.card-shine {
+.stat-glow {
   position: relative;
-  overflow: hidden;
 }
 
-.card-shine::after {
+.stat-glow::before {
   content: "";
   position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    105deg,
-    transparent 40%,
-    rgba(255, 255, 255, 0.03) 50%,
-    transparent 60%
-  );
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.4), transparent, rgba(167, 139, 250, 0.3));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
   pointer-events: none;
 }

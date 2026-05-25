@@ -55,13 +55,13 @@ export function getChains(): ChainOption[] {
   return getNetworkMode() === "testnet" ? TESTNET_CHAINS : MAINNET_CHAINS;
 }
 
+/** GoldRush allchains testnet slugs often 501 — use mainnet + per-chain sepolia. */
 export function getGoldRushChainList(): string {
-  const chains = getChains()
-    .map((c) => c.goldrushChain)
-    .filter(Boolean) as string[];
-  return chains.length > 0
-    ? chains.join(",")
-    : "eth-mainnet,base-mainnet,arbitrum-mainnet";
+  return "eth-mainnet,base-mainnet,arbitrum-mainnet,optimism-mainnet";
+}
+
+export function getGoldRushSepoliaChains(): string[] {
+  return ["eth-sepolia"];
 }
 
 export function findChainByAppKit(name: string): ChainOption | undefined {

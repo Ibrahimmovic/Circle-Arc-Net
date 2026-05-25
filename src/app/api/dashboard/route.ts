@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMarketSnapshot } from "@/lib/coingecko";
 import { getKitKey, listCircleWallets } from "@/lib/circle";
-import { aggregateGoldRushByChain, getAllChainsBalances } from "@/lib/goldrush";
-import { getNetworkMode, getGoldRushChainList } from "@/lib/network";
+import {
+  aggregateGoldRushByChain,
+  getMultichainBalancesIncludingTestnet,
+} from "@/lib/goldrush";
+import { getNetworkMode, getGoldRushSepoliaChains } from "@/lib/network";
 import { analyzePortfolio, mergeChainData, detectRegime } from "@/lib/portfolio-engine";
 import { getWalletPortfolio, getWalletPositions } from "@/lib/zerion";
 
@@ -30,14 +33,17 @@ export async function GET(req: NextRequest) {
 
   const [markets, goldrush, wallets] = await Promise.all([
     getMarketSnapshot().catch(() => null),
-    getAllChainsBalances(address, getGoldRushChainList()).catch(() => null),
+    getMultichainBalancesIncludingTestnet(
+      address,
+      getGoldRushSepoliaChains(),
+    ).catch(() => null),
     listCircleWallets().catch(() => null),
   ]);
 
   try {
     const [portfolio, positions] = await Promise.all([
-      getWalletPortfolio(address, testnet),
-      getWalletPositions(address, testnet),
+      getWalletPortfolio(address, false),
+      getWalletPositions(address, false),
     ]);
     sources.push("Zerion");
     const attrs = portfolio.data?.attributes;
@@ -56,7 +62,33 @@ export async function GET(req: NextRequest) {
         chain: p.relationships?.chain?.data?.id,
       })) ?? [];
   } catch {
-    /* Zerion optional */
+    try {
+      const [portfolio, positions] = await Promise.all([
+        getWalletPortfolio(address, true),
+        getWalletPositions(address, true),
+      ]);
+      sources.push("Zerion testnet");
+      const attrs = portfolio.data?.attributes;
+      totalUsd = attrs?.total?.positions ?? totalUsd;
+      change24hPct = attrs?.changes?.percent_1d ?? change24hPct;
+      chainDistribution =
+        attrs?.positions_distribution_by_chain ?? chainDistribution;
+      if (topPositions.length === 0) {
+        topPositions =
+          positions.data?.slice(0, 12).map((p) => ({
+            id: p.id,
+            name:
+              p.attributes?.fungible_info?.symbol ??
+              p.attributes?.symbol ??
+              p.attributes?.name,
+            value: p.attributes?.value ?? 0,
+            change24h: p.attributes?.percent_change_24h ?? 0,
+            chain: p.relationships?.chain?.data?.id,
+          })) ?? [];
+      }
+    } catch {
+      /* Zerion optional */
+    }
   }
 
   if (goldrush?.data?.items?.length) {

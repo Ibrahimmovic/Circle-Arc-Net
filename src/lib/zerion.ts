@@ -1,8 +1,9 @@
 const ZERION_BASE = "https://api.zerion.io/v1";
 
 function zerionAuth(): string {
-  const key = process.env.ZERION_API_KEY;
-  if (!key) throw new Error("ZERION_API_KEY is not configured");
+  const raw = process.env.ZERION_API_KEY;
+  if (!raw) throw new Error("ZERION_API_KEY is not configured");
+  const key = raw.trim().replace(/^Zk_/i, "zk_");
   return Buffer.from(`${key}:`).toString("base64");
 }
 
@@ -19,7 +20,6 @@ export async function zerionFetch<T>(
   const res = await fetch(`${ZERION_BASE}${path}`, {
     headers,
     cache: "no-store",
-    next: { revalidate: 60 },
   });
 
   if (!res.ok) {

@@ -13,7 +13,6 @@ export async function goldrushFetch<T>(path: string): Promise<T> {
       authorization: `Basic ${goldrushAuth()}`,
     },
     cache: "no-store",
-    next: { revalidate: 120 },
   });
 
   if (!res.ok) {
@@ -65,13 +64,47 @@ export async function getAllChainsBalances(
   chains?: string,
 ) {
   const encoded = encodeURIComponent(address);
-  const chainList =
-    chains ??
-    process.env.GOLDRUSH_CHAINS ??
-    "base-sepolia-mainnet,eth-sepolia,arbitrum-sepolia";
+  const chainList = chains ?? process.env.GOLDRUSH_CHAINS ?? "eth-mainnet,base-mainnet,arbitrum-mainnet";
   return goldrushFetch<GoldRushAllChainsBalance>(
     `/allchains/address/${encoded}/balances/?chains=${chainList}&quote-currency=USD`,
   );
+}
+
+/** Per-chain balances (works for eth-sepolia testnet). */
+export async function getChainBalancesV2(
+  chainName: string,
+  address: string,
+): Promise<GoldRushTokenBalance[]> {
+  const encoded = encodeURIComponent(address);
+  const data = await goldrushFetch<{
+    data?: { items?: Array<GoldRushTokenBalance & { quote?: number; is_spam?: boolean }> };
+  }>(`/${chainName}/address/${encoded}/balances_v2/?quote-currency=USD&no-spam=true`);
+
+  return (data.data?.items ?? []).map((i) => ({
+    chain_name: chainName,
+    contract_ticker_symbol: i.contract_ticker_symbol,
+    contract_name: i.contract_name,
+    quote: i.quote,
+    is_spam: i.is_spam,
+  }));
+}
+
+export async function getMultichainBalancesIncludingTestnet(
+  address: string,
+  extraChains: string[] = ["eth-sepolia"],
+) {
+  const [allchains, ...perChain] = await Promise.all([
+    getAllChainsBalances(address).catch(() => ({ data: { items: [] } })),
+    ...extraChains.map((c) =>
+      getChainBalancesV2(c, address).catch(() => [] as GoldRushTokenBalance[]),
+    ),
+  ]);
+
+  const items = [
+    ...(allchains.data?.items ?? []),
+    ...perChain.flat(),
+  ];
+  return { data: { items } };
 }
 
 export async function getTokenPrices(chainName: string, addresses: string) {

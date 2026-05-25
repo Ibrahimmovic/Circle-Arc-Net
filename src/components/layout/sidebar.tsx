@@ -23,17 +23,18 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="glass-panel flex w-64 shrink-0 flex-col border-r border-slate-800/80 rounded-none lg:min-h-screen">
-      <div className="border-b border-slate-800/60 p-6">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500/30 to-violet-500/30">
-            <span className="text-lg font-bold text-cyan-300">Λ</span>
-            <span className="absolute inset-0 rounded-xl ring-1 ring-cyan-400/40 animate-pulse-glow" />
+    <aside className="glass-panel flex w-64 shrink-0 flex-col border-r border-cyan-500/10 rounded-none lg:min-h-screen z-10">
+      <div className="border-b border-slate-800/60 p-6 bg-gradient-to-br from-cyan-500/5 to-violet-500/5">
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-violet-600 shadow-lg shadow-cyan-500/30">
+            <span className="font-display text-lg font-extrabold text-white">A</span>
           </div>
           <div>
-            <p className="text-sm font-semibold text-white">Agora Forge</p>
-            <p className="text-[10px] uppercase tracking-widest text-slate-500">
-              Agent Markets
+            <p className="font-display text-base font-bold text-white group-hover:text-cyan-200 transition-colors">
+              Agora Forge
+            </p>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-cyan-400/70">
+              Circle × Arc
             </p>
           </div>
         </Link>
@@ -50,8 +51,8 @@ export function Sidebar() {
               className={cn(
                 "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all",
                 active
-                  ? "bg-cyan-500/15 text-cyan-300 shadow-[0_0_20px_rgba(34,211,238,0.15)]"
-                  : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200",
+                  ? "bg-gradient-to-r from-cyan-500/20 to-violet-500/15 text-cyan-200 shadow-[0_0_24px_rgba(34,211,238,0.2)] ring-1 ring-cyan-500/25"
+                  : "text-slate-400 hover:bg-slate-800/60 hover:text-white",
               )}
             >
               <Icon className="h-4 w-4" />

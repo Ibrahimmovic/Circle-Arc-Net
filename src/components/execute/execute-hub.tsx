@@ -18,7 +18,7 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 export function ExecuteHub() {
-  const [tab, setTab] = useState<TabId>("fund");
+  const [tab, setTab] = useState<TabId>("bridge");
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">

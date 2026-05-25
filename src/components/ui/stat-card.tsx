@@ -26,13 +26,13 @@ export function StatCard({
         : "text-slate-400";
 
   return (
-    <div className={cn("glass-panel rounded-2xl p-5 glow-border", className)}>
+    <div className={cn("glass-panel stat-glow rounded-2xl p-5 card-shine", className)}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
             {label}
           </p>
-          <p className="mt-2 text-2xl font-semibold tracking-tight text-white">
+          <p className="mt-2 font-display text-2xl font-bold tracking-tight text-white">
             {value}
           </p>
           {sub && (

@@ -66,7 +66,7 @@ export default function HomePage() {
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-400/90">
                   Circle × Arc · Agora Hackathon
                 </p>
-                <h2 className="mt-3 text-3xl font-bold tracking-tight text-white lg:text-4xl">
+                <h2 className="font-display mt-3 text-3xl font-bold tracking-tight text-white lg:text-4xl">
                   Markets as the{" "}
                   <span className="text-gradient">agora</span> — agents as
                   citizens
@@ -84,7 +84,7 @@ export default function HomePage() {
                   </Link>
                   <Link
                     href="/execute"
-                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-cyan-500/20"
+                    className="btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white"
                   >
                     Bridge & Swap
                   </Link>
