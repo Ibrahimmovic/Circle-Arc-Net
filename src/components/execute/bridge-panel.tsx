@@ -126,12 +126,16 @@ export function BridgePanel() {
           config: getBridgeKitConfig(),
         });
         setGasLines(formatKitGasFees(live.gasFees));
-        const summary = summarizeBridgeEstimate({
-          gasFees: live.gasFees,
-          fees: live.fees,
-        });
+        const summary = summarizeBridgeEstimate(
+          { gasFees: live.gasFees, fees: live.fees },
+          amount,
+        );
         setFeeLines(summary.lines);
-        setMessage(summary.totalHint);
+        const steps =
+          summary.walletSteps.length > 0
+            ? summary.walletSteps.join(" → ")
+            : BRIDGE_WALLET_STEPS;
+        setMessage(`${summary.totalHint} · ${steps}`);
         setEstimate({ estimatedMinutes: 15, totalHint: summary.totalHint });
       } else {
         setMessage("Connect wallet on Arc Testnet (or source chain) for live fee breakdown.");
