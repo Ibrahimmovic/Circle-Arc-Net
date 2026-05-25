@@ -5,12 +5,12 @@ import {
   goldRushTokenLogo,
   type GoldRushTokenBalance,
 } from "@/lib/goldrush";
+import { analyzePortfolio, canonicalChainKey } from "@/lib/portfolio-engine";
 import {
-  analyzePortfolio,
-  canonicalChainKey,
-  mergeChainData,
-} from "@/lib/portfolio-engine";
-import { tokenIcon } from "@/lib/token-visuals";
+  resolveTokenLogo,
+  tokenIcon,
+  VERIFIED_TOKEN_SYMBOLS,
+} from "@/lib/token-visuals";
 import type { PortfolioAnalysis } from "@/lib/types";
 import {
   getWalletNftPositions,
@@ -38,6 +38,9 @@ const CHAIN_DISPLAY: Record<string, string> = {
   arc: "Arc Testnet",
 };
 
+const SPAM_NAME_PATTERNS =
+  /airdrop|claim\s|visit\s|\.com|http|reward|voucher|www\.|blep|degen point|super meme|based usa/i;
+
 function chainLabel(chainId: string): string {
   const key = canonicalChainKey(chainId);
   return CHAIN_DISPLAY[key] ?? key.charAt(0).toUpperCase() + key.slice(1);
@@ -58,36 +61,19 @@ function formatTokenBalance(raw: string | undefined, decimals: number): string |
   }
 }
 
-const MAJOR_SYMBOLS = new Set([
-  "ETH",
-  "WETH",
-  "USDC",
-  "USDT",
-  "DAI",
-  "EURC",
-  "WBTC",
-  "CBETH",
-  "ZORA",
-]);
+function assetKey(chainId: string, symbol: string, contract?: string): string {
+  const chain = canonicalChainKey(chainId);
+  if (contract) return `${chain}:${contract.toLowerCase()}`;
+  return `${chain}:${symbol.toUpperCase()}`;
+}
 
+/** Only GoldRush is_spam + obvious meme names — never blanket zero-quote tokens */
 function isLikelySpamToken(t: GoldRushTokenBalance): boolean {
-  if (t.is_spam) return true;
-  if (t.type === "dust") return true;
   const sym = (t.contract_ticker_symbol ?? "").toUpperCase();
-  const quote = t.quote ?? 0;
-  if (quote > 1 && MAJOR_SYMBOLS.has(sym)) return false;
-  const spamPatterns =
-    /airdrop|claim|visit|\.com|http|reward|voucher|www\.|blep|degen point|super meme|based usa/i;
-  if (spamPatterns.test(sym) || spamPatterns.test(t.contract_name ?? "")) return true;
-  const raw = goldRushRawBalance(t);
-  if (quote === 0 && raw && raw !== "0" && !MAJOR_SYMBOLS.has(sym)) {
-    const dec = t.contract_decimals ?? 18;
-    try {
-      const n = Number(BigInt(raw)) / 10 ** dec;
-      if (n > 0 && quote === 0) return true;
-    } catch {
-      return true;
-    }
+  if (VERIFIED_TOKEN_SYMBOLS.has(sym)) return false;
+  if (t.is_spam) return true;
+  if (SPAM_NAME_PATTERNS.test(sym) || SPAM_NAME_PATTERNS.test(t.contract_name ?? "")) {
+    return true;
   }
   return false;
 }
@@ -96,7 +82,7 @@ function zerionPositionToAsset(p: ZerionPosition, isSpam: boolean): PortfolioAss
   const value = p.attributes?.value ?? 0;
   const qty = p.attributes?.quantity?.float;
   const hasQty = qty != null && qty > 0;
-  if (value <= 0 && !hasQty && !isSpam) return null;
+  if (!isSpam && value < 0.001 && !hasQty) return null;
 
   const symbol =
     p.attributes?.fungible_info?.symbol ??
@@ -104,6 +90,7 @@ function zerionPositionToAsset(p: ZerionPosition, isSpam: boolean): PortfolioAss
     p.attributes?.name ??
     "Token";
   const chainId = p.relationships?.chain?.data?.id ?? "unknown";
+  const iconUrl = p.attributes?.fungible_info?.icon?.url;
 
   return {
     id: p.id,
@@ -115,7 +102,7 @@ function zerionPositionToAsset(p: ZerionPosition, isSpam: boolean): PortfolioAss
     balance: hasQty ? String(qty) : undefined,
     priceUsd: p.attributes?.price,
     change24hPct: p.attributes?.percent_change_24h ?? 0,
-    logoUrl: tokenIcon(symbol),
+    logoUrl: resolveTokenLogo(symbol, iconUrl),
     isSpam,
     isNft: false,
     positionType: "wallet",
@@ -133,10 +120,11 @@ function goldRushToAsset(t: GoldRushTokenBalance): PortfolioAsset | null {
     return null;
   }
 
-  if (!isSpam && quote <= 0 && !hasBalance) return null;
+  if (!isSpam && quote < 0.001 && !hasBalance) return null;
 
   const symbol = t.contract_ticker_symbol ?? "?";
   const chainId = t.chain_name ?? "unknown";
+  const isNative = Boolean(t.is_native_token ?? t.native_token);
   const change24h =
     t.quote_24h && quote > 0
       ? ((quote - t.quote_24h) / t.quote_24h) * 100
@@ -151,7 +139,7 @@ function goldRushToAsset(t: GoldRushTokenBalance): PortfolioAsset | null {
     valueUsd: Math.max(quote, 0),
     balance: bal,
     change24hPct: change24h,
-    logoUrl: goldRushTokenLogo(t) ?? tokenIcon(symbol),
+    logoUrl: resolveTokenLogo(symbol, goldRushTokenLogo(t), isNative),
     isSpam,
     isNft: false,
     unverified: quote <= 0 && hasBalance,
@@ -166,8 +154,12 @@ function goldRushToNft(t: GoldRushTokenBalance): PortfolioNft | null {
     goldRushTokenLogo(t) ??
     t.logo_url;
   return {
-    id: `gr-nft-${t.contract_address ?? t.contract_ticker_symbol}`,
-    name: t.contract_name ?? t.contract_ticker_symbol ?? "NFT",
+    id: `gr-nft-${t.chain_name}-${t.contract_address ?? t.contract_ticker_symbol}`,
+    name:
+      t.nft_data?.[0]?.external_data?.name ??
+      t.contract_name ??
+      t.contract_ticker_symbol ??
+      "NFT",
     collection: t.contract_name,
     chain: chainLabel(t.chain_name ?? ""),
     imageUrl: img,
@@ -220,6 +212,32 @@ function zerionNftToItem(n: ZerionNftPosition): PortfolioNft | null {
   };
 }
 
+function mergeAsset(prev: PortfolioAsset, next: PortfolioAsset): PortfolioAsset {
+  const primary = next.valueUsd >= prev.valueUsd ? next : prev;
+  const secondary = primary === next ? prev : next;
+  return {
+    ...primary,
+    valueUsd: Math.max(prev.valueUsd, next.valueUsd),
+    balance: primary.balance ?? secondary.balance,
+    logoUrl: primary.logoUrl ?? secondary.logoUrl,
+    change24hPct:
+      Math.abs(primary.change24hPct) >= Math.abs(secondary.change24hPct)
+        ? primary.change24hPct
+        : secondary.change24hPct,
+    isSpam: primary.isSpam && secondary.isSpam,
+  };
+}
+
+function setAsset(
+  map: Map<string, PortfolioAsset>,
+  asset: PortfolioAsset,
+  contract?: string,
+) {
+  const k = assetKey(asset.chainId ?? asset.chain, asset.symbol, contract);
+  const prev = map.get(k);
+  map.set(k, prev ? mergeAsset(prev, asset) : asset);
+}
+
 function rebuildTotals(assets: PortfolioAsset[]): {
   totalUsd: number;
   chainDistribution: Record<string, number>;
@@ -237,37 +255,12 @@ function rebuildTotals(assets: PortfolioAsset[]): {
   return { totalUsd, chainDistribution };
 }
 
-function mergeAsset(prev: PortfolioAsset, next: PortfolioAsset): PortfolioAsset {
-  const pick =
-    next.valueUsd > prev.valueUsd
-      ? next
-      : prev.valueUsd > next.valueUsd
-        ? prev
-        : next.balance && !prev.balance
-          ? next
-          : prev;
-  const other = pick === prev ? next : prev;
-  return {
-    ...pick,
-    valueUsd: Math.max(prev.valueUsd, next.valueUsd),
-    balance: pick.balance ?? other.balance,
-    logoUrl: pick.logoUrl ?? other.logoUrl,
-    change24hPct:
-      Math.abs(pick.change24hPct) >= Math.abs(other.change24hPct)
-        ? pick.change24hPct
-        : other.change24hPct,
-    isSpam: pick.isSpam || other.isSpam,
-  };
-}
-
-function dedupeAssets(list: PortfolioAsset[]): PortfolioAsset[] {
-  const byKey = new Map<string, PortfolioAsset>();
-  for (const a of list) {
-    const key = `${canonicalChainKey(a.chainId ?? a.chain)}:${a.symbol.toUpperCase()}`;
-    const prev = byKey.get(key);
-    byKey.set(key, prev ? mergeAsset(prev, a) : a);
-  }
-  return [...byKey.values()];
+function hasMeaningfulHolding(a: PortfolioAsset): boolean {
+  if (a.valueUsd >= 0.001) return true;
+  const bal = a.balance;
+  if (!bal || bal === "0") return false;
+  const n = parseFloat(bal.replace(/,/g, ""));
+  return !Number.isNaN(n) && n > 0;
 }
 
 export async function buildPortfolioWalletFeed(
@@ -281,8 +274,8 @@ export async function buildPortfolioWalletFeed(
   let zerionAvailable = false;
   let change24hPct = 0;
 
-  const assets: PortfolioAsset[] = [];
-  const spamAssets: PortfolioAsset[] = [];
+  const assetMap = new Map<string, PortfolioAsset>();
+  const spamMap = new Map<string, PortfolioAsset>();
   const nfts: PortfolioNft[] = [];
   const activities: PortfolioActivity[] = [];
   const spamActivities: PortfolioActivity[] = [];
@@ -303,11 +296,36 @@ export async function buildPortfolioWalletFeed(
     change24hPct = portfolio.data.attributes?.changes?.percent_1d ?? 0;
   }
 
+  const goldItems: GoldRushTokenBalance[] = goldrush?.data?.items ?? [];
+  const goldNftItems: GoldRushTokenBalance[] = goldrush?.nfts ?? [];
+
+  if (goldItems.length > 0 || goldNftItems.length > 0) {
+    sources.push(testnet ? "GoldRush testnet" : "GoldRush multichain");
+
+    for (const t of goldItems) {
+      const a = goldRushToAsset(t);
+      if (!a) continue;
+      if (a.isSpam) {
+        if (hasMeaningfulHolding(a)) setAsset(spamMap, a, t.contract_address);
+      } else {
+        setAsset(assetMap, a, t.contract_address);
+      }
+    }
+
+    for (const t of goldNftItems) {
+      const nft = goldRushToNft(t);
+      if (nft && !nft.isSpam && !nfts.some((n) => n.id === nft.id)) {
+        nfts.push(nft);
+      }
+    }
+  }
+
   if (positionsClean?.data) {
     zerionAvailable = true;
     for (const p of positionsClean.data) {
       const a = zerionPositionToAsset(p, false);
-      if (a) assets.push(a);
+      if (!a) continue;
+      setAsset(assetMap, a, p.relationships?.fungible?.data?.id);
     }
   }
 
@@ -315,11 +333,12 @@ export async function buildPortfolioWalletFeed(
     zerionAvailable = true;
     for (const p of positionsSpam.data) {
       const a = zerionPositionToAsset(p, true);
-      if (a) spamAssets.push(a);
+      if (!a || !hasMeaningfulHolding(a)) continue;
+      setAsset(spamMap, a);
     }
   }
 
-  if (txs?.data) {
+  if (txs?.data?.length) {
     zerionAvailable = true;
     sources.push("Zerion txs");
     for (const tx of txs.data) {
@@ -335,32 +354,8 @@ export async function buildPortfolioWalletFeed(
     sources.push("Zerion NFTs");
     for (const n of nftPos.data) {
       const item = zerionNftToItem(n);
-      if (item && !item.isSpam) nfts.push(item);
-    }
-  }
-
-  const goldItems: GoldRushTokenBalance[] = goldrush?.data?.items ?? [];
-
-  if (goldItems.length > 0) {
-    sources.push(testnet ? "GoldRush testnet" : "GoldRush Base+ETH+…");
-    const seenSpam = new Set<string>();
-
-    for (const t of goldItems) {
-      const nft = goldRushToNft(t);
-      if (nft && !nft.isSpam && !nfts.some((n) => n.id === nft.id)) {
-        nfts.push(nft);
-      }
-
-      const a = goldRushToAsset(t);
-      if (!a) continue;
-
-      if (a.isSpam) {
-        if (!seenSpam.has(a.id)) {
-          seenSpam.add(a.id);
-          spamAssets.push(a);
-        }
-      } else {
-        assets.push(a);
+      if (item && !item.isSpam && !nfts.some((x) => x.id === item.id)) {
+        nfts.push(item);
       }
     }
   }
@@ -370,7 +365,7 @@ export async function buildPortfolioWalletFeed(
       const arc = await getArcTestnetUsdBalances(address);
       if (arc.totalUsd > 0) {
         sources.push("Arc RPC");
-        assets.unshift({
+        const arcAsset: PortfolioAsset = {
           id: "arc-usdc",
           symbol: "USDC",
           name: "USD Coin",
@@ -382,33 +377,18 @@ export async function buildPortfolioWalletFeed(
           logoUrl: tokenIcon("USDC"),
           isSpam: false,
           isNft: false,
-        });
+        };
+        assetMap.set(assetKey("arc-testnet", "USDC"), arcAsset);
       }
     } catch {
       /* optional */
     }
   }
 
-  const cleanAssets = dedupeAssets(assets);
-  let { totalUsd, chainDistribution } = rebuildTotals(cleanAssets);
+  const cleanAssets = [...assetMap.values()].sort((a, b) => b.valueUsd - a.valueUsd);
+  const spamAssets = [...spamMap.values()].sort((a, b) => b.valueUsd - a.valueUsd);
+  const { totalUsd, chainDistribution } = rebuildTotals(cleanAssets);
 
-  const zerionTotal = portfolio?.data?.attributes?.total?.positions;
-  if (
-    portfolio?.data &&
-    typeof zerionTotal === "number" &&
-    zerionTotal > totalUsd + 0.5 &&
-    zerionTotal < totalUsd * 2
-  ) {
-    totalUsd = zerionTotal;
-    const zChains =
-      portfolio.data.attributes?.positions_distribution_by_chain;
-    if (zChains && Object.keys(zChains).length > 0) {
-      chainDistribution = mergeChainData(zChains, chainDistribution);
-    }
-  }
-
-  cleanAssets.sort((a, b) => b.valueUsd - a.valueUsd);
-  spamAssets.sort((a, b) => b.valueUsd - a.valueUsd);
   activities.sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
   );
@@ -417,29 +397,12 @@ export async function buildPortfolioWalletFeed(
   );
 
   const chainBalances = Object.entries(chainDistribution)
-    .filter(([, v]) => v > 0.001)
+    .filter(([, v]) => v >= 0.5)
     .map(([chainId, valueUsd]) => ({
       chain: chainLabel(chainId),
       chainId,
       valueUsd,
       percent: totalUsd > 0 ? (valueUsd / totalUsd) * 100 : 0,
-    }))
-    .reduce<
-      Array<{ chain: string; chainId: string; valueUsd: number; percent: number }>
-    >((acc, row) => {
-      const key = canonicalChainKey(row.chainId);
-      const existing = acc.find((r) => canonicalChainKey(r.chainId) === key);
-      if (existing) {
-        existing.valueUsd += row.valueUsd;
-        existing.percent += row.percent;
-      } else {
-        acc.push({ ...row, chainId: key });
-      }
-      return acc;
-    }, [])
-    .map((r) => ({
-      ...r,
-      percent: totalUsd > 0 ? (r.valueUsd / totalUsd) * 100 : r.percent,
     }))
     .sort((a, b) => b.valueUsd - a.valueUsd);
 

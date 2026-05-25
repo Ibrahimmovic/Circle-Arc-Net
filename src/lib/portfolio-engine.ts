@@ -109,6 +109,7 @@ export function analyzePortfolio(params: {
       valueUsd,
       percent: totalUsd > 0 ? (valueUsd / totalUsd) * 100 : 0,
     }))
+    .filter((c) => c.valueUsd >= 0.5 && c.percent >= 0.25)
     .sort((a, b) => b.valueUsd - a.valueUsd);
 
   const heldChains = new Set(chainAllocations.map((c) => c.chain.toLowerCase()));

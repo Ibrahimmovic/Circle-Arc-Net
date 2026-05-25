@@ -50,7 +50,11 @@ export interface ZerionPosition {
     price?: number;
     quantity?: { float?: number };
     percent_change_24h?: number;
-    fungible_info?: { symbol?: string; name?: string };
+    fungible_info?: {
+      symbol?: string;
+      name?: string;
+      icon?: { url?: string };
+    };
   };
   relationships?: {
     chain?: { data?: { id?: string } };
@@ -81,7 +85,7 @@ export async function getWalletPositions(
 ) {
   const encoded = encodeURIComponent(address);
   return zerionFetch<ZerionPositionsResponse>(
-    `/wallets/${encoded}/positions/?currency=usd&sort=-value&filter[positions]=no_filter&filter[trash]=${trash}&page[size]=80`,
+    `/wallets/${encoded}/positions/?currency=usd&sort=-value&filter[positions]=no_filter&filter[trash]=${trash}&page[size]=100`,
     { testnet },
   );
 }
@@ -99,7 +103,11 @@ export interface ZerionTransaction {
       direction?: string;
       quantity?: { float?: number };
       value?: number;
-      fungible_info?: { symbol?: string; name?: string };
+      fungible_info?: {
+      symbol?: string;
+      name?: string;
+      icon?: { url?: string };
+    };
     }>;
   };
   relationships?: {
@@ -118,7 +126,7 @@ export async function getWalletTransactions(
 ) {
   const encoded = encodeURIComponent(address);
   return zerionFetch<ZerionTransactionsResponse>(
-    `/wallets/${encoded}/transactions/?currency=usd&page[size]=40&filter[trash]=${trash}`,
+    `/wallets/${encoded}/transactions/?currency=usd&page[size]=80&filter[trash]=${trash}`,
     { testnet },
   );
 }
@@ -146,7 +154,7 @@ export interface ZerionNftPositionsResponse {
 export async function getWalletNftPositions(address: string, testnet = false) {
   const encoded = encodeURIComponent(address);
   return zerionFetch<ZerionNftPositionsResponse>(
-    `/wallets/${encoded}/nft-positions/?currency=usd&sort=-floor_price&page[size]=40`,
+    `/wallets/${encoded}/nft-positions/?currency=usd&sort=-floor_price&page[size]=100`,
     { testnet },
   );
 }
