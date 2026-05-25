@@ -1,6 +1,12 @@
 "use client";
 
-import { ExternalLink } from "lucide-react";
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  ExternalLink,
+  Repeat,
+  FileCode,
+} from "lucide-react";
 import { formatUsd, shortenAddress } from "@/lib/utils";
 import type { PortfolioActivity } from "@/lib/portfolio-wallet-types";
 import { txExplorerLinkForZerionChain } from "@/lib/portfolio-explorers";
@@ -8,6 +14,13 @@ import { txExplorerLinkForZerionChain } from "@/lib/portfolio-explorers";
 function formatTime(iso: string): string {
   try {
     const d = new Date(iso);
+    const now = Date.now();
+    const diff = now - d.getTime();
+    if (diff < 86_400_000) {
+      const hrs = Math.floor(diff / 3_600_000);
+      if (hrs < 1) return `${Math.floor(diff / 60_000)}m ago`;
+      return `${hrs}h ago`;
+    }
     return d.toLocaleString(undefined, {
       month: "short",
       day: "numeric",
@@ -17,6 +30,21 @@ function formatTime(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+function ActivityIcon({ tx }: { tx: PortfolioActivity }) {
+  const t = (tx.displayType ?? tx.type).toLowerCase();
+  const cls = "h-4 w-4";
+  if (t.includes("receive") || tx.direction === "in") {
+    return <ArrowDownLeft className={`${cls} text-emerald-400`} />;
+  }
+  if (t.includes("send") || tx.direction === "out") {
+    return <ArrowUpRight className={`${cls} text-rose-400`} />;
+  }
+  if (t.includes("trade") || t.includes("swap")) {
+    return <Repeat className={`${cls} text-violet-400`} />;
+  }
+  return <FileCode className={`${cls} text-cyan-400`} />;
 }
 
 export function PortfolioActivityList({
@@ -34,24 +62,33 @@ export function PortfolioActivityList({
     <ul className="divide-y divide-slate-800/60">
       {items.map((tx) => {
         const href = txExplorerLinkForZerionChain(tx.chainId ?? tx.chain, tx.hash);
+        const isIn = tx.direction === "in" || (tx.displayType ?? "").includes("Receive");
+        const amountStr =
+          tx.amount && tx.assetSymbol
+            ? `${isIn ? "+" : "-"}${tx.amount} ${tx.assetSymbol}`
+            : null;
+
         return (
           <li
             key={tx.id}
-            className="flex flex-wrap items-start justify-between gap-3 py-3.5 first:pt-0"
+            className="flex flex-wrap items-start gap-3 py-3.5 first:pt-0"
           >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-800/80 ring-1 ring-slate-700/80">
+              <ActivityIcon tx={tx} />
+            </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-md bg-violet-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase text-violet-200">
-                  {tx.type}
+                <span className="text-sm font-semibold text-white">
+                  {tx.displayType ?? tx.type}
                 </span>
                 {tx.isSpam && (
-                  <span className="rounded-md bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-200">
-                    flagged
+                  <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-200">
+                    scam
                   </span>
                 )}
                 <span className="text-xs text-slate-500">{tx.chain}</span>
               </div>
-              <p className="mt-1 font-medium text-white">{tx.label}</p>
+              <p className="mt-0.5 text-sm text-slate-300">{tx.label}</p>
               {tx.appName && (
                 <p className="text-xs text-slate-500">via {tx.appName}</p>
               )}
@@ -60,8 +97,17 @@ export function PortfolioActivityList({
               </p>
             </div>
             <div className="shrink-0 text-right">
+              {amountStr && (
+                <p
+                  className={`font-mono text-sm font-medium ${
+                    isIn ? "text-emerald-400" : "text-slate-200"
+                  }`}
+                >
+                  {amountStr}
+                </p>
+              )}
               {tx.valueUsd != null && tx.valueUsd > 0 && (
-                <p className="font-mono text-sm text-cyan-100">
+                <p className="font-mono text-xs text-slate-500">
                   {formatUsd(tx.valueUsd)}
                 </p>
               )}

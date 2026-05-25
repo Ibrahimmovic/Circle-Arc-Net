@@ -1,10 +1,18 @@
 import { getArcTestnetUsdBalances } from "@/lib/arc-balance";
 import {
+  aggregateAssetsBySymbol,
+  chainBalancesFromDistribution,
+  enrichActivityDisplay,
+  groupNftCollections,
+} from "@/lib/portfolio-aggregate";
+import {
+  getAllChainsBalances,
   getBalancesForNetworkMode,
   goldRushRawBalance,
   goldRushTokenLogo,
   type GoldRushTokenBalance,
 } from "@/lib/goldrush";
+import { getGoldRushMainnetChains } from "@/lib/network";
 import { analyzePortfolio, canonicalChainKey } from "@/lib/portfolio-engine";
 import {
   resolveTokenLogo,
@@ -35,6 +43,13 @@ const CHAIN_DISPLAY: Record<string, string> = {
   optimism: "Optimism",
   polygon: "Polygon",
   avalanche: "Avalanche",
+  bsc: "BNB Chain",
+  "binance-smart-chain": "BNB Chain",
+  linea: "Linea",
+  scroll: "Scroll",
+  zora: "Zora",
+  blast: "Blast",
+  mantle: "Mantle",
   arc: "Arc Testnet",
 };
 
@@ -63,26 +78,27 @@ function formatTokenBalance(raw: string | undefined, decimals: number): string |
 
 function assetKey(chainId: string, symbol: string, contract?: string): string {
   const chain = canonicalChainKey(chainId);
-  if (contract) return `${chain}:${contract.toLowerCase()}`;
+  if (contract && contract.startsWith("0x")) {
+    return `${chain}:${contract.toLowerCase()}`;
+  }
   return `${chain}:${symbol.toUpperCase()}`;
 }
 
-/** Only GoldRush is_spam + obvious meme names — never blanket zero-quote tokens */
 function isLikelySpamToken(t: GoldRushTokenBalance): boolean {
   const sym = (t.contract_ticker_symbol ?? "").toUpperCase();
   if (VERIFIED_TOKEN_SYMBOLS.has(sym)) return false;
   if (t.is_spam) return true;
-  if (SPAM_NAME_PATTERNS.test(sym) || SPAM_NAME_PATTERNS.test(t.contract_name ?? "")) {
-    return true;
-  }
-  return false;
+  return (
+    SPAM_NAME_PATTERNS.test(sym) ||
+    SPAM_NAME_PATTERNS.test(t.contract_name ?? "")
+  );
 }
 
 function zerionPositionToAsset(p: ZerionPosition, isSpam: boolean): PortfolioAsset | null {
   const value = p.attributes?.value ?? 0;
   const qty = p.attributes?.quantity?.float;
   const hasQty = qty != null && qty > 0;
-  if (!isSpam && value < 0.001 && !hasQty) return null;
+  if (!isSpam && value < 0.0005 && !hasQty) return null;
 
   const symbol =
     p.attributes?.fungible_info?.symbol ??
@@ -91,6 +107,7 @@ function zerionPositionToAsset(p: ZerionPosition, isSpam: boolean): PortfolioAss
     "Token";
   const chainId = p.relationships?.chain?.data?.id ?? "unknown";
   const iconUrl = p.attributes?.fungible_info?.icon?.url;
+  const posType = p.attributes?.position_type ?? "wallet";
 
   return {
     id: p.id,
@@ -105,7 +122,8 @@ function zerionPositionToAsset(p: ZerionPosition, isSpam: boolean): PortfolioAss
     logoUrl: resolveTokenLogo(symbol, iconUrl),
     isSpam,
     isNft: false,
-    positionType: "wallet",
+    positionType: posType,
+    protocol: p.attributes?.protocol,
   };
 }
 
@@ -116,11 +134,8 @@ function goldRushToAsset(t: GoldRushTokenBalance): PortfolioAsset | null {
   const bal = formatTokenBalance(goldRushRawBalance(t), decimals);
   const hasBalance = bal != null && bal !== "0";
 
-  if (t.type === "nft" || (t.nft_data && t.nft_data.length > 0)) {
-    return null;
-  }
-
-  if (!isSpam && quote < 0.001 && !hasBalance) return null;
+  if (t.type === "nft" || (t.nft_data && t.nft_data.length > 0)) return null;
+  if (!isSpam && quote < 0.0005 && !hasBalance) return null;
 
   const symbol = t.contract_ticker_symbol ?? "?";
   const chainId = t.chain_name ?? "unknown";
@@ -178,11 +193,12 @@ function zerionTxToActivity(tx: ZerionTransaction): PortfolioActivity | null {
   const transfer = attrs?.transfers?.[0];
   const symbol =
     transfer?.fungible_info?.symbol ?? transfer?.fungible_info?.name ?? "";
+  const qty = transfer?.quantity?.float;
   const label =
     attrs?.application_metadata?.name ??
     `${type}${symbol ? ` · ${symbol}` : ""}`;
 
-  return {
+  const activity: PortfolioActivity = {
     id: tx.id,
     hash,
     chain: chainLabel(chainId),
@@ -191,11 +207,13 @@ function zerionTxToActivity(tx: ZerionTransaction): PortfolioActivity | null {
     label,
     timestamp: attrs?.mined_at ?? new Date().toISOString(),
     valueUsd: transfer?.value,
+    amount: qty != null ? String(qty) : undefined,
     isSpam: Boolean(attrs?.is_trash),
     appName: attrs?.application_metadata?.name,
     direction: transfer?.direction as "in" | "out" | undefined,
     assetSymbol: symbol || undefined,
   };
+  return enrichActivityDisplay(activity);
 }
 
 function zerionNftToItem(n: ZerionNftPosition): PortfolioNft | null {
@@ -220,6 +238,7 @@ function mergeAsset(prev: PortfolioAsset, next: PortfolioAsset): PortfolioAsset 
     valueUsd: Math.max(prev.valueUsd, next.valueUsd),
     balance: primary.balance ?? secondary.balance,
     logoUrl: primary.logoUrl ?? secondary.logoUrl,
+    priceUsd: primary.priceUsd ?? secondary.priceUsd,
     change24hPct:
       Math.abs(primary.change24hPct) >= Math.abs(secondary.change24hPct)
         ? primary.change24hPct
@@ -238,29 +257,22 @@ function setAsset(
   map.set(k, prev ? mergeAsset(prev, asset) : asset);
 }
 
-function rebuildTotals(assets: PortfolioAsset[]): {
-  totalUsd: number;
-  chainDistribution: Record<string, number>;
-} {
-  let totalUsd = 0;
-  const chainDistribution: Record<string, number> = {};
-
-  for (const a of assets) {
-    if (a.isSpam) continue;
-    totalUsd += a.valueUsd;
-    const key = canonicalChainKey(a.chainId ?? a.chain);
-    chainDistribution[key] = (chainDistribution[key] ?? 0) + a.valueUsd;
-  }
-
-  return { totalUsd, chainDistribution };
-}
-
 function hasMeaningfulHolding(a: PortfolioAsset): boolean {
   if (a.valueUsd >= 0.001) return true;
   const bal = a.balance;
   if (!bal || bal === "0") return false;
   const n = parseFloat(bal.replace(/,/g, ""));
   return !Number.isNaN(n) && n > 0;
+}
+
+function dedupeGoldItems(items: GoldRushTokenBalance[]): GoldRushTokenBalance[] {
+  const seen = new Map<string, GoldRushTokenBalance>();
+  for (const t of items) {
+    const k = `${t.chain_name}:${(t.contract_address ?? t.contract_ticker_symbol)?.toLowerCase()}`;
+    const prev = seen.get(k);
+    if (!prev || (t.quote ?? 0) > (prev.quote ?? 0)) seen.set(k, t);
+  }
+  return [...seen.values()];
 }
 
 export async function buildPortfolioWalletFeed(
@@ -273,6 +285,8 @@ export async function buildPortfolioWalletFeed(
   const sources: string[] = [];
   let zerionAvailable = false;
   let change24hPct = 0;
+  let change24hUsd: number | undefined;
+  let distributionByType: Record<string, number> | undefined;
 
   const assetMap = new Map<string, PortfolioAsset>();
   const spamMap = new Map<string, PortfolioAsset>();
@@ -280,7 +294,7 @@ export async function buildPortfolioWalletFeed(
   const activities: PortfolioActivity[] = [];
   const spamActivities: PortfolioActivity[] = [];
 
-  const [portfolio, positionsClean, positionsSpam, txs, nftPos, goldrush] =
+  const [portfolio, positionsClean, positionsSpam, txs, nftPos, goldrush, goldAll] =
     await Promise.all([
       getWalletPortfolio(address, testnet).catch(() => null),
       getWalletPositions(address, testnet, "only_non_trash").catch(() => null),
@@ -288,45 +302,60 @@ export async function buildPortfolioWalletFeed(
       getWalletTransactions(address, testnet, "no_filter").catch(() => null),
       getWalletNftPositions(address, testnet).catch(() => null),
       getBalancesForNetworkMode(address, testnet).catch(() => null),
+      !testnet
+        ? getAllChainsBalances(address, getGoldRushMainnetChains()).catch(() => null)
+        : Promise.resolve(null),
     ]);
 
   if (portfolio?.data) {
     zerionAvailable = true;
-    sources.push(testnet ? "Zerion testnet" : "Zerion");
-    change24hPct = portfolio.data.attributes?.changes?.percent_1d ?? 0;
+    sources.push(testnet ? "Zerion" : "Zerion portfolio");
+    const attrs = portfolio.data.attributes;
+    change24hPct = attrs?.changes?.percent_1d ?? 0;
+    change24hUsd = attrs?.changes?.absolute_1d;
+    distributionByType = attrs?.positions_distribution_by_type;
   }
 
-  const goldItems: GoldRushTokenBalance[] = goldrush?.data?.items ?? [];
-  const goldNftItems: GoldRushTokenBalance[] = goldrush?.nfts ?? [];
-
-  if (goldItems.length > 0 || goldNftItems.length > 0) {
-    sources.push(testnet ? "GoldRush testnet" : "GoldRush multichain");
-
-    for (const t of goldItems) {
-      const a = goldRushToAsset(t);
-      if (!a) continue;
-      if (a.isSpam) {
-        if (hasMeaningfulHolding(a)) setAsset(spamMap, a, t.contract_address);
-      } else {
-        setAsset(assetMap, a, t.contract_address);
-      }
-    }
-
-    for (const t of goldNftItems) {
-      const nft = goldRushToNft(t);
-      if (nft && !nft.isSpam && !nfts.some((n) => n.id === nft.id)) {
-        nfts.push(nft);
-      }
-    }
-  }
-
-  if (positionsClean?.data) {
+  if (positionsClean?.data?.length) {
     zerionAvailable = true;
+    sources.push("Zerion positions");
     for (const p of positionsClean.data) {
       const a = zerionPositionToAsset(p, false);
       if (!a) continue;
       setAsset(assetMap, a, p.relationships?.fungible?.data?.id);
     }
+  }
+
+  const goldItems = dedupeGoldItems([
+    ...(goldrush?.data?.items ?? []),
+    ...(goldAll?.data?.items ?? []),
+    ...(goldrush?.nfts ?? []),
+  ]);
+
+  if (goldItems.length > 0) {
+    sources.push(testnet ? "GoldRush testnet" : "GoldRush all-chains");
+    for (const t of goldItems) {
+      const nft = goldRushToNft(t);
+      if (nft && !nft.isSpam && !nfts.some((n) => n.id === nft.id)) {
+        nfts.push(nft);
+      }
+      const a = goldRushToAsset(t);
+      if (!a) continue;
+      if (a.isSpam) {
+        if (hasMeaningfulHolding(a)) setAsset(spamMap, a, t.contract_address);
+      } else {
+        const k = assetKey(a.chainId ?? a.chain, a.symbol, t.contract_address);
+        const prev = assetMap.get(k);
+        if (!prev || a.valueUsd >= prev.valueUsd || (a.balance && !prev.balance)) {
+          setAsset(assetMap, a, t.contract_address);
+        }
+      }
+    }
+  }
+
+  for (const t of goldrush?.nfts ?? []) {
+    const nft = goldRushToNft(t);
+    if (nft && !nft.isSpam && !nfts.some((n) => n.id === nft.id)) nfts.push(nft);
   }
 
   if (positionsSpam?.data) {
@@ -340,7 +369,7 @@ export async function buildPortfolioWalletFeed(
 
   if (txs?.data?.length) {
     zerionAvailable = true;
-    sources.push("Zerion txs");
+    sources.push("Zerion history");
     for (const tx of txs.data) {
       const a = zerionTxToActivity(tx);
       if (!a) continue;
@@ -365,7 +394,7 @@ export async function buildPortfolioWalletFeed(
       const arc = await getArcTestnetUsdBalances(address);
       if (arc.totalUsd > 0) {
         sources.push("Arc RPC");
-        const arcAsset: PortfolioAsset = {
+        assetMap.set(assetKey("arc-testnet", "USDC"), {
           id: "arc-usdc",
           symbol: "USDC",
           name: "USD Coin",
@@ -377,8 +406,7 @@ export async function buildPortfolioWalletFeed(
           logoUrl: tokenIcon("USDC"),
           isSpam: false,
           isNft: false,
-        };
-        assetMap.set(assetKey("arc-testnet", "USDC"), arcAsset);
+        });
       }
     } catch {
       /* optional */
@@ -387,7 +415,47 @@ export async function buildPortfolioWalletFeed(
 
   const cleanAssets = [...assetMap.values()].sort((a, b) => b.valueUsd - a.valueUsd);
   const spamAssets = [...spamMap.values()].sort((a, b) => b.valueUsd - a.valueUsd);
-  const { totalUsd, chainDistribution } = rebuildTotals(cleanAssets);
+  const aggregatedAssets = aggregateAssetsBySymbol(cleanAssets);
+  const nftCollections = groupNftCollections(nfts);
+
+  let totalUsd = cleanAssets.reduce((s, a) => s + a.valueUsd, 0);
+  let chainDistribution: Record<string, number> = {};
+  for (const a of cleanAssets) {
+    const key = canonicalChainKey(a.chainId ?? a.chain);
+    chainDistribution[key] = (chainDistribution[key] ?? 0) + a.valueUsd;
+  }
+
+  const zTotal = portfolio?.data?.attributes?.total?.positions;
+  const zChains = portfolio?.data?.attributes?.positions_distribution_by_chain;
+
+  if (zerionAvailable && typeof zTotal === "number" && zTotal > 0) {
+    totalUsd = zTotal;
+    if (zChains && Object.keys(zChains).length > 0) {
+      chainDistribution = {};
+      for (const [chain, usd] of Object.entries(zChains)) {
+        chainDistribution[canonicalChainKey(chain)] =
+          (chainDistribution[canonicalChainKey(chain)] ?? 0) + usd;
+      }
+    }
+  }
+
+  let walletUsd = 0;
+  let defiUsd = 0;
+  if (distributionByType) {
+    walletUsd = distributionByType.wallet ?? 0;
+    defiUsd =
+      (distributionByType.deposited ?? 0) +
+      (distributionByType.staked ?? 0) +
+      (distributionByType.locked ?? 0) +
+      (distributionByType.reward ?? 0);
+  } else {
+    for (const a of cleanAssets) {
+      const t = (a.positionType ?? "wallet").toLowerCase();
+      if (t === "wallet") walletUsd += a.valueUsd;
+      else defiUsd += a.valueUsd;
+    }
+    if (walletUsd === 0 && defiUsd === 0) walletUsd = totalUsd;
+  }
 
   activities.sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
@@ -396,27 +464,33 @@ export async function buildPortfolioWalletFeed(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
   );
 
-  const chainBalances = Object.entries(chainDistribution)
-    .filter(([, v]) => v >= 0.5)
-    .map(([chainId, valueUsd]) => ({
-      chain: chainLabel(chainId),
-      chainId,
-      valueUsd,
-      percent: totalUsd > 0 ? (valueUsd / totalUsd) * 100 : 0,
-    }))
-    .sort((a, b) => b.valueUsd - a.valueUsd);
+  const allChainBalances = chainBalancesFromDistribution(
+    chainDistribution,
+    totalUsd,
+    chainLabel,
+  );
+  const chainBalances = allChainBalances.filter(
+    (c) => c.valueUsd >= 0.5 || c.percent >= 0.5,
+  );
 
   const feed: PortfolioWalletFeed = {
     address,
     networkMode: testnet ? "testnet" : "mainnet",
     totalUsd,
     change24hPct,
+    change24hUsd,
     assets: cleanAssets,
+    aggregatedAssets,
     spamAssets,
     nfts,
+    nftCollections,
     activities,
     spamActivities,
     chainBalances,
+    allChainBalances,
+    walletUsd,
+    defiUsd,
+    distributionByType,
     sources: [...new Set(sources)],
     dataFreshness: new Date().toISOString(),
     zerionAvailable,

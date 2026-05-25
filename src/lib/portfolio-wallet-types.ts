@@ -11,8 +11,21 @@ export type PortfolioAsset = {
   logoUrl?: string;
   isSpam: boolean;
   isNft: false;
-  positionType?: "wallet" | "deposited" | "staked" | "locked" | "reward";
+  positionType?: "wallet" | "deposited" | "staked" | "locked" | "reward" | string;
+  protocol?: string;
   unverified?: boolean;
+};
+
+export type AggregatedAsset = {
+  symbol: string;
+  name: string;
+  logoUrl?: string;
+  valueUsd: number;
+  priceUsd?: number;
+  change24hPct: number;
+  networkCount: number;
+  networks: string[];
+  holdings: PortfolioAsset[];
 };
 
 export type PortfolioNft = {
@@ -26,19 +39,31 @@ export type PortfolioNft = {
   isSpam: boolean;
 };
 
+export type NftCollectionGroup = {
+  id: string;
+  name: string;
+  chain: string;
+  imageUrl?: string;
+  count: number;
+  floorUsd?: number;
+  items: PortfolioNft[];
+};
+
 export type PortfolioActivity = {
   id: string;
   hash: string;
   chain: string;
   chainId?: string;
   type: string;
+  displayType?: string;
   label: string;
   timestamp: string;
   valueUsd?: number;
+  amount?: string;
+  assetSymbol?: string;
   isSpam: boolean;
   appName?: string;
   direction?: "in" | "out";
-  assetSymbol?: string;
 };
 
 export type PortfolioWalletFeed = {
@@ -46,9 +71,12 @@ export type PortfolioWalletFeed = {
   networkMode: "testnet" | "mainnet";
   totalUsd: number;
   change24hPct: number;
+  change24hUsd?: number;
   assets: PortfolioAsset[];
+  aggregatedAssets: AggregatedAsset[];
   spamAssets: PortfolioAsset[];
   nfts: PortfolioNft[];
+  nftCollections: NftCollectionGroup[];
   activities: PortfolioActivity[];
   spamActivities: PortfolioActivity[];
   chainBalances: Array<{
@@ -57,6 +85,14 @@ export type PortfolioWalletFeed = {
     valueUsd: number;
     percent: number;
   }>;
+  allChainBalances: Array<{
+    chain: string;
+    chainId: string;
+    valueUsd: number;
+    percent: number;
+  }>;
+  walletUsd: number;
+  defiUsd: number;
   distributionByType?: Record<string, number>;
   sources: string[];
   dataFreshness: string;
