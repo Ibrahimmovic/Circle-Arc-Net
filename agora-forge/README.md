@@ -51,11 +51,17 @@ Open [http://localhost:3000](http://localhost:3000).
 - `/execute` — Cross-chain CCTP bridge (Circle App Kit)
 - `/agent` — Agent console & cycle telemetry
 
+## Live demo (Vercel)
+
+**https://circle-arc-net.vercel.app/**
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for env vars and Vercel project setup.
+
 ## Hackathon submission checklist
 
 1. **GitHub**: this repo (public)
-2. **Video**: 3 min demo — regime shift → rebalance queue → CCTP estimate/execute
-3. **Optional deploy**: Vercel with env vars from `.env.example`
+2. **Live URL**: https://circle-arc-net.vercel.app/
+3. **Video**: 3 min demo — regime shift → rebalance queue → CCTP estimate/execute
 4. **Form**: https://forms.gle/ok3Gr9zhmHnApvK48
 
 ## Circle products used
