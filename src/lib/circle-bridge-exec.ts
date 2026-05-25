@@ -6,6 +6,11 @@ function txHashFromBridgeEvent(payload: unknown): string | undefined {
   return p?.values?.txHash;
 }
 
+export interface BridgeCapture {
+  approveTx?: string;
+  burnTx?: string;
+}
+
 function pendingBridgeResult(amount: string, burnTx: string): BridgeResult {
   return {
     state: "pending",
@@ -38,12 +43,16 @@ export async function executeCircleBridge(
   kit: AppKit,
   params: BridgeParams,
   onStep?: (msg: string) => void,
-): Promise<BridgeResult> {
+): Promise<{ result: BridgeResult; capture: BridgeCapture }> {
   const amount = String(params.amount ?? "");
   let burnTx: string | undefined;
+  let approveTx: string | undefined;
 
-  const onApprove = () =>
+  const onApprove = (payload: unknown) => {
+    const h = txHashFromBridgeEvent(payload);
+    if (h) approveTx = h;
     onStep?.("Wallet: approve USDC on source chain (if prompted)…");
+  };
   const onBurn = (payload: unknown) => {
     const h = txHashFromBridgeEvent(payload);
     if (h) {
@@ -73,18 +82,25 @@ export async function executeCircleBridge(
     throw new Error("Bridge wallet steps timed out — open your wallet or try again.");
   })();
 
+  const capture = (): BridgeCapture => ({
+    approveTx,
+    burnTx,
+  });
+
   try {
-    return await Promise.race([
+    const result = await Promise.race([
       full,
       afterBurn,
       withTimeout(full, 120_000, "Circle bridge"),
     ]);
+    return { result, capture: capture() };
   } catch (e) {
     if (burnTx) {
-      onStep?.(
-        `Bridge submitted · burn ${burnTx.slice(0, 10)}… — check Arcscan / destination explorer.`,
-      );
-      return pendingBridgeResult(amount, burnTx);
+      onStep?.(`Bridge submitted · burn ${burnTx.slice(0, 10)}… — see scanner links below.`);
+      return {
+        result: pendingBridgeResult(amount, burnTx),
+        capture: capture(),
+      };
     }
     throw e;
   } finally {

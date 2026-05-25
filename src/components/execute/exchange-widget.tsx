@@ -55,6 +55,15 @@ import { TokenAvatar } from "./token-avatar";
 import { TokenPicker } from "./token-picker";
 import { ArcFeeBadge } from "./arc-fee-badge";
 import { RecipientField } from "@/components/ui/recipient-field";
+import { TxScannerPanel } from "./tx-scanner-panel";
+import { chainIdsForRoute } from "@/lib/explorers";
+import {
+  arcFeeScanStep,
+  bridgeStepsFromResult,
+  mergeScanSteps,
+  scanStep,
+  type TxScanStep,
+} from "@/lib/tx-scanner";
 import type { ChainOption } from "@/lib/network";
 
 type Status = "idle" | "loading" | "success" | "error";
@@ -84,7 +93,26 @@ export function ExchangeWidget() {
   const [message, setMessage] = useState<string | null>(null);
   const [quoteOut, setQuoteOut] = useState<string | null>(null);
   const [step, setStep] = useState<string | null>(null);
+  const [scanSteps, setScanSteps] = useState<TxScanStep[]>([]);
   const cancelRef = useRef(false);
+
+  const walletChainIds = useMemo(
+    () => chainIdsForRoute(fromChain, toChain),
+    [fromChain, toChain],
+  );
+
+  const publishScans = useCallback(
+    (
+      steps: TxScanStep[],
+      log?: Omit<import("@/lib/tx-store").TxRecord, "id" | "timestamp" | "steps">,
+    ) => {
+      setScanSteps(steps);
+      if (log) {
+        pushTx({ ...log, steps });
+      }
+    },
+    [],
+  );
 
   const fromMeta = chains.find((c) => c.appKitChain === fromChain);
   const toMeta = chains.find((c) => c.appKitChain === toChain);
@@ -338,7 +366,9 @@ export function ExchangeWidget() {
 
     setStatus("loading");
     setStep(null);
+    setScanSteps([]);
     cancelRef.current = false;
+    const collected: TxScanStep[] = [];
     try {
       const fetchLifi = async (fc: string, tc: string, fSym: string, tSym: string, amt: string) => {
         const fromCfg = getSwapChain(fc);
@@ -396,13 +426,9 @@ export function ExchangeWidget() {
         );
         const fee = await debitArcPlatformFee(address);
         if (!fee.ok) throw new Error(fee.message);
-        pushTx({
-          type: "bridge",
-          status: "success",
-          summary: `Arc fee ${ARC_PLATFORM_FEE_LABEL}`,
-          feeUsd: "Arc USDC",
-        });
         if (fee.txHash) {
+          collected.push(arcFeeScanStep(fee.txHash));
+          setScanSteps([...collected]);
           setMessage(`Arc fee sent · ${fee.txHash.slice(0, 10)}…`);
         }
       }
@@ -431,11 +457,15 @@ export function ExchangeWidget() {
           getAddress(address),
           (msg) => setMessage(msg),
         );
-        pushTx({
+        const steps = mergeScanSteps(collected, [
+          scanStep("Wrap ETH → WETH", hash, cfg.lifiChainId),
+        ]);
+        publishScans(steps, {
           type: "swap",
           status: "success",
           summary: `ETH→WETH · ${hash.slice(0, 10)}`,
           feeUsd: "Arc USDC",
+          hash,
         });
         setStatus("success");
         setStep(null);
@@ -453,16 +483,26 @@ export function ExchangeWidget() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Quote failed");
         const quote = uniswapQuoteFromApi(data);
-        const { swapHash } = await executeUniswapV3Swap(
+        const { swapHash, approveHash } = await executeUniswapV3Swap(
           quote,
           getAddress(address),
           (msg) => setMessage(msg),
         );
-        pushTx({
+        const swapSteps = mergeScanSteps(
+          collected,
+          [
+            ...(approveHash
+              ? [scanStep("Approve USDC", approveHash, cfg.lifiChainId)]
+              : []),
+            scanStep("Uniswap swap", swapHash, cfg.lifiChainId),
+          ],
+        );
+        publishScans(swapSteps, {
           type: "swap",
           status: "success",
           summary: `${fromToken}→${toToken} · ${swapHash.slice(0, 10)}`,
           feeUsd: "Arc USDC",
+          hash: swapHash,
         });
         setStatus("success");
         setStep(null);
@@ -483,7 +523,12 @@ export function ExchangeWidget() {
           180_000,
           "Swap",
         );
-        pushTx({ type: "swap", status: "success", summary: `${fromToken}→${toToken}`, feeUsd: "Arc USDC" });
+        publishScans(collected, {
+          type: "swap",
+          status: "success",
+          summary: `${fromToken}→${toToken}`,
+          feeUsd: "Arc USDC",
+        });
         setStatus("success");
         setStep(null);
         setMessage(`Swap complete · fee paid on Arc`);
@@ -494,7 +539,7 @@ export function ExchangeWidget() {
         installCircleProxyFetch();
         const { AppKit } = await import("@circle-fin/app-kit");
         const kit = new AppKit();
-        const result = await executeCircleBridge(
+        const { result, capture } = await executeCircleBridge(
           kit,
           {
             from: { adapter, chain: fromChain as never },
@@ -508,11 +553,24 @@ export function ExchangeWidget() {
         const submitted = bridgeSubmitStatus(
           typeof result.state === "string" ? result.state : undefined,
         );
-        pushTx({
+        const bridgeScans = mergeScanSteps(
+          collected,
+          [
+            ...(capture.approveTx
+              ? [scanStep("Approve USDC", capture.approveTx, signChainId)]
+              : []),
+            ...(capture.burnTx
+              ? [scanStep("Bridge burn", capture.burnTx, signChainId)]
+              : []),
+          ],
+          bridgeStepsFromResult(result, fromChain, toChain),
+        );
+        publishScans(bridgeScans, {
           type: "bridge",
           status: submitted.uiStatus === "error" ? "error" : "success",
           summary: `${fromMeta?.label}→${toMeta?.label}`,
           feeUsd: "Arc USDC",
+          hash: capture.burnTx ?? capture.approveTx,
         });
         setStatus(submitted.uiStatus === "error" ? "error" : "success");
         setStep(null);
@@ -521,6 +579,7 @@ export function ExchangeWidget() {
         setMessage("Step A: swap to USDC on source chain…");
         const cfg = getSwapChain(fromChain);
         let usdcAmount = amount;
+        const stepA: TxScanStep[] = [];
         if (cfg) {
           const qs = new URLSearchParams({
             chainId: String(cfg.lifiChainId),
@@ -532,26 +591,31 @@ export function ExchangeWidget() {
           const data = await res.json();
           if (res.ok) {
             const quote = uniswapQuoteFromApi(data);
-            await executeUniswapV3Swap(quote, getAddress(address), (msg) =>
-              setMessage(`Step A: ${msg}`),
+            const { swapHash, approveHash } = await executeUniswapV3Swap(
+              quote,
+              getAddress(address),
+              (msg) => setMessage(`Step A: ${msg}`),
             );
-            usdcAmount = (
-              Number(quote.amountOut) /
-              10 ** 6
-            ).toFixed(6);
+            if (approveHash) {
+              stepA.push(scanStep("Approve USDC", approveHash, cfg.lifiChainId));
+            }
+            stepA.push(scanStep("Swap to USDC", swapHash, cfg.lifiChainId));
+            usdcAmount = (Number(quote.amountOut) / 10 ** 6).toFixed(6);
           } else {
             const swapData = await fetchLifi(fromChain, fromChain, fromToken, "USDC", amount);
-            await sendLifi(swapData, signChainId);
+            const h = await sendLifi(swapData, signChainId);
+            stepA.push(scanStep("Swap to USDC", h, signChainId));
           }
         } else {
           const swapData = await fetchLifi(fromChain, fromChain, fromToken, "USDC", amount);
-          await sendLifi(swapData, signChainId);
+          const h = await sendLifi(swapData, signChainId);
+          stepA.push(scanStep("Swap to USDC", h, signChainId));
         }
         setMessage("Step B: bridge USDC → Arc (Circle)…");
         installCircleProxyFetch();
         const { AppKit } = await import("@circle-fin/app-kit");
         const kit = new AppKit();
-        await executeCircleBridge(
+        const { result, capture } = await executeCircleBridge(
           kit,
           {
             from: { adapter, chain: fromChain as never },
@@ -562,7 +626,26 @@ export function ExchangeWidget() {
           },
           (msg) => setMessage(msg),
         );
-        pushTx({ type: "bridge", status: "success", summary: `${fromToken}→Arc`, feeUsd: "Arc USDC" });
+        const allSteps = mergeScanSteps(
+          collected,
+          stepA,
+          [
+            ...(capture.approveTx
+              ? [scanStep("Approve USDC", capture.approveTx, signChainId)]
+              : []),
+            ...(capture.burnTx
+              ? [scanStep("Bridge burn", capture.burnTx, signChainId)]
+              : []),
+          ],
+          bridgeStepsFromResult(result, fromChain, TESTNET_HOME_CHAIN),
+        );
+        publishScans(allSteps, {
+          type: "bridge",
+          status: "success",
+          summary: `${fromToken}→Arc`,
+          feeUsd: "Arc USDC",
+          hash: capture.burnTx,
+        });
         setStatus("success");
         setStep(null);
         setMessage(`Done · ${fromToken}→USDC→Arc`);
@@ -570,11 +653,15 @@ export function ExchangeWidget() {
         setMessage(`Confirm ${route.label} on ${signLabel}…`);
         const data = await fetchLifi(fromChain, toChain, fromToken, toToken, amount);
         const hash = await sendLifi(data, signChainId);
-        pushTx({
+        const steps = mergeScanSteps(collected, [
+          scanStep(route.label, hash, signChainId),
+        ]);
+        publishScans(steps, {
           type: fromChain === toChain ? "swap" : "bridge",
           status: "success",
           summary: `${fromToken}→${toToken} · ${hash.slice(0, 10)}`,
           feeUsd: "Arc USDC",
+          hash,
         });
         setStatus("success");
         setStep(null);
@@ -739,6 +826,14 @@ export function ExchangeWidget() {
           <div className="mt-3 rounded-xl border border-emerald-500/40 bg-emerald-950/50 px-3 py-2 text-center text-sm font-semibold text-emerald-200">
             Transaction successful
           </div>
+        )}
+
+        {(scanSteps.length > 0 || (address && (status === "success" || status === "error"))) && (
+          <TxScannerPanel
+            walletAddress={address}
+            walletChainIds={walletChainIds}
+            steps={scanSteps}
+          />
         )}
 
         {needsSwitch && isConnected && status !== "loading" && (

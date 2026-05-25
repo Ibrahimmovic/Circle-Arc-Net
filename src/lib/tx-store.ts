@@ -1,3 +1,5 @@
+import type { TxScanStep } from "@/lib/tx-scanner";
+
 export interface TxRecord {
   id: string;
   type: "bridge" | "swap" | "faucet" | "send";
@@ -7,6 +9,8 @@ export interface TxRecord {
   chain?: string;
   timestamp: number;
   hash?: string;
+  /** Per-chain explorer links (fee, burn, swap, etc.) */
+  steps?: TxScanStep[];
 }
 
 const KEY = "agora-forge-tx-log";

@@ -23,7 +23,7 @@ export function bridgeSubmitStatus(state: string | undefined): {
     return {
       uiStatus: "error",
       label:
-        "Bridge may have failed — check Arcscan. If burn succeeded, USDC will arrive on destination in ~15 min (SLOW CCTP).",
+        "Bridge may have failed — open the transaction links below. If burn succeeded, USDC arrives on destination in ~15 min (SLOW CCTP).",
     };
   }
 
@@ -31,7 +31,7 @@ export function bridgeSubmitStatus(state: string | undefined): {
     return {
       uiStatus: "success",
       label:
-        "Bridge submitted — USDC mints on destination in ~15 min (SLOW CCTP). Track burn on source explorer.",
+        "Bridge submitted — USDC mints on destination in ~15 min (SLOW CCTP). Use the scanner links below.",
     };
   }
 

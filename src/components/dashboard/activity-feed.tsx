@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { getTxLog, type TxRecord } from "@/lib/tx-store";
-import { Activity, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { explorerLabel, shortHash, txExplorerLink } from "@/lib/explorers";
+import { Activity, CheckCircle2, XCircle, Clock, ExternalLink } from "lucide-react";
 
 export function ActivityFeed({ expanded = false }: { expanded?: boolean }) {
   const [log, setLog] = useState<TxRecord[]>([]);
@@ -53,6 +54,37 @@ export function ActivityFeed({ expanded = false }: { expanded?: boolean }) {
                   {" · "}
                   {new Date(tx.timestamp).toLocaleTimeString()}
                 </p>
+                {tx.steps && tx.steps.length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {tx.steps.map((s) => {
+                      const href = txExplorerLink(s.chainId, s.hash);
+                      return (
+                        <li key={`${s.chainId}-${s.hash}-${s.label}`}>
+                          {href ? (
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[10px] text-violet-300 hover:text-cyan-300"
+                            >
+                              {s.label} · {explorerLabel(s.chainId)} · {shortHash(s.hash)}
+                              <ExternalLink className="h-2.5 w-2.5" />
+                            </a>
+                          ) : (
+                            <span className="text-[10px] text-slate-500">
+                              {s.label} · {shortHash(s.hash)}
+                            </span>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                {tx.hash && !tx.steps?.length && (
+                  <p className="mt-1 font-mono text-[10px] text-slate-500">
+                    {shortHash(tx.hash)}
+                  </p>
+                )}
               </div>
             </li>
           ))}
