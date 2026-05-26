@@ -29,7 +29,7 @@ export default function ExecutePage() {
   return (
     <AppShell
       title="Execute"
-      subtitle="Jumper-style swap & bridge · all fees in Arc USDC"
+      subtitle="Cross-Chain · all fees in Arc USDC"
     >
       <div className="space-y-6">
         <MarketTicker />
