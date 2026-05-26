@@ -183,8 +183,26 @@ export interface ZerionNftPositionsResponse {
 
 export async function getWalletNftPositions(address: string, testnet = false) {
   const encoded = encodeURIComponent(address);
-  return zerionFetch<ZerionNftPositionsResponse>(
-    `/wallets/${encoded}/nft-positions/?currency=usd&sort=-floor_price&page[size]=100`,
-    { testnet },
-  );
+  const all: ZerionNftPosition[] = [];
+  let cursor: string | undefined;
+  for (let page = 0; page < 4; page++) {
+    const after = cursor ? `&page[after]=${encodeURIComponent(cursor)}` : "";
+    const res = await zerionFetch<ZerionNftPositionsResponse & {
+      links?: { next?: string | null };
+    }>(
+      `/wallets/${encoded}/nft-positions/?currency=usd&sort=-floor_price&page[size]=100${after}`,
+      { testnet },
+    );
+    if (res.data?.length) all.push(...res.data);
+    const next = res.links?.next;
+    if (!next) break;
+    try {
+      const u = new URL(next);
+      cursor = u.searchParams.get("page[after]") ?? undefined;
+      if (!cursor) break;
+    } catch {
+      break;
+    }
+  }
+  return { data: all };
 }

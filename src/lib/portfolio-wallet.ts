@@ -189,6 +189,7 @@ function goldRushToNft(t: GoldRushTokenBalance): PortfolioNft | null {
       "NFT",
     collection: t.contract_name,
     chain: chainLabel(t.chain_name ?? ""),
+    chainId: t.chain_name,
     imageUrl: img,
     floorUsd: t.quote,
     amount: 1,
@@ -235,6 +236,7 @@ function zerionNftToItem(n: ZerionNftPosition): PortfolioNft | null {
     name,
     collection: n.attributes?.collection_info?.name,
     chain: chainLabel(n.relationships?.chain?.data?.id ?? ""),
+    chainId: n.relationships?.chain?.data?.id,
     imageUrl: n.attributes?.preview?.url,
     floorUsd: n.attributes?.floor_price,
     amount: n.attributes?.amount ?? 1,
@@ -539,7 +541,7 @@ export async function buildPortfolioWalletFeed(
     chainDistribution,
     totalUsd,
     chainLabel,
-    MIN_CHAIN_USD,
+    0,
   );
   const chainBalances = allChainBalances.filter(
     (c) => c.valueUsd >= MIN_CHAIN_USD || c.percent >= MIN_CHAIN_PERCENT,

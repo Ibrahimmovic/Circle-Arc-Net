@@ -1,18 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { formatUsd } from "@/lib/utils";
+import { formatUsd, cn } from "@/lib/utils";
 import { chainIcon } from "@/lib/token-visuals";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
-const VISIBLE = 10;
+const VISIBLE = 12;
 
 export function PortfolioChainMatrix({
   chains,
   totalUsd,
+  selectedChainId,
+  onSelectChain,
 }: {
   chains: Array<{ chain: string; chainId: string; valueUsd: number; percent: number }>;
   totalUsd: number;
+  selectedChainId?: string | null;
+  onSelectChain?: (chainId: string, chainLabel: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   if (!chains.length) {
@@ -35,10 +39,22 @@ export function PortfolioChainMatrix({
               : c.valueUsd > 0
                 ? 100
                 : 0;
+          const selected = selectedChainId === c.chainId;
+          const clickable = Boolean(onSelectChain);
           return (
-            <div
+            <button
               key={c.chainId}
-              className="rounded-xl border border-slate-800/80 bg-slate-900/40 px-3 py-2.5 transition hover:border-cyan-500/25 hover:bg-slate-900/70"
+              type="button"
+              disabled={!clickable}
+              onClick={() => onSelectChain?.(c.chainId, c.chain)}
+              className={cn(
+                "rounded-xl border px-3 py-2.5 text-left transition touch-manipulation",
+                clickable && "cursor-pointer hover:border-cyan-500/40 hover:bg-slate-900/70",
+                selected
+                  ? "border-cyan-500/50 bg-cyan-500/10 ring-1 ring-cyan-500/30"
+                  : "border-slate-800/80 bg-slate-900/40",
+                !clickable && "cursor-default",
+              )}
             >
               <div className="flex items-center gap-2">
                 {icon ? (
@@ -57,7 +73,7 @@ export function PortfolioChainMatrix({
                 {formatUsd(c.valueUsd)}
               </p>
               <p className="text-[10px] text-slate-500">{pct.toFixed(0)}%</p>
-            </div>
+            </button>
           );
         })}
       </div>

@@ -16,8 +16,12 @@ import { usePortfolioWallet } from "@/hooks/use-portfolio-wallet";
 import { useNetwork } from "@/providers/network-context";
 import { PortfolioHero } from "./portfolio-hero";
 import { PortfolioChainMatrix } from "./portfolio-chain-matrix";
+import { PortfolioChainDrilldown } from "./portfolio-chain-drilldown";
+import { PortfolioOverviewCharts } from "./portfolio-overview-charts";
 import { PortfolioAssetsTable } from "./portfolio-assets-table";
 import { PortfolioNftCollections } from "./portfolio-nft-collections";
+import { PortfolioNftGrid } from "./portfolio-nft-grid";
+import { assetMatchesChain } from "@/lib/portfolio-chain-utils";
 import { PortfolioActivityList } from "./portfolio-activity-list";
 import { PortfolioAdaptivePanel } from "./portfolio-adaptive-panel";
 import { PortfolioPositionCards } from "./portfolio-position-cards";
@@ -46,18 +50,31 @@ export function PortfolioCommandCenter() {
   );
   const [tab, setTab] = useState<TabId>("overview");
   const [chainFilter, setChainFilter] = useState<string>("all");
+  const [selectedChainId, setSelectedChainId] = useState<string | null>(null);
   const [hideSpam, setHideSpam] = useState(true);
 
   const analysis = data?.analysis;
   const regime = (analysis?.regime ?? "neutral") as MarketRegime;
 
+  const activeChainId = selectedChainId ?? (chainFilter !== "all" ? chainFilter : null);
+
   const filteredAssets = useMemo(() => {
     if (!data) return [];
-    if (chainFilter === "all") return data.assets;
-    return data.assets.filter(
-      (a) => (a.chainId ?? a.chain) === chainFilter || a.chain === chainFilter,
-    );
-  }, [data, chainFilter]);
+    if (!activeChainId || activeChainId === "all") return data.assets;
+    return data.assets.filter((a) => assetMatchesChain(a, activeChainId));
+  }, [data, activeChainId]);
+
+  const selectedChainMeta = useMemo(() => {
+    if (!data || !selectedChainId) return null;
+    return data.allChainBalances.find((c) => c.chainId === selectedChainId) ?? null;
+  }, [data, selectedChainId]);
+
+  const chainDrillAssets = useMemo(() => {
+    if (!data || !selectedChainId) return [];
+    return data.assets
+      .filter((a) => assetMatchesChain(a, selectedChainId))
+      .sort((a, b) => b.valueUsd - a.valueUsd);
+  }, [data, selectedChainId]);
 
   const nftUsd = useMemo(
     () => (data?.nfts ?? []).reduce((s, n) => s + (n.floorUsd ?? 0), 0),
@@ -219,7 +236,11 @@ export function PortfolioCommandCenter() {
             {tab !== "adaptive" && tab !== "spam" && (
               <select
                 value={chainFilter}
-                onChange={(e) => setChainFilter(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setChainFilter(v);
+                  setSelectedChainId(v === "all" ? null : v);
+                }}
                 className="min-h-[40px] rounded-xl border border-slate-700 bg-slate-900/80 px-3 text-xs text-slate-200"
               >
                 {chainOptions.map((o) => (
@@ -239,20 +260,45 @@ export function PortfolioCommandCenter() {
                 totalUsd={data.totalUsd}
               />
 
+              <PortfolioOverviewCharts
+                chains={data.allChainBalances}
+                sparkline={data.sparkline ?? []}
+                change24hPct={data.change24hPct}
+              />
+
               <div className="luxury-card rounded-2xl p-5 sm:p-6">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-lg font-semibold text-white">
                     By chain
                   </h3>
                   <span className="text-xs text-slate-500">
-                    DeBank-style multichain view
+                    Tap a chain to see every token on that network
                   </span>
                 </div>
                 <PortfolioChainMatrix
                   chains={data.allChainBalances}
                   totalUsd={data.totalUsd}
+                  selectedChainId={selectedChainId}
+                  onSelectChain={(id) => {
+                    setSelectedChainId(id);
+                    setChainFilter(id);
+                  }}
                 />
               </div>
+
+              {selectedChainMeta && selectedChainId && (
+                <PortfolioChainDrilldown
+                  chainId={selectedChainId}
+                  chainLabel={selectedChainMeta.chain}
+                  valueUsd={selectedChainMeta.valueUsd}
+                  percent={selectedChainMeta.percent}
+                  assets={chainDrillAssets}
+                  onClear={() => {
+                    setSelectedChainId(null);
+                    setChainFilter("all");
+                  }}
+                />
+              )}
 
               <div className="grid gap-6 lg:grid-cols-2">
                 <div className="luxury-card rounded-2xl p-5 sm:p-6">
@@ -284,30 +330,60 @@ export function PortfolioCommandCenter() {
           )}
 
           {tab === "assets" && (
-            <div className="luxury-card rounded-2xl p-5 sm:p-6">
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold text-white">Assets</h3>
-                <p className="text-xs text-slate-500">
-                  Zerion-style holdings · {formatUsd(data.totalUsd)} net worth · icons &
-                  prices from live APIs
-                </p>
+            <div className="space-y-4">
+              {selectedChainMeta && selectedChainId && (
+                <PortfolioChainDrilldown
+                  chainId={selectedChainId}
+                  chainLabel={selectedChainMeta.chain}
+                  valueUsd={selectedChainMeta.valueUsd}
+                  percent={selectedChainMeta.percent}
+                  assets={chainDrillAssets}
+                  onClear={() => {
+                    setSelectedChainId(null);
+                    setChainFilter("all");
+                  }}
+                />
+              )}
+              <div className="luxury-card rounded-2xl p-5 sm:p-6">
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold text-white">All tokens</h3>
+                  <p className="text-xs text-slate-500">
+                    {formatUsd(data.totalUsd)} net worth · live prices & icons ·{" "}
+                    {filteredAssets.length} on{" "}
+                    {activeChainId ? selectedChainMeta?.chain ?? "chain" : "all chains"}
+                  </p>
+                </div>
+                <PortfolioAssetsTable assets={filteredAssets} />
               </div>
-              <PortfolioAssetsTable assets={filteredAssets} />
             </div>
           )}
 
           {tab === "nfts" && (
-            <div className="luxury-card rounded-2xl p-5 sm:p-6">
-              <h3 className="mb-1 text-lg font-semibold text-white">
-                NFT collections
-              </h3>
-              <p className="mb-4 text-xs text-slate-500">
-                Grouped by collection · Zerion + GoldRush
-              </p>
-              <PortfolioNftCollections
-                collections={data.nftCollections}
-                totalNftUsd={nftUsd}
-              />
+            <div className="space-y-6">
+              {!data.zerionAvailable && (
+                <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                  NFT indexing works best with ZERION_API_KEY on Vercel (mainnet). GoldRush
+                  also scans Base, Ethereum, and major L2s.
+                </p>
+              )}
+              <div className="luxury-card rounded-2xl p-5 sm:p-6">
+                <h3 className="mb-1 text-lg font-semibold text-white">
+                  Your NFTs ({counts.nfts})
+                </h3>
+                <p className="mb-4 text-xs text-slate-500">
+                  Grid view · Zerion + GoldRush
+                </p>
+                <PortfolioNftGrid nfts={data.nfts} />
+              </div>
+              <div className="luxury-card rounded-2xl p-5 sm:p-6">
+                <h3 className="mb-1 text-lg font-semibold text-white">
+                  Collections
+                </h3>
+                <PortfolioNftCollections
+                  collections={data.nftCollections}
+                  totalNftUsd={nftUsd}
+                />
+              </div>
             </div>
           )}
 

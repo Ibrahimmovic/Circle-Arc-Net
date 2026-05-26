@@ -76,6 +76,22 @@ export async function buildSymbolMarketMap(
           string,
           { usd?: number; usd_24h_change?: number }
         >;
+        const idToImage: Record<string, string> = {};
+        try {
+          const meta = await fetch(
+            `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${[...ids].slice(0, 50).join(",")}&per_page=50`,
+            { cache: "no-store" },
+          );
+          if (meta.ok) {
+            const rows = (await meta.json()) as Array<{ id: string; image?: string }>;
+            for (const r of rows) {
+              if (r.image) idToImage[r.id] = r.image;
+            }
+          }
+        } catch {
+          /* optional */
+        }
+
         for (const [sym, cgId] of Object.entries(SYMBOL_TO_COINGECKO_ID)) {
           const row = data[cgId];
           if (!row?.usd) continue;
@@ -83,7 +99,7 @@ export async function buildSymbolMarketMap(
           map.set(sym, {
             price: row.usd,
             change24h: row.usd_24h_change ?? prev?.change24h ?? 0,
-            image: prev?.image,
+            image: prev?.image ?? idToImage[cgId],
           });
         }
         const eth = data.ethereum;

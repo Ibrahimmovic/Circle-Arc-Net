@@ -35,6 +35,7 @@ export type PortfolioNft = {
   name: string;
   collection?: string;
   chain: string;
+  chainId?: string;
   imageUrl?: string;
   floorUsd?: number;
   amount: number;
