@@ -69,12 +69,26 @@ export type PortfolioActivity = {
   direction?: "in" | "out";
 };
 
+export type PortfolioChartPoint = { t: number; v: number };
+
+export type PortfolioChart = {
+  period: string;
+  points: PortfolioChartPoint[];
+  values: number[];
+  beginAt?: string;
+  endAt?: string;
+  pnlUsd: number;
+  pnlPct: number;
+  source: "zerion" | "estimated";
+};
+
 export type PortfolioWalletFeed = {
   address: string;
   networkMode: "testnet" | "mainnet";
   totalUsd: number;
   change24hPct: number;
   change24hUsd?: number;
+  portfolioChart?: PortfolioChart;
   assets: PortfolioAsset[];
   aggregatedAssets: AggregatedAsset[];
   spamAssets: PortfolioAsset[];

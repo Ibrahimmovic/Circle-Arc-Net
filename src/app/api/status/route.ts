@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { listCircleWallets } from "@/lib/circle";
-import { getWalletPortfolio } from "@/lib/zerion";
+import { getWalletBalanceChart, getWalletPortfolio } from "@/lib/zerion";
 import { getAllChainsBalances } from "@/lib/goldrush";
 
 export async function GET() {
@@ -12,6 +12,7 @@ export async function GET() {
     circle: false,
     kit: Boolean(process.env.NEXT_PUBLIC_CIRCLE_KIT_KEY),
     zerion: false,
+    zerionChart: false,
     goldrush: false,
     network: process.env.NEXT_PUBLIC_NETWORK ?? "testnet",
     zerionKeySet: Boolean(process.env.ZERION_API_KEY?.trim()),
@@ -32,6 +33,13 @@ export async function GET() {
     status.zerion = true;
   } catch (e) {
     errors.zerion = e instanceof Error ? e.message.slice(0, 120) : "failed";
+  }
+
+  try {
+    const chart = await getWalletBalanceChart(demo, "week", false);
+    status.zerionChart = Boolean(chart.data?.attributes?.points?.length);
+  } catch (e) {
+    errors.zerionChart = e instanceof Error ? e.message.slice(0, 120) : "failed";
   }
 
   try {

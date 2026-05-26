@@ -181,6 +181,39 @@ export interface ZerionNftPositionsResponse {
   data?: ZerionNftPosition[];
 }
 
+export type ZerionChartPeriod =
+  | "hour"
+  | "day"
+  | "week"
+  | "month"
+  | "3months"
+  | "6months"
+  | "year"
+  | "5years"
+  | "max";
+
+export interface ZerionWalletChartResponse {
+  data?: {
+    attributes?: {
+      begin_at?: string;
+      end_at?: string;
+      points?: Array<[number, number]>;
+    };
+  };
+}
+
+export async function getWalletBalanceChart(
+  address: string,
+  period: ZerionChartPeriod = "week",
+  testnet = false,
+) {
+  const encoded = encodeURIComponent(address);
+  return zerionFetch<ZerionWalletChartResponse>(
+    `/wallets/${encoded}/charts/${period}?currency=usd`,
+    { testnet },
+  );
+}
+
 export async function getWalletNftPositions(address: string, testnet = false) {
   const encoded = encodeURIComponent(address);
   const all: ZerionNftPosition[] = [];
