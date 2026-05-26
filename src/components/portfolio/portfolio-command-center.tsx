@@ -30,6 +30,7 @@ import { MarketTicker } from "@/components/dashboard/market-ticker";
 import { CoinStrip } from "@/components/dashboard/coin-strip";
 import { cn, formatUsd } from "@/lib/utils";
 import type { MarketRegime } from "@/lib/types";
+import { DEFAULT_CHART_PERIOD, type ChartPeriod } from "@/lib/chart-period";
 
 const TABS = [
   { id: "overview", label: "Portfolio", icon: LayoutGrid },
@@ -45,8 +46,10 @@ type TabId = (typeof TABS)[number]["id"];
 export function PortfolioCommandCenter() {
   const { address, isConnected } = useAccount();
   const { network, isTestnet } = useNetwork();
+  const [chartPeriod, setChartPeriod] = useState<ChartPeriod>(DEFAULT_CHART_PERIOD);
   const { data, loading, refresh } = usePortfolioWallet(
     isConnected ? address : undefined,
+    chartPeriod,
   );
   const [tab, setTab] = useState<TabId>("overview");
   const [chainFilter, setChainFilter] = useState<string>("all");
@@ -193,7 +196,8 @@ export function PortfolioCommandCenter() {
             change24hPct={data.change24hPct}
             regime={regime}
             chainCount={data.allChainBalances.length}
-            sparkline={data.sparkline ?? []}
+            sparkline={data.sparkline ?? data.portfolioChart?.values ?? []}
+            portfolioChartSource={data.portfolioChart?.source}
             sources={data.sources}
             dataSourceLabel={data.dataSourceLabel}
             loading={loading}
@@ -262,8 +266,11 @@ export function PortfolioCommandCenter() {
 
               <PortfolioOverviewCharts
                 chains={data.allChainBalances}
-                sparkline={data.sparkline ?? []}
+                portfolioChart={data.portfolioChart}
                 change24hPct={data.change24hPct}
+                change24hUsd={data.change24hUsd}
+                chartPeriod={chartPeriod}
+                onChartPeriodChange={setChartPeriod}
               />
 
               <div className="luxury-card rounded-2xl p-5 sm:p-6">

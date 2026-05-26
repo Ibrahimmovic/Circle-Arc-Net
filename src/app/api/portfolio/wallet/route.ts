@@ -1,7 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getEthSparkline, syntheticSparkline } from "@/lib/coingecko";
+import { fetchPortfolioChart } from "@/lib/portfolio-chart";
 import { resolveApiTestnet } from "@/lib/network";
 import { buildPortfolioWalletFeed } from "@/lib/portfolio-wallet";
+import type { ZerionChartPeriod } from "@/lib/zerion";
+
+const CHART_PERIODS = new Set<ZerionChartPeriod>([
+  "hour",
+  "day",
+  "week",
+  "month",
+  "3months",
+  "6months",
+  "year",
+  "5years",
+  "max",
+]);
 
 export async function GET(req: NextRequest) {
   const address = req.nextUrl.searchParams.get("address");
@@ -11,16 +24,25 @@ export async function GET(req: NextRequest) {
 
   const networkParam = req.nextUrl.searchParams.get("network");
   const testnet = resolveApiTestnet(networkParam);
+  const periodParam = req.nextUrl.searchParams.get("chartPeriod") ?? "week";
+  const chartPeriod = CHART_PERIODS.has(periodParam as ZerionChartPeriod)
+    ? (periodParam as ZerionChartPeriod)
+    : "week";
 
   try {
-    const [{ feed, analysis }, sparkline] = await Promise.all([
-      buildPortfolioWalletFeed(address, testnet),
-      getEthSparkline()
-        .catch(() => syntheticSparkline(0)),
-    ]);
+    const { feed, analysis } = await buildPortfolioWalletFeed(address, testnet);
+    const portfolioChart = await fetchPortfolioChart(
+      address,
+      testnet,
+      chartPeriod,
+      feed.totalUsd,
+      feed.change24hPct,
+    );
+    const sparkline = portfolioChart.values;
     return NextResponse.json({
       ...feed,
       analysis,
+      portfolioChart,
       sparkline,
       hint:
         feed.totalUsd === 0

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import type { PortfolioAnalysis } from "@/lib/types";
 import type { PortfolioWalletFeed } from "@/lib/portfolio-wallet-types";
 import { useNetwork } from "@/providers/network-context";
+import type { ChartPeriod } from "@/lib/chart-period";
+import { DEFAULT_CHART_PERIOD } from "@/lib/chart-period";
 
 export type PortfolioWalletData = PortfolioWalletFeed & {
   analysis: PortfolioAnalysis | null;
@@ -12,7 +14,10 @@ export type PortfolioWalletData = PortfolioWalletFeed & {
   error?: string;
 };
 
-export function usePortfolioWallet(address: string | undefined) {
+export function usePortfolioWallet(
+  address: string | undefined,
+  chartPeriod: ChartPeriod = DEFAULT_CHART_PERIOD,
+) {
   const { network } = useNetwork();
   const [data, setData] = useState<PortfolioWalletData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -25,7 +30,7 @@ export function usePortfolioWallet(address: string | undefined) {
     setLoading(true);
     try {
       const res = await fetch(
-        `/api/portfolio/wallet?address=${address}&network=${network}`,
+        `/api/portfolio/wallet?address=${address}&network=${network}&chartPeriod=${chartPeriod}`,
       );
       const json = await res.json();
       if (!res.ok) {
@@ -84,7 +89,7 @@ export function usePortfolioWallet(address: string | undefined) {
     } finally {
       setLoading(false);
     }
-  }, [address, network]);
+  }, [address, network, chartPeriod]);
 
   useEffect(() => {
     refresh();

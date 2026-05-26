@@ -12,6 +12,7 @@ export function PortfolioHero({
   regime,
   chainCount,
   sparkline,
+  portfolioChartSource,
   sources,
   dataSourceLabel,
   loading,
@@ -21,11 +22,16 @@ export function PortfolioHero({
   regime: MarketRegime;
   chainCount: number;
   sparkline: number[];
+  portfolioChartSource?: "zerion" | "estimated";
   sources: string[];
   dataSourceLabel?: string;
   loading?: boolean;
 }) {
   const up = change24hPct >= 0;
+  const chartUp =
+    sparkline.length > 1
+      ? (sparkline[sparkline.length - 1] ?? 0) >= (sparkline[0] ?? 0)
+      : up;
 
   return (
     <div className="luxury-hero relative overflow-hidden rounded-2xl p-5 sm:rounded-3xl sm:p-8 lg:p-10">
@@ -57,10 +63,17 @@ export function PortfolioHero({
           </div>
         </div>
         <div className="flex flex-col items-end justify-between gap-4">
-          {sparkline.length > 4 && (
+          {sparkline.length > 1 && (
             <div className="rounded-xl border border-slate-700/50 bg-slate-950/50 px-2 py-1.5">
-              <p className="text-[9px] uppercase text-slate-500">ETH macro</p>
-              <Sparkline data={sparkline} width={120} height={32} positive={up} />
+              <p className="text-[9px] uppercase text-slate-500">
+                {portfolioChartSource === "zerion" ? "Your portfolio" : "Portfolio est."}
+              </p>
+              <Sparkline
+                data={sparkline.slice(-32)}
+                width={120}
+                height={32}
+                positive={chartUp}
+              />
             </div>
           )}
         </div>
