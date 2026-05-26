@@ -148,6 +148,10 @@ const MAINNET_CHAINS = [
   "arbitrum-mainnet",
   "optimism-mainnet",
   "polygon-mainnet",
+  "bsc-mainnet",
+  "mantle-mainnet",
+  "linea-mainnet",
+  "scroll-mainnet",
 ];
 
 function isGoldRushNftItem(item: GoldRushTokenBalance): boolean {

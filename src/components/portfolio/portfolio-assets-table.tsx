@@ -1,29 +1,9 @@
 "use client";
 
 import { formatPct, formatUsd } from "@/lib/utils";
-import { tokenIcon } from "@/lib/token-visuals";
 import type { PortfolioAsset } from "@/lib/portfolio-wallet-types";
 import { TrendingDown, TrendingUp, ShieldAlert, AlertTriangle } from "lucide-react";
-
-function AssetIcon({ asset }: { asset: PortfolioAsset }) {
-  const src = asset.logoUrl ?? tokenIcon(asset.symbol);
-  if (src) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={src}
-        alt=""
-        className="h-9 w-9 shrink-0 rounded-full bg-slate-800 object-cover ring-1 ring-white/10"
-        loading="lazy"
-      />
-    );
-  }
-  return (
-    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500/30 to-violet-600/30 text-xs font-bold text-white ring-1 ring-white/10">
-      {asset.symbol.slice(0, 3)}
-    </div>
-  );
-}
+import { AssetIcon } from "./asset-icon";
 
 export function PortfolioAssetsTable({
   assets,
@@ -61,7 +41,7 @@ export function PortfolioAssetsTable({
               >
                 <td className="py-3.5 pl-1">
                   <div className="flex items-center gap-3">
-                    <AssetIcon asset={a} />
+                    <AssetIcon symbol={a.symbol} logoUrl={a.logoUrl} size={36} />
                     <div className="min-w-0">
                       <p className="font-semibold text-white">{a.symbol}</p>
                       <p className="truncate text-xs text-slate-500">{a.name}</p>

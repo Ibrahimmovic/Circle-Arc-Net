@@ -1,8 +1,30 @@
 "use client";
 
+import { useState } from "react";
 import { formatUsd } from "@/lib/utils";
 import type { PortfolioNft } from "@/lib/portfolio-wallet-types";
 import { ImageIcon } from "lucide-react";
+
+function NftImage({ url, alt }: { url: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div className="flex h-full items-center justify-center text-slate-600">
+        <ImageIcon className="h-10 w-10" />
+      </div>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={url}
+      alt={alt}
+      className="h-full w-full object-cover"
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 export function PortfolioNftGrid({ nfts }: { nfts: PortfolioNft[] }) {
   if (!nfts.length) {
@@ -22,13 +44,7 @@ export function PortfolioNftGrid({ nfts }: { nfts: PortfolioNft[] }) {
         >
           <div className="relative aspect-square bg-slate-950">
             {n.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={n.imageUrl}
-                alt={n.name}
-                className="h-full w-full object-cover"
-                loading="lazy"
-              />
+              <NftImage url={n.imageUrl} alt={n.name} />
             ) : (
               <div className="flex h-full items-center justify-center text-slate-600">
                 <ImageIcon className="h-10 w-10" />

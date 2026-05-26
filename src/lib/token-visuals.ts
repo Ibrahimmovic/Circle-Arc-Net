@@ -36,6 +36,7 @@ export const VERIFIED_TOKEN_SYMBOLS = new Set([
 
 export const CHAIN_ICONS: Record<string, string> = {
   Arc_Testnet: "https://docs.arc.network/favicon.ico",
+  "Arc Testnet": "https://docs.arc.network/favicon.ico",
   Base_Sepolia: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
   Ethereum_Sepolia: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
   Arbitrum_Sepolia: "https://assets.coingecko.com/coins/images/16547/small/arb.jpg",
@@ -43,6 +44,24 @@ export const CHAIN_ICONS: Record<string, string> = {
   Ethereum: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
   Base: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
   Arbitrum: "https://assets.coingecko.com/coins/images/16547/small/arb.jpg",
+  Optimism: "https://assets.coingecko.com/coins/images/25244/small/Optimism.png",
+  OP: "https://assets.coingecko.com/coins/images/25244/small/Optimism.png",
+  Polygon: "https://assets.coingecko.com/coins/images/4713/small/polygon.png",
+  Avalanche: "https://assets.coingecko.com/coins/images/12559/small/Avalanche_Circle_RedWhite_Trans.png",
+  "BNB Chain": "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png",
+  BSC: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png",
+  Linea: "https://assets.coingecko.com/coins/images/33904/small/linea.png",
+  Scroll: "https://assets.coingecko.com/coins/images/26928/small/scroll.png",
+  Mantle: "https://assets.coingecko.com/coins/images/30980/small/mantle.jpg",
+  Zora: "https://assets.coingecko.com/coins/images/34653/small/zora.png",
+  Blast: "https://assets.coingecko.com/coins/images/35494/small/blast.jpg",
+  Taiko: "https://assets.coingecko.com/coins/images/38058/small/icon.png",
+  Ronin: "https://assets.coingecko.com/coins/images/14113/small/ronin.png",
+  ZetaChain: "https://assets.coingecko.com/coins/images/26718/small/Twitter_icon.png",
+  Gravity: "https://assets.coingecko.com/coins/images/39200/small/gravity.jpg",
+  Abstract: "https://assets.coingecko.com/coins/images/37082/small/kaito.png",
+  "Manta Pacific": "https://assets.coingecko.com/coins/images/28452/small/manta.png",
+  opBNB: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png",
 };
 
 export const ARC_FEE_COPY =
@@ -66,6 +85,21 @@ export function resolveTokenLogo(
   return tokenIcon(symbol);
 }
 
-export function chainIcon(appKitChain: string): string | undefined {
-  return CHAIN_ICONS[appKitChain];
+export function chainIcon(chainName: string): string | undefined {
+  if (!chainName) return undefined;
+  const direct = CHAIN_ICONS[chainName];
+  if (direct) return direct;
+  const lower = chainName.toLowerCase();
+  for (const [key, url] of Object.entries(CHAIN_ICONS)) {
+    if (key.toLowerCase() === lower || lower.includes(key.toLowerCase())) {
+      return url;
+    }
+  }
+  if (lower.includes("base")) return CHAIN_ICONS.Base;
+  if (lower.includes("eth")) return CHAIN_ICONS.Ethereum;
+  if (lower.includes("arb")) return CHAIN_ICONS.Arbitrum;
+  if (lower.includes("optim") || lower === "op") return CHAIN_ICONS.Optimism;
+  if (lower.includes("polygon") || lower.includes("matic")) return CHAIN_ICONS.Polygon;
+  if (lower.includes("bnb") || lower.includes("bsc")) return CHAIN_ICONS["BNB Chain"];
+  return undefined;
 }
