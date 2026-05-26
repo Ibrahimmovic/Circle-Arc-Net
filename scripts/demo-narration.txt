@@ -1,0 +1,17 @@
+Hi, I'm walking you through Agora Forge, our submission for the Agora Agents Hackathon, built with Circle, Arc, and Canteen.
+
+Agora Forge is an adaptive portfolio command desk for AI agents and humans. It reads multichain balances from Zerion and GoldRush, shows net worth and per-chain holdings like DeBank, and suggests rebalancing when market regime shifts.
+
+Here's the live app at circle dash arc dash net dot vercel dot app.
+
+On the overview, you see live market tickers and a cross-chain command center. Switch Testnet for Arc demo settlement, or Mainnet for real wallet data.
+
+Open Portfolio. Connect your wallet to load net worth, allocation by chain, and a portfolio P and L chart powered by Zerion. Click any chain to drill into every token on that network.
+
+The Adaptive tab detects risk-on, neutral, or risk-off regime and queues rebalance actions, aligned with Request for Builders zero four, Adaptive Portfolio Manager.
+
+On Execute, Circle App Kit handles bridge, swap, and send. On Arc Testnet, fees settle in USDC for about one cent, with sub-second finality, the economic OS the hackathon describes.
+
+Our agent console ties the loop together: read portfolio, reason about allocation, and execute on Arc through Circle wallets and CCTP.
+
+Stack: Circle App Kit, Wallets, CCTP, Arc Testnet USDC, Zerion, and GoldRush. GitHub repo Circle Arc Net. Thank you for watching.
