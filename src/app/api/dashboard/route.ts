@@ -5,7 +5,7 @@ import {
   aggregateGoldRushByChain,
   getBalancesForNetworkMode,
 } from "@/lib/goldrush";
-import type { NetworkMode } from "@/lib/network";
+import { resolveApiTestnet, type NetworkMode } from "@/lib/network";
 import { analyzePortfolio, mergeChainData, detectRegime } from "@/lib/portfolio-engine";
 import { getWalletPortfolio, getWalletPositions } from "@/lib/zerion";
 import { getArcTestnetUsdBalances } from "@/lib/arc-balance";
@@ -40,11 +40,7 @@ export async function GET(req: NextRequest) {
   }
 
   const networkParam = req.nextUrl.searchParams.get("network");
-  const testnet =
-    networkParam === "mainnet"
-      ? false
-      : networkParam === "testnet" ||
-        process.env.NEXT_PUBLIC_NETWORK !== "mainnet";
+  const testnet = resolveApiTestnet(networkParam);
 
   const networkMode: NetworkMode = testnet ? "testnet" : "mainnet";
   const sources: string[] = [];

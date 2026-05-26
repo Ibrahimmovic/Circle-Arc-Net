@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getEthSparkline, syntheticSparkline } from "@/lib/coingecko";
+import { resolveApiTestnet } from "@/lib/network";
 import { buildPortfolioWalletFeed } from "@/lib/portfolio-wallet";
 
 export async function GET(req: NextRequest) {
@@ -9,11 +10,7 @@ export async function GET(req: NextRequest) {
   }
 
   const networkParam = req.nextUrl.searchParams.get("network");
-  const testnet =
-    networkParam === "mainnet"
-      ? false
-      : networkParam === "testnet" ||
-        process.env.NEXT_PUBLIC_NETWORK !== "mainnet";
+  const testnet = resolveApiTestnet(networkParam);
 
   try {
     const [{ feed, analysis }, sparkline] = await Promise.all([

@@ -4,6 +4,16 @@ import { getTestnetSwapChains } from "@/lib/execute-tokens";
 
 export type NetworkMode = "testnet" | "mainnet";
 
+/**
+ * Server APIs: ?network=mainnet|testnet overrides env.
+ * Keep NEXT_PUBLIC_NETWORK=testnet as default; users switch via header toggle.
+ */
+export function resolveApiTestnet(networkParam: string | null): boolean {
+  if (networkParam === "mainnet") return false;
+  if (networkParam === "testnet") return true;
+  return (process.env.NEXT_PUBLIC_NETWORK ?? "testnet") !== "mainnet";
+}
+
 export interface ChainOption {
   id: string;
   label: string;

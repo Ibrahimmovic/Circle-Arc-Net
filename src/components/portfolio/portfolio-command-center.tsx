@@ -121,9 +121,18 @@ export function PortfolioCommandCenter() {
       <CoinStrip />
 
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-200">
-          {data?.networkMode ?? network}
-          {isTestnet ? " · Arc RPC" : ""}
+        <span
+          className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+            isTestnet
+              ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-200"
+              : "border-amber-500/30 bg-amber-500/10 text-amber-200"
+          }`}
+        >
+          Viewing: {data?.networkMode ?? network}
+          {isTestnet ? " (Arc testnet)" : " (live mainnet)"}
+        </span>
+        <span className="text-[10px] text-slate-500">
+          Switch Testnet ↔ Mainnet in the header — both stay available
         </span>
         <button
           type="button"

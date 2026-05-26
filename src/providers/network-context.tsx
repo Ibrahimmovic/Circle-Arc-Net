@@ -23,6 +23,8 @@ function readInitial(): NetworkMode {
   if (typeof window === "undefined") {
     return (process.env.NEXT_PUBLIC_NETWORK as NetworkMode) ?? "testnet";
   }
+  const fromUrl = new URLSearchParams(window.location.search).get("network");
+  if (fromUrl === "mainnet" || fromUrl === "testnet") return fromUrl;
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored === "mainnet" || stored === "testnet") return stored;
   return (process.env.NEXT_PUBLIC_NETWORK as NetworkMode) ?? "testnet";
@@ -40,6 +42,13 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
   const setNetwork = useCallback((mode: NetworkMode) => {
     setNetworkState(mode);
     localStorage.setItem(STORAGE_KEY, mode);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("network", mode);
+      window.history.replaceState({}, "", url.toString());
+    } catch {
+      /* ignore */
+    }
     window.dispatchEvent(new CustomEvent("agora-network-change", { detail: mode }));
   }, []);
 

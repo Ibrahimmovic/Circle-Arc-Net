@@ -40,8 +40,10 @@ export function NetworkToggle() {
           Arc · {ARC_FEE_USDC}
         </span>
       )}
-      <span className="text-[10px] text-slate-500 uppercase">
-        {network} · Circle CCTP
+      <span className="text-[10px] text-slate-500">
+        {isTestnet
+          ? "Arc demo · testnet execute & bridge"
+          : "Live wallet · Zerion + GoldRush portfolio"}
       </span>
     </div>
   );
