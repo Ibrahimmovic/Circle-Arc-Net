@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { motion } from "framer-motion";
 import { ArrowLeftRight, Sparkles } from "lucide-react";
 import { useNetwork } from "@/providers/network-context";
 import { cn } from "@/lib/utils";
@@ -11,9 +10,7 @@ import { ForgeArbitraryPanel } from "@/components/execute/forge-arbitrary-panel"
 import { ForgeRoutesPanel } from "@/components/execute/forge-routes-panel";
 import { ForgeRailsStrip } from "@/components/execute/forge-rails-strip";
 import { ExchangeWidget } from "@/components/execute/exchange-widget";
-import { HomeExecutionVisual } from "@/components/home/home-execution-visual";
-import { figmaEaseOut } from "@/design/motion-presets";
-import { GlassBadge, GlassPanel } from "@/components/ui/glass-ui";
+import { GlassPanel } from "@/components/ui/glass-ui";
 
 const SendPanel = dynamic(() => import("./send-panel").then((m) => m.SendPanel), {
   ssr: false,
@@ -51,55 +48,16 @@ export function CrossChainStudio() {
   } | null>(null);
 
   return (
-    <div className="space-y-6">
-      <section className="home-glass-hero home-glass-hero--compact relative overflow-hidden">
-        <div className="home-glass-hero__inner relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={figmaEaseOut}
-          >
-            <GlassPanel strong className="home-glass-hero__copy">
-              <div className="home-glass-hero__badges">
-                <GlassBadge>Agora Forge</GlassBadge>
-                <GlassBadge>Circle CCTP</GlassBadge>
-                <GlassBadge>Execution Desk</GlassBadge>
-              </div>
-
-              <h1 className="home-glass-hero__title font-display">
-                Bridge &amp; swap
-                <br />
-                <span className="home-glass-hero__accent">across every chain.</span>
-              </h1>
-
-              <p className="home-glass-hero__lede">
-                Quote Circle CCTP, LI.FI, and Uniswap routes in one flow — compare paths,
-                confirm gas, and execute with live CoinGecko token icons.
-              </p>
-
-              <div className="home-glass-hero__metrics">
-                <div>
-                  <p className="home-glass-metric__label">Rails</p>
-                  <ForgeRailsStrip />
-                </div>
-                <div>
-                  <p className="home-glass-metric__label">Data</p>
-                  <p className="home-glass-metric__value">Zerion · Covalent · CoinGecko</p>
-                </div>
-              </div>
-            </GlassPanel>
-          </motion.div>
-
-          <motion.div
-            className="home-glass-hero__visual"
-            initial={{ opacity: 0, scale: 0.96, y: 16 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ ...figmaEaseOut, delay: 0.12 }}
-          >
-            <HomeExecutionVisual />
-          </motion.div>
+    <div className="space-y-5">
+      <GlassPanel strong className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/50">
+            Execution Desk
+          </p>
+          <p className="text-sm text-white/80">Swap · bridge · compare live routes</p>
         </div>
-      </section>
+        <ForgeRailsStrip />
+      </GlassPanel>
 
       <div className="portfolio-glass-tab-bar flex gap-1 overflow-x-auto scrollbar-thin">
         {(
@@ -150,7 +108,7 @@ export function CrossChainStudio() {
         </div>
       )}
 
-      <nav className="flex flex-wrap gap-2 border-t border-white/10 pt-5">
+      <nav className="flex flex-wrap gap-2 border-t border-white/10 pt-4">
         {(
           [
             { id: "send" as const, label: "Send" },

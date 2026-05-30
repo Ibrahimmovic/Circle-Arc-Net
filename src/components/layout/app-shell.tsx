@@ -22,7 +22,7 @@ export function AppShell({
   const isHome = variant === "home";
   const isPortfolio = variant === "portfolio";
   const isExecute = variant === "execute";
-  const isCinematic = isHome || isPortfolio || isExecute;
+  const isCinematic = isHome || isPortfolio;
 
   return (
     <div
@@ -93,7 +93,7 @@ export function AppShell({
           className={cn(
             "app-shell-main relative z-10 flex-1",
             isHome && "grid-mesh",
-            isExecute && "execute-main grid-mesh px-4 py-5 sm:px-6 sm:py-8 lg:px-10",
+            isExecute && "execute-main grid-mesh px-4 py-5 sm:px-6 sm:py-8 lg:px-10 bg-[#030712]",
             isPortfolio && "portfolio-main px-4 py-5 sm:px-6 sm:py-8 lg:px-10",
             !isHome && !isPortfolio && !isExecute && "grid-mesh px-4 py-5 sm:px-6 sm:py-8 lg:px-10",
           )}
