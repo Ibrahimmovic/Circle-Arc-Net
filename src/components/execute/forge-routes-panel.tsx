@@ -92,9 +92,17 @@ export function ForgeRoutesPanel({
   const selected = routes.find((r) => r.id === selectedId);
 
   return (
-    <GlassPanel strong className="forge-panel forge-panel--routes flex h-full min-h-[28rem] flex-col p-4 sm:p-5">
-      <h3 className="font-display text-sm font-bold text-white">Routes & plan</h3>
-      <p className="mt-1 text-xs text-white/55">
+    <GlassPanel strong className="exec-visual--glass forge-panel forge-panel--routes flex h-full min-h-[28rem] flex-col overflow-hidden p-0">
+      <div className="exec-visual__chrome">
+        <div className="exec-visual__chrome-left">
+          <span className="exec-visual__dot exec-visual__dot--live" />
+          <span className="exec-visual__title">Routes &amp; plan</span>
+        </div>
+        <span className="exec-visual__tag">Multichain · live quotes</span>
+      </div>
+
+      <div className="flex flex-1 flex-col p-4 sm:p-5">
+      <p className="text-xs text-white/55">
         Compare paths — confirm with <strong className="text-white/75">Quote</strong> and{" "}
         <strong className="text-white/75">Exchange</strong> on the left.
       </p>
@@ -122,7 +130,7 @@ export function ForgeRoutesPanel({
         className="mt-3"
         fromLabel={fromLabel}
         toLabel={toLabel}
-        loading={loading || (isConnected && !intent.amount)}
+        loading={loading}
       />
       {loading && (
         <div className="forge-scan-bar mt-2" aria-hidden>
@@ -175,6 +183,7 @@ export function ForgeRoutesPanel({
           />
         </div>
       )}
+      </div>
     </GlassPanel>
   );
 }
