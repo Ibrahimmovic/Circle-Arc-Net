@@ -85,12 +85,12 @@ export function CrossChainStudio() {
         </GlassPanel>
       ) : (
         <motion.div
-          className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-6"
+          className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] xl:gap-5"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={figmaEaseOut}
         >
-          <GlassPanel strong className="exchange-widget-premium p-4 sm:p-5">
+          <GlassPanel strong className="exchange-widget-premium min-w-0 p-4 sm:p-5">
             <ExchangeWidget
               onIntentChange={setIntent}
               onCctpPending={(p) => setCctpPending(p)}
