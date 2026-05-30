@@ -2,13 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAccount } from "wagmi";
-import {
-  ArrowDown,
-  ArrowRightLeft,
-  Loader2,
-  ChevronDown,
-  Wallet,
-} from "lucide-react";
+import { ChevronDown, Repeat2 } from "lucide-react";
 import { useNetwork } from "@/providers/network-context";
 import {
   getExecChains,
@@ -19,6 +13,7 @@ import { executeLifiIntent } from "@/lib/execution/execute-lifi-intent";
 import { executeCircleDirectIntent } from "@/lib/execution/execute-circle-intent";
 import type { CrossChainRouteOption } from "@/lib/lifi-routes";
 import { CrossChainRouteCard } from "@/components/execute/cross-chain-route-card";
+import { ForgeRoutePath } from "@/components/execute/forge-route-path";
 import { TokenAvatar } from "@/components/execute/token-avatar";
 import { RecipientField } from "@/components/ui/recipient-field";
 import { cn } from "@/lib/utils";
@@ -53,6 +48,7 @@ export function CrossChainStudio() {
   const [amount, setAmount] = useState("");
   const [recipient, setRecipient] = useState("");
   const [showRecipient, setShowRecipient] = useState(false);
+  const [pctActive, setPctActive] = useState<number | null>(null);
 
   const [routes, setRoutes] = useState<CrossChainRouteOption[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -70,7 +66,6 @@ export function CrossChainStudio() {
   );
   const toTokens = useMemo(() => getExecTokens(toChain, network), [toChain, network]);
   const toMeta = findExecToken(toChain, toToken, network);
-  const fromMeta = findExecToken(fromChain, fromToken, network);
 
   const selectedRoute = routes.find((r) => r.id === selectedId) ?? routes[0];
 
@@ -147,22 +142,11 @@ export function CrossChainStudio() {
     }
   }, [isTestnet]);
 
-  const setPct = (pct: number) => {
-    setMessage("Enter balance sync — or type amount (MAX uses full field next).");
-    if (pct === 100) setAmount((prev) => prev || "100");
-  };
-
   const execute = async () => {
     if (!address || !selectedRoute?.executable) return;
     setExecuting(true);
     setMessage(null);
-    const intent = {
-      fromChain,
-      toChain,
-      fromToken,
-      toToken,
-      amount,
-    };
+    const intent = { fromChain, toChain, fromToken, toToken, amount };
     try {
       if (selectedRoute.circleDirect) {
         const res = await executeCircleDirectIntent({
@@ -181,7 +165,7 @@ export function CrossChainStudio() {
           mode: network,
           onProgress: setMessage,
         });
-        setMessage(`Done · ${tool ?? "LI.FI"} · ${txHash.slice(0, 14)}…`);
+        setMessage(`Confirmed · ${tool ?? "route"} · ${txHash.slice(0, 14)}…`);
         setStatus("ok");
       }
     } catch (e) {
@@ -197,74 +181,92 @@ export function CrossChainStudio() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div className="relative overflow-hidden rounded-3xl border border-violet-500/25 bg-gradient-to-br from-violet-950/80 via-slate-950 to-cyan-950/40 p-6 sm:p-8">
-        <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-violet-500/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-cyan-500/15 blur-3xl" />
-        <h2 className="relative text-xl font-bold text-white sm:text-2xl">
-          Cross-chain execution
-        </h2>
-        <p className="relative mt-2 max-w-xl text-sm text-slate-300">
-          Say what you want — we route bridge, swap, and delivery in one flow. Like
-          Jumper: compare providers, pick the best path, sign once when possible.
+      <header className="forge-studio-hero relative px-6 py-7 sm:px-8 sm:py-9">
+        <p className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-400/90">
+          Agora Forge
         </p>
-      </div>
+        <h2 className="relative mt-2 font-display text-2xl font-bold text-white sm:text-3xl">
+          <span className="text-gradient">Cross-chain</span> execution
+        </h2>
+        <p className="relative mt-3 max-w-lg text-sm leading-relaxed text-slate-400">
+          One intent across chains — we compare rails, bundle bridge and swap when
+          possible, and cut manual steps so you sign less and move faster.
+        </p>
+      </header>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Send */}
-        <div className="luxury-card space-y-4 rounded-3xl p-5 sm:p-6">
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
-            You send
-          </p>
+      <div className="grid gap-5 lg:grid-cols-2 lg:gap-6">
+        <section className="forge-panel space-y-4 p-5 sm:p-6">
+          <h3 className="font-display text-xs font-bold uppercase tracking-[0.15em] text-slate-500">
+            From
+          </h3>
 
           <div className="flex items-center gap-3">
-            <TokenAvatar symbol={fromToken} chainKey={fromChain} size={44} />
-            <div className="flex-1 space-y-2">
-              <select
-                value={fromChain}
-                onChange={(e) => setFromChain(e.target.value)}
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white"
-              >
-                {chains.map((c) => (
-                  <option key={c.appKitChain} value={c.appKitChain}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={fromToken}
-                onChange={(e) => setFromToken(e.target.value)}
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-semibold text-white"
-              >
-                {fromTokens.map((t) => (
-                  <option key={t.symbol} value={t.symbol}>
-                    {t.symbol}
-                  </option>
-                ))}
-              </select>
+            <TokenAvatar symbol={fromToken} chainKey={fromChain} size={48} />
+            <div className="grid flex-1 gap-2 sm:grid-cols-2">
+              <label className="block">
+                <span className="sr-only">Source chain</span>
+                <select
+                  value={fromChain}
+                  onChange={(e) => setFromChain(e.target.value)}
+                  className="w-full rounded-lg border border-slate-700/80 bg-slate-950/90 px-3 py-2.5 text-sm text-white"
+                >
+                  {chains.map((c) => (
+                    <option key={c.appKitChain} value={c.appKitChain}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="sr-only">Source token</span>
+                <select
+                  value={fromToken}
+                  onChange={(e) => setFromToken(e.target.value)}
+                  className="w-full rounded-lg border border-slate-700/80 bg-slate-950/90 px-3 py-2.5 text-sm font-semibold text-white"
+                >
+                  {fromTokens.map((t) => (
+                    <option key={t.symbol} value={t.symbol}>
+                      {t.symbol}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
           </div>
 
-          <div className="relative">
-            <input
-              type="text"
-              inputMode="decimal"
-              placeholder="0.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="w-full rounded-2xl border border-slate-700 bg-slate-950/80 py-4 pl-4 pr-16 text-2xl font-semibold text-white outline-none focus:border-violet-500/50"
-            />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-500">
-              {fromToken}
-            </span>
-          </div>
+          <label className="block">
+            <span className="sr-only">Amount</span>
+            <div className="relative">
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => {
+                  setAmount(e.target.value);
+                  setPctActive(null);
+                }}
+                className="forge-amount-input w-full rounded-xl py-4 pl-4 pr-16 text-2xl font-semibold text-white"
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-500">
+                {fromToken}
+              </span>
+            </div>
+          </label>
 
           <div className="flex gap-2">
             {[25, 50, 75, 100].map((p) => (
               <button
                 key={p}
                 type="button"
-                onClick={() => setPct(p)}
-                className="flex-1 rounded-lg border border-slate-700/80 py-1.5 text-xs font-semibold text-slate-400 hover:border-violet-500/40 hover:text-white"
+                onClick={() => {
+                  setPctActive(p);
+                  if (p === 100) setAmount((prev) => prev || "100");
+                }}
+                className={cn(
+                  "forge-chip flex-1 rounded-lg py-2",
+                  pctActive === p && "forge-chip--active",
+                )}
               >
                 {p === 100 ? "MAX" : `${p}%`}
               </button>
@@ -274,20 +276,22 @@ export function CrossChainStudio() {
           <button
             type="button"
             onClick={flip}
-            className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-violet-300 hover:bg-violet-500/20"
-            aria-label="Flip direction"
+            className="forge-swap-control"
+            aria-label="Swap source and destination"
           >
-            <ArrowDown className="h-4 w-4 rotate-90 sm:rotate-0" />
+            <Repeat2 className="h-4 w-4" strokeWidth={2.25} />
           </button>
 
-          <div className="flex items-center gap-3 rounded-2xl border border-dashed border-slate-700/60 bg-slate-950/40 p-3">
-            <TokenAvatar symbol={toToken} chainKey={toChain} size={40} />
-            <div className="flex-1">
-              <p className="text-[10px] font-bold uppercase text-slate-500">You receive on</p>
+          <div className="forge-receive-block flex items-center gap-3 p-3 sm:p-4">
+            <TokenAvatar symbol={toToken} chainKey={toChain} size={44} />
+            <div className="grid flex-1 gap-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-violet-300/80">
+                To
+              </p>
               <select
                 value={toChain}
                 onChange={(e) => setToChain(e.target.value)}
-                className="mt-1 w-full rounded-lg border-0 bg-transparent text-sm font-semibold text-white"
+                className="w-full rounded-lg border border-slate-700/60 bg-slate-950/80 px-2 py-2 text-sm text-white"
               >
                 {chains.map((c) => (
                   <option key={c.appKitChain} value={c.appKitChain}>
@@ -298,7 +302,7 @@ export function CrossChainStudio() {
               <select
                 value={toToken}
                 onChange={(e) => setToToken(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-white"
+                className="w-full rounded-lg border border-slate-700/60 bg-slate-950/80 px-2 py-2 text-sm font-semibold text-white"
               >
                 {toTokens.map((t) => (
                   <option key={t.symbol} value={t.symbol}>
@@ -312,14 +316,11 @@ export function CrossChainStudio() {
           <button
             type="button"
             onClick={() => setShowRecipient((v) => !v)}
-            className="flex w-full items-center justify-between text-xs text-slate-400"
+            className="flex w-full items-center justify-between text-xs text-slate-500 hover:text-slate-300"
           >
-            <span className="inline-flex items-center gap-1">
-              <Wallet className="h-3.5 w-3.5" />
-              Send to another wallet (optional)
-            </span>
+            <span>Destination wallet (optional)</span>
             <ChevronDown
-              className={cn("h-4 w-4 transition", showRecipient && "rotate-180")}
+              className={cn("h-4 w-4 transition-transform duration-200", showRecipient && "rotate-180")}
             />
           </button>
           {showRecipient && (
@@ -327,49 +328,47 @@ export function CrossChainStudio() {
           )}
 
           {toChain === "Solana" && !isTestnet && (
-            <p className="rounded-xl bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-              Solana delivery uses LI.FI + a Solana-compatible wallet (e.g. Phantom)
-              when routes are available.
+            <p className="rounded-lg border border-amber-500/25 bg-amber-950/30 px-3 py-2 text-xs text-amber-100/90">
+              Solana delivery needs a compatible recipient address when the route
+              supports it.
             </p>
           )}
-        </div>
+        </section>
 
-        {/* Receive / routes */}
-        <div className="luxury-card flex flex-col rounded-3xl p-5 sm:p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
-              You receive
-            </p>
-            {quoteLoading && (
-              <Loader2 className="h-4 w-4 animate-spin text-violet-400" />
-            )}
-          </div>
+        <section className="forge-panel forge-panel--routes flex flex-col p-5 sm:p-6">
+          <h3 className="font-display text-xs font-bold uppercase tracking-[0.15em] text-slate-500">
+            Routes
+          </h3>
 
-          <div className="mb-4 flex items-center gap-2 text-sm text-slate-400">
-            <span className="text-white">{fromLabel}</span>
-            <ArrowRightLeft className="h-3.5 w-3.5 text-violet-400" />
-            <span className="text-white">{toLabel}</span>
-          </div>
+          <ForgeRoutePath
+            className="mt-3"
+            fromLabel={fromLabel}
+            toLabel={toLabel}
+            loading={quoteLoading}
+          />
 
-          <div className="flex-1 space-y-3 overflow-y-auto">
+          {quoteLoading && (
+            <div className="forge-scan-bar mt-3" aria-hidden>
+              <div className="forge-scan-bar__fill" />
+            </div>
+          )}
+
+          <div className="mt-4 flex-1 space-y-3 overflow-y-auto min-h-[12rem]">
             {!isConnected && (
-              <p className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-6 text-center text-sm text-cyan-100">
-                Connect wallet to see live routes
+              <p className="rounded-xl border border-cyan-500/25 bg-cyan-950/20 px-4 py-8 text-center text-sm text-cyan-100/90">
+                Connect your wallet to scan routes
               </p>
             )}
             {isConnected && !amount && (
-              <p className="py-8 text-center text-sm text-slate-500">
-                Enter an amount to compare routes
+              <p className="py-10 text-center text-sm text-slate-500">
+                Enter an amount to compare paths
               </p>
             )}
-            {isConnected &&
-              amount &&
-              !quoteLoading &&
-              routes.length === 0 && (
-                <p className="py-8 text-center text-sm text-slate-500">
-                  No routes — try USDC ↔ WETH across Base and Ethereum
-                </p>
-              )}
+            {isConnected && amount && !quoteLoading && routes.length === 0 && (
+              <p className="py-10 text-center text-sm text-slate-500">
+                No path found — try USDC → WETH between Base and Ethereum
+              </p>
+            )}
             {routes.map((r) => (
               <CrossChainRouteCard
                 key={r.id}
@@ -391,38 +390,35 @@ export function CrossChainStudio() {
               quoteLoading
             }
             onClick={execute}
-            className="mt-4 flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-600 text-base font-bold text-white shadow-lg shadow-violet-500/25 hover:from-violet-500 hover:to-cyan-500 disabled:opacity-40"
+            className="forge-execute-btn mt-5"
           >
-            {executing ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              "Review & execute"
-            )}
+            {executing ? "Confirm in wallet…" : "Execute route"}
           </button>
 
           {message && (
             <p
+              role="status"
               className={cn(
-                "mt-3 rounded-xl px-3 py-2 text-xs",
+                "mt-3 rounded-lg px-3 py-2.5 text-xs leading-relaxed",
                 status === "error"
-                  ? "bg-red-500/10 text-red-200"
+                  ? "border border-red-500/30 bg-red-950/40 text-red-200"
                   : status === "ok"
-                    ? "bg-emerald-500/10 text-emerald-200"
-                    : "bg-slate-800 text-slate-300",
+                    ? "border border-emerald-500/25 bg-emerald-950/30 text-emerald-200"
+                    : "border border-slate-700/60 bg-slate-900/80 text-slate-300",
               )}
             >
               {message}
             </p>
           )}
-        </div>
+        </section>
       </div>
 
-      <div className="flex flex-wrap gap-2 border-t border-slate-800/80 pt-4">
+      <nav className="flex flex-wrap gap-2 border-t border-slate-800/60 pt-5">
         {(
           [
-            { id: "send" as const, label: "Send to friend" },
-            { id: "fund" as const, label: "Get testnet funds" },
-            { id: "activity" as const, label: "Activity" },
+            { id: "send" as const, label: "Send" },
+            { id: "fund" as const, label: "Fund wallet" },
+            { id: "activity" as const, label: "History" },
           ] as const
         ).map(({ id, label }) => (
           <button
@@ -430,16 +426,14 @@ export function CrossChainStudio() {
             type="button"
             onClick={() => setUtility(utility === id ? null : id)}
             className={cn(
-              "rounded-full border px-4 py-2 text-xs font-semibold",
-              utility === id
-                ? "border-violet-500/50 bg-violet-500/20 text-white"
-                : "border-slate-700 text-slate-400 hover:text-white",
+              "forge-utility-pill",
+              utility === id && "forge-utility-pill--on",
             )}
           >
             {label}
           </button>
         ))}
-      </div>
+      </nav>
       {utility === "send" && <SendPanel />}
       {utility === "fund" && isTestnet && <FaucetPanel />}
       {utility === "activity" && <ActivityFeed expanded />}

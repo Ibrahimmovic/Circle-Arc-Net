@@ -212,7 +212,7 @@ export function BridgePanel() {
 
       setFeeLines([
         `Cross-chain route: ${fromTokenMeta.symbol} on ${fromMeta?.label} → ${toTokenMeta.symbol} on ${toMeta?.label}`,
-        `Aggregator: ${data.tool ?? "LI.FI"} (same flow as Jumper / Relay)`,
+        `Aggregator: ${data.tool ?? "LI.FI"}`,
       ]);
       setMessage(
         `Est. receive: ${formatLifiOutput(data, toTokenSym)} · fees shown in wallet before you sign.`,

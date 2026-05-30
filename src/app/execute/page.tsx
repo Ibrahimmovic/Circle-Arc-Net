@@ -29,7 +29,7 @@ export default function ExecutePage() {
   return (
     <AppShell
       title="Execute"
-      subtitle="Cross-chain routes · one flow · LI.FI + Circle"
+      subtitle="Agora Forge · compare routes · execute in one flow"
     >
       <div className="space-y-6">
         <MarketTicker />

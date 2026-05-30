@@ -1,6 +1,6 @@
 import { lifiTokenParam } from "@/lib/lifi-tokens";
 
-/** LI.FI aggregator (Jumper-style routes) — server + client helpers */
+/** LI.FI aggregator — server + client helpers */
 
 export interface LifiQuoteParams {
   fromChain: number;

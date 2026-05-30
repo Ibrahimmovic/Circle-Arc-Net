@@ -151,7 +151,7 @@ export function SwapPanel() {
       setEstimatedOut(formatLifiOutput(data, tokenOut));
       setRouteTool(data.tool ? `LI.FI · ${data.tool}` : "LI.FI");
       setMessage(
-        `Same-chain swap on ${chainConfig.label} — route via LI.FI (Jumper-style aggregator).`,
+        `Same-chain swap on ${chainConfig.label} — routed via LI.FI aggregator.`,
       );
       setStatus("idle");
     } catch (e) {

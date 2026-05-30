@@ -1,4 +1,4 @@
-/** Token & chain visuals for Jumper-style execute UI */
+/** Token & chain visuals for execute UI */
 
 export const TOKEN_ICONS: Record<string, string> = {
   USDC: "https://assets.coingecko.com/coins/images/6319/small/usdc.png",

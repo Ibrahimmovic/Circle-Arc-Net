@@ -43,7 +43,7 @@ function providerName(route: LifiAdvancedRoute): string {
   return route.toolDetails?.name ?? route.tool ?? "LI.FI";
 }
 
-/** Fetch multiple LI.FI routes (Jumper-style), fallback to single quote. */
+/** Fetch multiple LI.FI routes, fallback to single quote. */
 export async function fetchCrossChainRoutes(params: {
   fromChainId: number;
   toChainId: number;
