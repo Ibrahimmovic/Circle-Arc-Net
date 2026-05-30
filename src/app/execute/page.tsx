@@ -7,6 +7,14 @@ import { MarketTicker } from "@/components/dashboard/market-ticker";
 import { useNetwork } from "@/providers/network-context";
 import { ARC_FEE_USDC } from "@/lib/network";
 
+const CrossChainExecutionStack = dynamic(
+  () =>
+    import("@/components/execute/cross-chain-execution-stack").then((m) => ({
+      default: m.CrossChainExecutionStack,
+    })),
+  { ssr: false, loading: () => null },
+);
+
 const ExecuteHub = dynamic(
   () =>
     import("@/components/execute/execute-hub").then((m) => ({
@@ -28,8 +36,8 @@ export default function ExecutePage() {
 
   return (
     <AppShell
-      title="Execute"
-      subtitle="Cross-Chain · all fees in Arc USDC"
+      title="Cross-Chain Execution"
+      subtitle="Engine · queue · CCTP bridge & swap · Arc USDC fees"
     >
       <div className="space-y-6">
         <MarketTicker />
@@ -38,6 +46,7 @@ export default function ExecutePage() {
             Connect wallet · fund Arc USDC first · {ARC_FEE_USDC}
           </p>
         )}
+        <CrossChainExecutionStack />
         <ExecuteHub />
       </div>
     </AppShell>
