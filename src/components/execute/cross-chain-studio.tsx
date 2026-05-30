@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import { motion } from "framer-motion";
 import { ArrowLeftRight, Sparkles } from "lucide-react";
 import { useNetwork } from "@/providers/network-context";
 import { cn } from "@/lib/utils";
@@ -11,6 +12,7 @@ import { ForgeRoutesPanel } from "@/components/execute/forge-routes-panel";
 import { ForgeRailsStrip } from "@/components/execute/forge-rails-strip";
 import { ExchangeWidget } from "@/components/execute/exchange-widget";
 import { GlassPanel } from "@/components/ui/glass-ui";
+import { figmaEaseOut } from "@/design/motion-presets";
 
 const SendPanel = dynamic(() => import("./send-panel").then((m) => m.SendPanel), {
   ssr: false,
@@ -49,7 +51,12 @@ export function CrossChainStudio() {
 
   return (
     <div className="space-y-5">
-      <GlassPanel strong className="forge-studio-hero !overflow-visible px-4 py-4 sm:px-5 sm:py-5">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={figmaEaseOut}
+      >
+        <GlassPanel strong className="execute-desk-hero forge-studio-hero !overflow-visible px-4 py-4 sm:px-5 sm:py-5">
         <p className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-400/90">
           Agora Forge
         </p>
@@ -64,7 +71,8 @@ export function CrossChainStudio() {
           </div>
           <ForgeRailsStrip />
         </div>
-      </GlassPanel>
+        </GlassPanel>
+      </motion.div>
 
       <div className="portfolio-glass-tab-bar flex gap-1 overflow-x-auto scrollbar-thin">
         {(
@@ -100,7 +108,12 @@ export function CrossChainStudio() {
           <ForgeArbitraryPanel />
         </GlassPanel>
       ) : (
-        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-6">
+        <motion.div
+          className="grid items-start gap-5 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...figmaEaseOut, delay: 0.08 }}
+        >
           <GlassPanel strong className="exchange-widget-premium p-4 sm:p-5">
             <ExchangeWidget
               onIntentChange={setIntent}
@@ -112,7 +125,7 @@ export function CrossChainStudio() {
             cctpPending={cctpPending}
             onDismissCctp={() => setCctpPending(null)}
           />
-        </div>
+        </motion.div>
       )}
 
       <nav className="flex flex-wrap gap-2 border-t border-white/10 pt-4">

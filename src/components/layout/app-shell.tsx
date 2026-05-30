@@ -23,6 +23,7 @@ export function AppShell({
   const isPortfolio = variant === "portfolio";
   const isExecute = variant === "execute";
   const isCinematic = isHome || isPortfolio;
+  const isGlassTopbar = isCinematic || isExecute;
 
   return (
     <div
@@ -42,14 +43,14 @@ export function AppShell({
         <div
           className={cn(
             "app-shell-topbar border-b px-3 py-2.5 sm:px-4 lg:px-8 lg:py-3",
-            isCinematic
+            isGlassTopbar
               ? "app-shell-topbar--glass border-white/10 bg-white/[0.06] backdrop-blur-2xl"
               : "border-slate-800 bg-slate-950/95",
           )}
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <NetworkToggle variant={isCinematic ? "home" : "default"} />
-            <WalletButton variant={isCinematic ? "home" : "default"} />
+            <NetworkToggle variant={isGlassTopbar ? "home" : "default"} />
+            <WalletButton variant={isGlassTopbar ? "home" : "default"} />
           </div>
           {(isHome || isExecute) && (
             <div className="mt-2 overflow-x-auto">
@@ -93,7 +94,7 @@ export function AppShell({
           className={cn(
             "app-shell-main relative z-10 flex-1",
             isHome && "grid-mesh",
-            isExecute && "execute-main grid-mesh px-4 py-5 sm:px-6 sm:py-8 lg:px-10 bg-[#030712]",
+            isExecute && "execute-main execute-main--cinematic grid-mesh px-4 py-5 sm:px-6 sm:py-8 lg:px-10",
             isPortfolio && "portfolio-main px-4 py-5 sm:px-6 sm:py-8 lg:px-10",
             !isHome && !isPortfolio && !isExecute && "grid-mesh px-4 py-5 sm:px-6 sm:py-8 lg:px-10",
           )}
