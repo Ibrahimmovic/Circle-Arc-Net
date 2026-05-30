@@ -15,7 +15,7 @@ import { arcTestnet } from "@/lib/chains";
 
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_ID;
 const testnet =
-  (process.env.NEXT_PUBLIC_NETWORK ?? "testnet") !== "mainnet";
+  (process.env.NEXT_PUBLIC_NETWORK ?? "mainnet") !== "mainnet";
 
 const testnetChains = [
   arcTestnet,

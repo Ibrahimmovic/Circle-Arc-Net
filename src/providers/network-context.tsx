@@ -19,19 +19,31 @@ type NetworkContextValue = {
 
 const NetworkContext = createContext<NetworkContextValue | null>(null);
 
+function envDefault(): NetworkMode {
+  const env = process.env.NEXT_PUBLIC_NETWORK as NetworkMode | undefined;
+  return env === "mainnet" || env === "testnet" ? env : "mainnet";
+}
+
 function readInitial(): NetworkMode {
   if (typeof window === "undefined") {
-    return (process.env.NEXT_PUBLIC_NETWORK as NetworkMode) ?? "testnet";
+    return envDefault();
   }
   const fromUrl = new URLSearchParams(window.location.search).get("network");
   if (fromUrl === "mainnet" || fromUrl === "testnet") return fromUrl;
+  // Deploy default wins over stale localStorage (e.g. after switching Vercel to mainnet).
+  const fromEnv = envDefault();
   const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored === "mainnet" || stored === "testnet") return stored;
-  return (process.env.NEXT_PUBLIC_NETWORK as NetworkMode) ?? "testnet";
+  if (stored === "mainnet" || stored === "testnet") {
+    if (stored !== fromEnv && !localStorage.getItem(`${STORAGE_KEY}-pinned`)) {
+      return fromEnv;
+    }
+    return stored;
+  }
+  return fromEnv;
 }
 
 export function NetworkProvider({ children }: { children: React.ReactNode }) {
-  const [network, setNetworkState] = useState<NetworkMode>("testnet");
+  const [network, setNetworkState] = useState<NetworkMode>("mainnet");
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -42,6 +54,7 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
   const setNetwork = useCallback((mode: NetworkMode) => {
     setNetworkState(mode);
     localStorage.setItem(STORAGE_KEY, mode);
+    localStorage.setItem(`${STORAGE_KEY}-pinned`, "1");
     try {
       const url = new URL(window.location.href);
       url.searchParams.set("network", mode);
@@ -73,9 +86,9 @@ export function useNetwork() {
   const ctx = useContext(NetworkContext);
   if (!ctx) {
     return {
-      network: (process.env.NEXT_PUBLIC_NETWORK as NetworkMode) ?? "testnet",
+      network: envDefault(),
       setNetwork: () => {},
-      isTestnet: true,
+      isTestnet: envDefault() === "testnet",
     };
   }
   return ctx;

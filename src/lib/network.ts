@@ -6,12 +6,12 @@ export type NetworkMode = "testnet" | "mainnet";
 
 /**
  * Server APIs: ?network=mainnet|testnet overrides env.
- * Keep NEXT_PUBLIC_NETWORK=testnet as default; users switch via header toggle.
+ * Default mainnet for production; users switch via header toggle or ?network=testnet.
  */
 export function resolveApiTestnet(networkParam: string | null): boolean {
   if (networkParam === "mainnet") return false;
   if (networkParam === "testnet") return true;
-  return (process.env.NEXT_PUBLIC_NETWORK ?? "testnet") !== "mainnet";
+  return (process.env.NEXT_PUBLIC_NETWORK ?? "mainnet") !== "mainnet";
 }
 
 export interface ChainOption {
