@@ -14,7 +14,7 @@ export function PortfolioAssetsTable({
 }) {
   if (!assets.length) {
     return (
-      <p className="py-8 text-center text-sm text-slate-500">{emptyLabel}</p>
+      <p className="py-8 text-center text-sm text-white/50">{emptyLabel}</p>
     );
   }
 
@@ -22,7 +22,7 @@ export function PortfolioAssetsTable({
     <div className="overflow-x-auto -mx-1">
       <table className="w-full min-w-[520px] text-left text-sm">
         <thead>
-          <tr className="border-b border-slate-800/80 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+          <tr className="border-b border-white/10 text-[10px] font-semibold uppercase tracking-wider text-white/55">
             <th className="pb-3 pl-1">Asset</th>
             <th className="pb-3">Chain</th>
             <th className="pb-3 text-right">Price</th>
@@ -37,14 +37,14 @@ export function PortfolioAssetsTable({
             return (
               <tr
                 key={a.id}
-                className="border-b border-slate-800/40 transition hover:bg-white/[0.03]"
+                className="border-b border-white/8 transition hover:bg-white/[0.04]"
               >
                 <td className="py-3.5 pl-1">
                   <div className="flex items-center gap-3">
-                    <AssetIcon symbol={a.symbol} logoUrl={a.logoUrl} size={36} />
+                    <AssetIcon symbol={a.symbol} logoUrl={a.logoUrl} size={36} glass />
                     <div className="min-w-0">
                       <p className="font-semibold text-white">{a.symbol}</p>
-                      <p className="truncate text-xs text-slate-500">{a.name}</p>
+                      <p className="truncate text-xs text-white/50">{a.name}</p>
                     </div>
                     {a.isSpam && (
                       <ShieldAlert className="h-4 w-4 shrink-0 text-amber-400" />
@@ -56,8 +56,8 @@ export function PortfolioAssetsTable({
                     )}
                   </div>
                 </td>
-                <td className="py-3.5 text-slate-400">{a.chain}</td>
-                <td className="py-3.5 text-right font-mono text-xs text-slate-300">
+                <td className="py-3.5 text-white/65">{a.chain}</td>
+                <td className="py-3.5 text-right font-mono text-xs text-white/80">
                   {a.priceUsd != null && a.priceUsd > 0
                     ? formatUsd(a.priceUsd)
                     : "—"}

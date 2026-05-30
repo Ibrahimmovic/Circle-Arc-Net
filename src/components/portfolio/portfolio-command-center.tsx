@@ -31,7 +31,12 @@ import { CoinStrip } from "@/components/dashboard/coin-strip";
 import { cn, formatUsd } from "@/lib/utils";
 import type { MarketRegime } from "@/lib/types";
 import { DEFAULT_CHART_PERIOD, type ChartPeriod } from "@/lib/chart-period";
-import { PremiumIcon } from "@/components/ui/premium-icon";
+import {
+  GlassBadge,
+  GlassIconOrb,
+  GlassPanel,
+  LiquidGlassButton,
+} from "@/components/ui/glass-ui";
 
 const TABS = [
   { id: "overview", label: "Portfolio", icon: LayoutGrid },
@@ -120,57 +125,55 @@ export function PortfolioCommandCenter() {
   if (!isConnected) {
     return (
       <div className="space-y-6">
-        <MarketTicker />
-        <div className="portfolio-hero-premium p-8 text-center sm:p-10">
-          <div className="portfolio-hero-premium__mesh" aria-hidden />
-          <PremiumIcon icon={Wallet} variant="cyan" size="xl" className="mx-auto" pulse />
+        <GlassPanel strong className="overflow-hidden">
+          <MarketTicker variant="glass" />
+          <CoinStrip variant="glass" />
+        </GlassPanel>
+        <GlassPanel strong className="p-8 text-center sm:p-10">
+          <GlassIconOrb icon={Wallet} variant="cyan" size="lg" className="mx-auto" />
           <p className="relative mt-6 font-display text-2xl font-bold text-white">
             Connect wallet for DeBank-style portfolio
           </p>
-          <p className="relative mx-auto mt-2 max-w-lg text-sm text-slate-400">
+          <p className="relative mx-auto mt-2 max-w-lg text-sm text-white/60">
             Multichain net worth, per-chain breakdown, aggregated tokens across
             networks, NFT collections, and labeled transaction history — Zerion
             + GoldRush, like DeBank and Zerion.
           </p>
-        </div>
+        </GlassPanel>
       </div>
     );
   }
 
   return (
     <div className="space-y-5 sm:space-y-6">
-      <MarketTicker />
-      <CoinStrip />
+      <GlassPanel strong className="overflow-hidden">
+        <MarketTicker variant="glass" />
+        <CoinStrip variant="glass" />
+      </GlassPanel>
 
       <div className="flex flex-wrap items-center gap-2">
-        <span
-          className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-            isTestnet
-              ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-200"
-              : "border-amber-500/30 bg-amber-500/10 text-amber-200"
-          }`}
-        >
+        <GlassBadge>
           Viewing: {data?.networkMode ?? network}
           {isTestnet ? " (Arc testnet)" : " (live mainnet)"}
-        </span>
-        <span className="text-[10px] text-slate-500">
+        </GlassBadge>
+        <span className="text-[10px] text-white/45">
           Switch Testnet ↔ Mainnet in the header — both stay available
         </span>
-        <button
-          type="button"
+        <LiquidGlassButton
+          variant="ghost"
           onClick={() => refresh()}
-          className="flex min-h-[40px] items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-400 hover:text-white touch-manipulation"
+          className="!min-h-[40px] !px-3 !py-2 !text-xs"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
           Sync portfolio
-        </button>
+        </LiquidGlassButton>
         {data?.dataFreshness && (
-          <span className="text-[10px] text-slate-500">
+          <span className="text-[10px] text-white/45">
             Updated {new Date(data.dataFreshness).toLocaleTimeString()}
           </span>
         )}
         {data?.sources && (
-          <span className="hidden text-[10px] text-slate-500 sm:inline">
+          <span className="hidden text-[10px] text-white/45 sm:inline">
             {data.sources.join(" · ")}
           </span>
         )}
@@ -178,8 +181,8 @@ export function PortfolioCommandCenter() {
 
       {loading && !data?.totalUsd && (
         <div className="flex flex-col items-center gap-3 py-16">
-          <div className="h-12 w-12 animate-spin rounded-full border-2 border-cyan-500/30 border-t-cyan-400" />
-          <p className="text-slate-400">Scanning {counts.chains || "all"} chains…</p>
+          <div className="h-12 w-12 animate-spin rounded-full border-2 border-white/20 border-t-white/70" />
+          <p className="text-white/60">Scanning {counts.chains || "all"} chains…</p>
         </div>
       )}
 
@@ -206,13 +209,13 @@ export function PortfolioCommandCenter() {
           />
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="premium-tab-bar flex gap-1 overflow-x-auto scrollbar-thin">
+            <div className="portfolio-glass-tab-bar flex gap-1 overflow-x-auto scrollbar-thin">
               {TABS.map(({ id, label, icon: Icon }) => {
-                const variant =
+                const orbVariant =
                   id === "adaptive"
                     ? "emerald"
                     : id === "spam"
-                      ? "amber"
+                      ? "coral"
                       : id === "nfts"
                         ? "violet"
                         : "cyan";
@@ -222,24 +225,24 @@ export function PortfolioCommandCenter() {
                   type="button"
                   onClick={() => setTab(id)}
                   className={cn(
-                    "premium-tab premium-tab--portfolio min-w-0 shrink-0 touch-manipulation sm:px-4",
-                    tab === id && "premium-tab--active",
-                    id === "spam" && tab === id && "premium-tab--amber",
+                    "portfolio-glass-tab min-w-0 shrink-0 touch-manipulation sm:px-4",
+                    tab === id && "portfolio-glass-tab--active",
+                    id === "spam" && tab === id && "portfolio-glass-tab--amber",
                   )}
                 >
-                  <PremiumIcon icon={Icon} variant={variant} size="sm" />
+                  <GlassIconOrb icon={Icon} variant={orbVariant} size="sm" />
                   <span className="truncate">{label}</span>
                   {id === "assets" && counts.assets > 0 && (
-                    <span className="text-[10px] text-slate-500">{counts.assets}</span>
+                    <span className="text-[10px] text-white/50">{counts.assets}</span>
                   )}
                   {id === "nfts" && counts.nfts > 0 && (
-                    <span className="text-[10px] text-slate-500">{counts.nfts}</span>
+                    <span className="text-[10px] text-white/50">{counts.nfts}</span>
                   )}
                   {id === "activity" && counts.activity > 0 && (
-                    <span className="text-[10px] text-slate-500">{counts.activity}</span>
+                    <span className="text-[10px] text-white/50">{counts.activity}</span>
                   )}
                   {id === "spam" && counts.spam > 0 && (
-                    <span className="rounded-full bg-amber-500/20 px-1.5 text-[10px] text-amber-200">
+                    <span className="rounded-full bg-amber-500/25 px-1.5 text-[10px] text-amber-100">
                       {counts.spam}
                     </span>
                   )}
@@ -256,7 +259,7 @@ export function PortfolioCommandCenter() {
                   setChainFilter(v);
                   setSelectedChainId(v === "all" ? null : v);
                 }}
-                className="min-h-[40px] rounded-xl border border-slate-700 bg-slate-900/80 px-3 text-xs text-slate-200"
+                className="portfolio-glass-select min-h-[40px] rounded-xl px-3 text-xs text-white"
               >
                 {chainOptions.map((o) => (
                   <option key={o.id} value={o.id}>
@@ -284,7 +287,7 @@ export function PortfolioCommandCenter() {
                 onChartPeriodChange={setChartPeriod}
               />
 
-              <div className="luxury-card rounded-2xl p-5 sm:p-6">
+              <div className="glass-panel rounded-2xl p-5 sm:p-6">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-lg font-semibold text-white">
                     By chain
@@ -319,13 +322,13 @@ export function PortfolioCommandCenter() {
               )}
 
               <div className="grid gap-6 lg:grid-cols-2">
-                <div className="luxury-card rounded-2xl p-5 sm:p-6">
+                <div className="glass-panel rounded-2xl p-5 sm:p-6">
                   <h3 className="mb-4 text-lg font-semibold text-white">
                     Top assets
                   </h3>
                   <PortfolioAssetsTable assets={filteredAssets.slice(0, 8)} />
                 </div>
-                <div className="luxury-card rounded-2xl p-5 sm:p-6">
+                <div className="glass-panel rounded-2xl p-5 sm:p-6">
                   <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-white">
                       Recent transactions
@@ -362,7 +365,7 @@ export function PortfolioCommandCenter() {
                   }}
                 />
               )}
-              <div className="luxury-card rounded-2xl p-5 sm:p-6">
+              <div className="glass-panel rounded-2xl p-5 sm:p-6">
                 <div className="mb-4">
                   <h3 className="text-lg font-semibold text-white">All tokens</h3>
                   <p className="text-xs text-slate-500">
@@ -384,7 +387,7 @@ export function PortfolioCommandCenter() {
                   also scans Base, Ethereum, and major L2s.
                 </p>
               )}
-              <div className="luxury-card rounded-2xl p-5 sm:p-6">
+              <div className="glass-panel rounded-2xl p-5 sm:p-6">
                 <h3 className="mb-1 text-lg font-semibold text-white">
                   Your NFTs ({counts.nfts})
                 </h3>
@@ -393,7 +396,7 @@ export function PortfolioCommandCenter() {
                 </p>
                 <PortfolioNftGrid nfts={data.nfts} />
               </div>
-              <div className="luxury-card rounded-2xl p-5 sm:p-6">
+              <div className="glass-panel rounded-2xl p-5 sm:p-6">
                 <h3 className="mb-1 text-lg font-semibold text-white">
                   Collections
                 </h3>
@@ -406,7 +409,7 @@ export function PortfolioCommandCenter() {
           )}
 
           {tab === "activity" && (
-            <div className="luxury-card rounded-2xl p-5 sm:p-6">
+            <div className="glass-panel rounded-2xl p-5 sm:p-6">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <h3 className="text-lg font-semibold text-white">
@@ -440,7 +443,7 @@ export function PortfolioCommandCenter() {
 
           {tab === "spam" && (
             <div className="space-y-6">
-              <div className="luxury-card rounded-2xl border-amber-500/20 p-5 sm:p-6">
+              <div className="glass-panel rounded-2xl border-amber-500/20 p-5 sm:p-6">
                 <h3 className="flex items-center gap-2 text-lg font-semibold text-amber-100">
                   <ShieldAlert className="h-5 w-5" />
                   Flagged tokens
@@ -453,7 +456,7 @@ export function PortfolioCommandCenter() {
                   emptyLabel="No flagged tokens."
                 />
               </div>
-              <div className="luxury-card rounded-2xl border-amber-500/20 p-5 sm:p-6">
+              <div className="glass-panel rounded-2xl border-amber-500/20 p-5 sm:p-6">
                 <h3 className="text-lg font-semibold text-amber-100">
                   Flagged transactions
                 </h3>

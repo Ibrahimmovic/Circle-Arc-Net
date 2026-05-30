@@ -17,33 +17,37 @@ export function AppShell({
   children: React.ReactNode;
   title: string;
   subtitle?: string;
-  variant?: "default" | "home";
+  variant?: "default" | "home" | "portfolio";
 }) {
   const isHome = variant === "home";
+  const isPortfolio = variant === "portfolio";
+  const isCinematic = isHome || isPortfolio;
 
   return (
     <div
       className={cn(
         "relative flex min-h-screen min-h-[100dvh] flex-col lg:flex-row",
-        isHome ? "app-shell--home app-shell--cinematic" : "bg-[#030712]",
+        isCinematic ? "app-shell--cinematic" : "bg-[#030712]",
+        isHome && "app-shell--home",
+        isPortfolio && "app-shell--portfolio",
       )}
     >
-      {isHome && <CinematicCloudBackdrop className="app-shell__sky" />}
-      {!isHome && <MeshBackground />}
+      {isCinematic && <CinematicCloudBackdrop className="app-shell__sky" />}
+      {!isCinematic && <MeshBackground />}
       <Sidebar />
       <div className="relative z-10 flex min-w-0 flex-1 flex-col pb-nav lg:pb-0">
         <MobileHeader />
         <div
           className={cn(
             "app-shell-topbar border-b px-3 py-2.5 sm:px-4 lg:px-8 lg:py-3",
-            isHome
+            isCinematic
               ? "app-shell-topbar--glass border-white/10 bg-white/[0.06] backdrop-blur-2xl"
               : "border-slate-800 bg-slate-950/95",
           )}
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <NetworkToggle variant={isHome ? "home" : "default"} />
-            <WalletButton variant={isHome ? "home" : "default"} />
+            <NetworkToggle variant={isCinematic ? "home" : "default"} />
+            <WalletButton variant={isCinematic ? "home" : "default"} />
           </div>
           {isHome && (
             <div className="mt-2 overflow-x-auto">
@@ -52,22 +56,43 @@ export function AppShell({
           )}
         </div>
         {!isHome && (
-          <header className="app-shell-header border-b border-slate-800/80 bg-slate-950/90 px-4 py-4 sm:px-6 lg:px-10 lg:py-5">
-            <h1 className="font-display text-lg font-bold text-white sm:text-xl lg:text-2xl">
+          <header
+            className={cn(
+              "app-shell-header border-b px-4 py-4 sm:px-6 lg:px-10 lg:py-5",
+              isPortfolio
+                ? "app-shell-header--glass border-white/10 bg-white/[0.05] backdrop-blur-2xl"
+                : "border-slate-800/80 bg-slate-950/90",
+            )}
+          >
+            <h1
+              className={cn(
+                "font-display text-lg font-bold sm:text-xl lg:text-2xl",
+                isPortfolio ? "text-white" : "text-white",
+              )}
+            >
               {title}
             </h1>
             {subtitle && (
-              <p className="mt-1 text-xs text-slate-300 sm:text-sm">{subtitle}</p>
+              <p
+                className={cn(
+                  "mt-1 text-xs sm:text-sm",
+                  isPortfolio ? "text-white/60" : "text-slate-300",
+                )}
+              >
+                {subtitle}
+              </p>
             )}
             <div className="mt-2 overflow-x-auto sm:mt-3">
-              <ApiStatusBar />
+              <ApiStatusBar variant={isPortfolio ? "minimal" : "default"} />
             </div>
           </header>
         )}
         <main
           className={cn(
             "app-shell-main relative z-10 flex-1",
-            isHome ? "" : "grid-mesh px-4 py-5 sm:px-6 sm:py-8 lg:px-10",
+            isHome && "",
+            isPortfolio && "portfolio-main px-4 py-5 sm:px-6 sm:py-8 lg:px-10",
+            !isCinematic && "grid-mesh px-4 py-5 sm:px-6 sm:py-8 lg:px-10",
           )}
         >
           {children}

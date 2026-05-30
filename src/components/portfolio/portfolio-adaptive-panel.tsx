@@ -15,14 +15,14 @@ export function PortfolioAdaptivePanel({
   return (
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="luxury-card rounded-2xl p-5 sm:p-6">
+        <div className="glass-panel rounded-2xl p-5 sm:p-6">
           <h3 className="text-lg font-semibold text-white">Allocation</h3>
           <p className="mt-1 text-xs text-slate-500">
             Live weights vs adaptive targets ({analysis.regime})
           </p>
           <AllocationChart data={analysis.chainAllocations} />
         </div>
-        <div className="luxury-card rounded-2xl p-5 sm:p-6">
+        <div className="glass-panel rounded-2xl p-5 sm:p-6">
           <h3 className="text-lg font-semibold text-white">Adaptive vs now</h3>
           <ul className="mt-4 space-y-2">
             {analysis.targetAllocations.map((t) => {
@@ -70,7 +70,7 @@ export function PortfolioAdaptivePanel({
         </div>
       </div>
 
-      <div id="rebalance" className="luxury-card scroll-mt-24 rounded-2xl p-5 sm:p-6">
+      <div id="rebalance" className="glass-panel scroll-mt-24 rounded-2xl p-5 sm:p-6">
         <div className="flex flex-wrap items-center gap-2">
           <Sparkles className="h-5 w-5 text-violet-400" />
           <h3 className="text-lg font-semibold text-white">Adaptive rebalances</h3>

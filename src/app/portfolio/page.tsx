@@ -8,6 +8,7 @@ export default function PortfolioPage() {
     <AppShell
       title="Adaptive Portfolio"
       subtitle="Multichain command center · tokens · NFTs · activity · spam shield · regime rebalance"
+      variant="portfolio"
     >
       <PortfolioCommandCenter />
     </AppShell>

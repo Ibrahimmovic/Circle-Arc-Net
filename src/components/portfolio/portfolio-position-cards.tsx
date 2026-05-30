@@ -2,6 +2,7 @@
 
 import { formatUsd } from "@/lib/utils";
 import { Wallet, Layers } from "lucide-react";
+import { GlassIconOrb, GlassPanel } from "@/components/ui/glass-ui";
 
 export function PortfolioPositionCards({
   walletUsd,
@@ -16,30 +17,34 @@ export function PortfolioPositionCards({
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      <div className="rounded-2xl border border-cyan-500/25 bg-gradient-to-br from-cyan-500/10 to-slate-900/50 p-4">
-        <div className="flex items-center gap-2 text-cyan-300">
-          <Wallet className="h-4 w-4" />
-          <span className="text-xs font-semibold uppercase tracking-wider">Wallet</span>
+      <GlassPanel className="p-4">
+        <div className="flex items-center gap-2">
+          <GlassIconOrb icon={Wallet} variant="cyan" size="sm" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-white">
+            Wallet
+          </span>
         </div>
         <p className="mt-2 font-mono text-2xl font-bold text-white">
           {formatUsd(walletUsd)}
         </p>
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-white/55">
           {walletPct.toFixed(0)}% of portfolio · on-chain balances
         </p>
-      </div>
-      <div className="rounded-2xl border border-violet-500/25 bg-gradient-to-br from-violet-500/10 to-slate-900/50 p-4">
-        <div className="flex items-center gap-2 text-violet-300">
-          <Layers className="h-4 w-4" />
-          <span className="text-xs font-semibold uppercase tracking-wider">DeFi</span>
+      </GlassPanel>
+      <GlassPanel className="p-4">
+        <div className="flex items-center gap-2">
+          <GlassIconOrb icon={Layers} variant="violet" size="sm" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-white">
+            DeFi
+          </span>
         </div>
         <p className="mt-2 font-mono text-2xl font-bold text-white">
           {formatUsd(defiUsd)}
         </p>
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-white/55">
           Staked, deposited & protocol positions (Zerion)
         </p>
-      </div>
+      </GlassPanel>
     </div>
   );
 }

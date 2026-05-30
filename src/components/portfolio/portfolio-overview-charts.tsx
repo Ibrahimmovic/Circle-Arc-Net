@@ -61,7 +61,7 @@ export function PortfolioOverviewCharts({
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <div className="luxury-card rounded-2xl p-4 sm:p-5">
+      <div className="glass-panel rounded-2xl p-4 sm:p-5">
         <h4 className="text-sm font-semibold text-white">Allocation by chain</h4>
         <p className="mb-2 text-[10px] text-slate-500">
           Click a chain below to see tokens on that network
@@ -75,7 +75,7 @@ export function PortfolioOverviewCharts({
         />
       </div>
 
-      <div className="luxury-card rounded-2xl p-4 sm:p-5">
+      <div className="glass-panel rounded-2xl p-4 sm:p-5">
         <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
           <div>
             <h4 className="text-sm font-semibold text-white">Portfolio value</h4>

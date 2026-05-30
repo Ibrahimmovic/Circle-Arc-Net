@@ -3472,3 +3472,112 @@ body {
   margin-top: 0.65rem;
   padding: 0 0.25rem 0.5rem;
 }
+
+/* —— Portfolio · cinematic glass theme (matches home) —— */
+
+.app-shell--portfolio {
+  background: transparent;
+}
+
+.portfolio-main {
+  background: transparent;
+}
+
+.portfolio-glass-hero {
+  border-radius: 1.5rem;
+}
+
+.portfolio-glass-sparkline {
+  align-self: flex-start;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+.portfolio-glass-tab-bar {
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  padding: 0.25rem;
+}
+
+.portfolio-glass-tab {
+  display: flex;
+  min-height: 2.75rem;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.portfolio-glass-tab:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.portfolio-glass-tab--active {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.45), rgba(255, 127, 80, 0.35));
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(255, 127, 80, 0.18);
+}
+
+.portfolio-glass-tab--amber.portfolio-glass-tab--active {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.35), rgba(255, 127, 80, 0.3));
+}
+
+.portfolio-glass-select {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  color: #fff;
+}
+
+.portfolio-glass-select option {
+  background: #14101c;
+  color: #fff;
+}
+
+.app-shell--portfolio .glass-panel h3,
+.app-shell--portfolio .glass-panel .text-lg {
+  color: #fff;
+}
+
+.app-shell--portfolio .glass-panel .text-xs.text-slate-500,
+.app-shell--portfolio .text-slate-500 {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.exec-token-wrap--sm {
+  width: 2.875rem;
+  height: 2.875rem;
+}
+
+.exec-token-wrap--violet {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 6px 20px rgba(139, 92, 246, 0.2);
+}
+
+.exec-token-wrap--coral {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 6px 20px rgba(255, 127, 80, 0.2);
+}
+
+.exec-token-wrap--emerald {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 6px 20px rgba(52, 211, 153, 0.18);
+}
