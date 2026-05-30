@@ -2,15 +2,16 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import { motion } from "framer-motion";
 import { ArrowLeftRight, Sparkles } from "lucide-react";
 import { useNetwork } from "@/providers/network-context";
 import { cn } from "@/lib/utils";
 import type { ExchangeIntentSnapshot } from "@/lib/exchange-intent";
 import { ForgeArbitraryPanel } from "@/components/execute/forge-arbitrary-panel";
 import { ForgeRoutesPanel } from "@/components/execute/forge-routes-panel";
-import { ForgeRailsStrip } from "@/components/execute/forge-rails-strip";
 import { ExchangeWidget } from "@/components/execute/exchange-widget";
-import { GlassBadge, GlassPanel } from "@/components/ui/glass-ui";
+import { GlassPanel } from "@/components/ui/glass-ui";
+import { figmaEaseOut } from "@/design/motion-presets";
 
 const SendPanel = dynamic(() => import("./send-panel").then((m) => m.SendPanel), {
   ssr: false,
@@ -48,38 +49,8 @@ export function CrossChainStudio() {
   } | null>(null);
 
   return (
-    <div className="space-y-5">
-      <GlassPanel strong className="home-glass-hero__copy execute-desk-header">
-        <div className="home-glass-hero__badges">
-          <GlassBadge>Agora Forge</GlassBadge>
-          <GlassBadge>Circle CCTP</GlassBadge>
-          <GlassBadge>Execution Desk</GlassBadge>
-        </div>
-
-        <h2 className="home-glass-hero__title execute-desk-header__title font-display">
-          Swap · bridge · execute
-          <br />
-          <span className="home-glass-hero__accent">on every chain.</span>
-        </h2>
-
-        <p className="home-glass-hero__lede execute-desk-header__lede">
-          Quote Circle CCTP, LI.FI, and Uniswap routes — compare paths on the right,
-          confirm with Quote and Exchange on the left.
-        </p>
-
-        <div className="home-glass-hero__metrics execute-desk-header__metrics">
-          <div>
-            <p className="home-glass-metric__label">Rails</p>
-            <ForgeRailsStrip />
-          </div>
-          <div>
-            <p className="home-glass-metric__label">Data</p>
-            <p className="home-glass-metric__value">Zerion · Covalent · CoinGecko</p>
-          </div>
-        </div>
-      </GlassPanel>
-
-      <div className="portfolio-glass-tab-bar flex gap-1 overflow-x-auto scrollbar-thin">
+    <div className="space-y-4">
+      <div className="portfolio-glass-tab-bar execute-mode-tabs flex gap-1 overflow-x-auto scrollbar-thin">
         {(
           [
             { id: "swap" as const, label: "Swap & Bridge", icon: ArrowLeftRight },
@@ -113,7 +84,12 @@ export function CrossChainStudio() {
           <ForgeArbitraryPanel />
         </GlassPanel>
       ) : (
-        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-6">
+        <motion.div
+          className="grid items-start gap-5 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-6"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={figmaEaseOut}
+        >
           <GlassPanel strong className="exchange-widget-premium p-4 sm:p-5">
             <ExchangeWidget
               onIntentChange={setIntent}
@@ -125,7 +101,7 @@ export function CrossChainStudio() {
             cctpPending={cctpPending}
             onDismissCctp={() => setCctpPending(null)}
           />
-        </div>
+        </motion.div>
       )}
 
       <nav className="flex flex-wrap gap-2 border-t border-white/10 pt-4">
