@@ -13,7 +13,6 @@ import { ChainBalanceGrid } from "@/components/portfolio/chain-balance-grid";
 import { HomeCinematicHero } from "@/components/home/home-cinematic-hero";
 import { HomeFeatureGrid } from "@/components/home/home-feature-grid";
 import { MotionScrollReveal } from "@/components/motion/motion-primitives";
-import { NeoGlass } from "@/components/ui/neo-glass";
 import { PremiumIcon } from "@/components/ui/premium-icon";
 import { useDashboard } from "@/hooks/use-dashboard";
 import { useNetwork } from "@/providers/network-context";
@@ -61,10 +60,10 @@ export default function HomePage() {
 
       <div className="home-content space-y-8">
         <MotionScrollReveal>
-          <NeoGlass glow="indigo" padding="none" className="home-ticker-wrap overflow-hidden">
+          <div className="home-pro-panel home-pro-panel--flush overflow-hidden">
             <MarketTicker />
             <CoinStrip />
-          </NeoGlass>
+          </div>
         </MotionScrollReveal>
 
         {!isConnected && (
@@ -82,12 +81,12 @@ export default function HomePage() {
             </span>
 
             {data?.hint && (
-              <NeoGlass glow="amber" padding="md" className="text-sm text-amber-100">
+              <div className="home-pro-panel home-pro-panel--amber px-4 py-3 text-sm text-amber-100">
                 {data.hint}{" "}
-                <Link href="/execute" className="font-semibold text-cyan-300">
+                <Link href="/execute" className="font-semibold text-white underline-offset-2 hover:underline">
                   Fund →
                 </Link>
-              </NeoGlass>
+              </div>
             )}
 
             {analysis ? (
@@ -101,18 +100,18 @@ export default function HomePage() {
                 loading={loading}
               />
             ) : (
-              <NeoGlass glow="indigo" padding="lg" className="text-center">
-                <p className="text-slate-300">
+              <div className="home-pro-panel p-8 text-center">
+                <p className="text-slate-400">
                   {loading ? "Scanning all chains…" : "No balance yet — use Fund tab."}
                 </p>
-              </NeoGlass>
+              </div>
             )}
 
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"
                 onClick={() => refresh()}
-                className="home-btn home-btn--ghost !min-h-[2.5rem] !px-4 !text-xs"
+                className="home-pro-btn home-pro-btn--secondary !min-h-[2.5rem] !px-4 !text-xs inline-flex items-center gap-2"
               >
                 <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
                 Sync live data
@@ -157,42 +156,42 @@ export default function HomePage() {
             </div>
 
             {data?.chainBalances && data.chainBalances.length > 0 && (
-              <NeoGlass glow="cyan" padding="lg">
-                <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-white">
+              <div className="home-pro-panel p-6">
+                <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-slate-400">
                   <PremiumIcon icon={Globe} variant="cyan" size="sm" />
-                  <span className="text-slate-500">/</span> By chain
+                  By chain
                 </h3>
                 <ChainBalanceGrid chains={data.chainBalances} />
-              </NeoGlass>
+              </div>
             )}
 
             <div className="grid gap-6 lg:grid-cols-2">
-              <NeoGlass glow="violet" padding="lg">
+              <div className="home-pro-panel p-6">
                 <div className="flex items-center justify-between">
-                  <h3 className="flex items-center gap-2 font-semibold text-white">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-slate-400">
                     <PremiumIcon icon={Zap} variant="violet" size="sm" />
-                    <span className="text-slate-500">/</span> Quick actions
+                    Quick actions
                   </h3>
                   <RegimeBadge regime={regime} />
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <Link
                     href="/execute"
-                    className="home-btn home-btn--primary justify-center !w-full"
+                    className="home-pro-btn home-pro-btn--primary justify-center !w-full"
                   >
                     <Zap className="h-4 w-4" /> Execute
                   </Link>
                   <Link
                     href="/portfolio"
-                    className="home-btn home-btn--ghost justify-center !w-full"
+                    className="home-pro-btn home-pro-btn--secondary justify-center !w-full"
                   >
                     Portfolio <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
-              </NeoGlass>
-              <NeoGlass glow="indigo" padding="sm" className="overflow-hidden">
+              </div>
+              <div className="home-pro-panel overflow-hidden p-1">
                 <ActivityFeed />
-              </NeoGlass>
+              </div>
             </div>
           </div>
           </MotionScrollReveal>

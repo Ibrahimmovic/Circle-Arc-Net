@@ -2,64 +2,66 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowLeftRight, ArrowRight, Globe, Zap } from "lucide-react";
-import { NeoGlass } from "@/components/ui/neo-glass";
-import {
-  fadeUpContainer,
-  figmaSpringSnappy,
-  scaleInItem,
-} from "@/design/motion-presets";
+import { ArrowRight } from "lucide-react";
+import { TokenAvatar } from "@/components/execute/token-avatar";
+import { fadeUpContainer, scaleInItem } from "@/design/motion-presets";
 
 const FEATURES = [
   {
-    icon: ArrowLeftRight,
-    label: "Swap & Bridge",
-    text: "Quote, compare routes, execute in one cinematic flow.",
+    label: "Execute",
+    text: "Quote routes, bridge with CCTP, swap via LI.FI — one professional workflow.",
     href: "/execute",
-    glow: "cyan" as const,
+    preview: (
+      <div className="flex items-center -space-x-2">
+        <TokenAvatar symbol="USDC" chainKey="Arc_Testnet" size={32} />
+        <TokenAvatar symbol="USDC" chainKey="Base" size={32} />
+        <TokenAvatar symbol="ETH" chainKey="Ethereum" size={32} />
+      </div>
+    ),
   },
   {
-    icon: Globe,
     label: "Portfolio",
-    text: "Multichain net worth, tokens, NFTs, and activity.",
+    text: "Multichain balances, NFTs, transactions, and regime-aware rebalance signals.",
     href: "/portfolio",
-    glow: "violet" as const,
+    preview: (
+      <div className="flex items-center -space-x-2">
+        <TokenAvatar symbol="ETH" chainKey="Ethereum" size={32} />
+        <TokenAvatar symbol="USDC" chainKey="Arbitrum" size={32} />
+        <TokenAvatar symbol="OP" chainKey="Optimism" size={32} />
+      </div>
+    ),
   },
   {
-    icon: Zap,
     label: "Agent",
-    text: "Save goals and run portfolio-linked CCTP jobs.",
+    text: "Save execution goals and run portfolio-linked CCTP jobs from the console.",
     href: "/agent",
-    glow: "indigo" as const,
+    preview: (
+      <div className="flex items-center -space-x-2">
+        <TokenAvatar symbol="USDC" chainKey="Base" size={32} />
+        <TokenAvatar symbol="USDC" chainKey="Polygon" size={32} />
+      </div>
+    ),
   },
 ] as const;
 
 export function HomeFeatureGrid() {
   return (
     <motion.div
-      className="home-feature-grid"
+      className="home-pro-features"
       variants={fadeUpContainer}
       initial="hidden"
       whileInView="show"
       viewport={{ once: true, margin: "-5% 0px" }}
     >
-      {FEATURES.map(({ icon: Icon, label, text, href, glow }) => (
+      {FEATURES.map(({ label, text, href, preview }) => (
         <motion.div key={href} variants={scaleInItem}>
-          <Link href={href} className="group block h-full">
-            <NeoGlass glow={glow} padding="md" className="home-feature-card h-full transition-transform duration-300 group-hover:-translate-y-1">
-              <motion.div
-                className="home-feature-card__icon"
-                whileHover={{ rotate: [0, -6, 6, 0], scale: 1.08 }}
-                transition={figmaSpringSnappy}
-              >
-                <Icon className="h-6 w-6" strokeWidth={1.75} />
-              </motion.div>
-              <p className="home-feature-card__title">{label}</p>
-              <p className="home-feature-card__text">{text}</p>
-              <span className="home-feature-card__link">
-                Explore <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
-              </span>
-            </NeoGlass>
+          <Link href={href} className="home-pro-feature group block h-full">
+            <div className="home-pro-feature__top">
+              {preview}
+              <ArrowRight className="ml-auto h-4 w-4 text-slate-600 transition group-hover:translate-x-0.5 group-hover:text-slate-300" />
+            </div>
+            <h3 className="home-pro-feature__title">{label}</h3>
+            <p className="home-pro-feature__text">{text}</p>
           </Link>
         </motion.div>
       ))}
