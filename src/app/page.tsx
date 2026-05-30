@@ -10,6 +10,8 @@ import { CoinStrip } from "@/components/dashboard/coin-strip";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { PortfolioHero } from "@/components/portfolio/portfolio-hero";
 import { ChainBalanceGrid } from "@/components/portfolio/chain-balance-grid";
+import { Forge3DHero } from "@/components/ui/forge-3d-hero";
+import { PremiumIcon } from "@/components/ui/premium-icon";
 import { useDashboard } from "@/hooks/use-dashboard";
 import { useNetwork } from "@/providers/network-context";
 import {
@@ -20,6 +22,7 @@ import {
   ArrowRight,
   RefreshCw,
   Globe,
+  ArrowLeftRight,
 } from "lucide-react";
 import { formatUsd, formatPct } from "@/lib/utils";
 import type { MarketRegime } from "@/lib/types";
@@ -47,31 +50,51 @@ export default function HomePage() {
       title="Overview"
       subtitle="Live multichain wallet · Circle CCTP · Arc USDC fees"
     >
-      <div className="mb-6 space-y-4">
+      <Forge3DHero compact={isConnected} showCta={!isConnected} />
+
+      <div className="mb-6 mt-8 space-y-4">
         <MarketTicker />
         <CoinStrip />
       </div>
 
       {!isConnected && (
-        <div className="luxury-hero rounded-2xl p-6 text-center sm:rounded-3xl sm:p-10">
-          <p className="font-display text-2xl font-bold text-white sm:text-3xl">
-            Your cross-chain command desk
-          </p>
-          <p className="mx-auto mt-4 max-w-lg text-slate-300">
-            Real balances from Zerion + GoldRush across Ethereum, Base, Polygon,
-            Arbitrum & more — not demo numbers.
-          </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-4">
-            <Link href="/execute" className="btn-primary rounded-xl px-8 py-3 text-sm font-bold text-white">
-              Bridge · Swap · Send
-            </Link>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {[
+            {
+              icon: ArrowLeftRight,
+              label: "Swap & Bridge",
+              text: "Quote, compare routes, execute in one flow.",
+              href: "/execute",
+              variant: "cyan" as const,
+            },
+            {
+              icon: Globe,
+              label: "Portfolio",
+              text: "Multichain net worth, tokens, NFTs, activity.",
+              href: "/portfolio",
+              variant: "violet" as const,
+            },
+            {
+              icon: Zap,
+              label: "Agent",
+              text: "Save goals and run portfolio-linked CCTP.",
+              href: "/agent",
+              variant: "emerald" as const,
+            },
+          ].map(({ icon, label, text, href, variant }) => (
             <Link
-              href="/portfolio"
-              className="rounded-xl border border-cyan-500/40 px-8 py-3 text-sm font-semibold text-cyan-200"
+              key={href}
+              href={href}
+              className="premium-feature-card group"
             >
-              View Portfolio
+              <PremiumIcon icon={icon} variant={variant} size="lg" />
+              <p className="mt-4 font-display text-sm font-bold text-white">{label}</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500">{text}</p>
+              <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-cyan-400 opacity-0 transition group-hover:opacity-100">
+                Open <ArrowRight className="h-3 w-3" />
+              </span>
             </Link>
-          </div>
+          ))}
         </div>
       )}
 
@@ -118,7 +141,7 @@ export default function HomePage() {
               Sync live data
             </button>
             {data?.dataFreshness && (
-              <span className="text-xs text-slate-500 self-center">
+              <span className="self-center text-xs text-slate-500">
                 Updated {new Date(data.dataFreshness).toLocaleTimeString()}
               </span>
             )}
@@ -131,38 +154,48 @@ export default function HomePage() {
               sub={formatPct(change24h) + " 24h"}
               icon={Wallet}
               trend={trend}
+              variant="cyan"
             />
             <StatCard
               label="Chains"
               value={String(data?.chainBalances?.length ?? 0)}
               sub="Multichain scan"
               icon={Globe}
+              variant="violet"
             />
             <StatCard
               label="Regime"
               value={regime.replace("-", " ")}
               sub="CoinGecko + portfolio"
               icon={TrendingUp}
+              variant="emerald"
             />
             <StatCard
               label="Rebalance"
               value={String(analysis?.rebalanceActions.length ?? 0)}
               sub="Suggested moves"
               icon={Layers}
+              variant="amber"
             />
           </div>
 
           {data?.chainBalances && data.chainBalances.length > 0 && (
-            <div className="luxury-card rounded-2xl p-6">
-              <h3 className="mb-4 text-lg font-semibold text-white">By chain</h3>
+            <div className="luxury-card card-shine rounded-2xl p-6">
+              <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-white">
+                <PremiumIcon icon={Globe} variant="cyan" size="sm" />
+                By chain
+              </h3>
               <ChainBalanceGrid chains={data.chainBalances} />
             </div>
           )}
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <div className="luxury-card rounded-2xl p-6">
+            <div className="luxury-card card-shine rounded-2xl p-6">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-white">Quick actions</h3>
+                <h3 className="flex items-center gap-2 font-semibold text-white">
+                  <PremiumIcon icon={Zap} variant="violet" size="sm" />
+                  Quick actions
+                </h3>
                 <RegimeBadge regime={regime} />
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">

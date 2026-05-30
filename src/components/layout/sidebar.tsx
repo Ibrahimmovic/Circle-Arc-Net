@@ -15,8 +15,8 @@ export function Sidebar() {
     <aside className="glass-panel z-10 hidden w-64 shrink-0 flex-col rounded-none border-r border-cyan-500/10 lg:flex lg:min-h-screen">
       <div className="border-b border-slate-800/60 bg-gradient-to-br from-cyan-500/5 to-violet-500/5 p-6">
         <Link href="/" className="group flex items-center gap-3">
-          <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-violet-600 shadow-lg shadow-cyan-500/30">
-            <span className="font-display text-lg font-extrabold text-white">A</span>
+          <div className="premium-logo relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-violet-600 shadow-lg shadow-cyan-500/30">
+            <span className="font-display relative z-10 text-lg font-extrabold text-white">A</span>
           </div>
           <div>
             <p className="font-display text-base font-bold text-white transition-colors group-hover:text-cyan-200">
