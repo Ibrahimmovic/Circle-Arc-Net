@@ -68,6 +68,12 @@ export function CrossChainStudio() {
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/60">
                 Swap, bridge, and compare live routes — quote on the left, paths on the right.
               </p>
+              {process.env.NEXT_PUBLIC_BUILD_SHA &&
+                process.env.NEXT_PUBLIC_BUILD_SHA !== "local" && (
+                  <p className="mt-1 text-[10px] text-white/25">
+                    Deploy {process.env.NEXT_PUBLIC_BUILD_SHA}
+                  </p>
+                )}
             </div>
             <ForgeRailsStrip />
           </div>

@@ -9,6 +9,12 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ["lucide-react", "recharts"],
   },
   poweredByHeader: false,
+  env: {
+    NEXT_PUBLIC_BUILD_SHA:
+      process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ??
+      process.env.NEXT_PUBLIC_BUILD_SHA ??
+      "local",
+  },
 };
 
 export default nextConfig;
