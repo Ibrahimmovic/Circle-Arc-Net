@@ -1,5 +1,11 @@
 import { getArcTestnetUsdBalances } from "@/lib/arc-balance";
 import {
+  getWalletTransactionsAlchemy,
+  isAlchemyConfigured,
+} from "@/lib/alchemy";
+import { fetchPortfolioDuneAnalytics } from "@/lib/dune";
+import { enrichAssetsWithGoPlus, isGoPlusConfigured } from "@/lib/goplus";
+import {
   aggregateAssetsBySymbol,
   chainBalancesFromDistribution,
   enrichActivityDisplay,
@@ -51,6 +57,10 @@ import {
   type ZerionPosition,
   type ZerionTransaction,
 } from "@/lib/zerion";
+import {
+  portfolioDataSourceLabel,
+  readPortfolioProviderStatus,
+} from "@/lib/portfolio-providers";
 import type {
   PortfolioActivity,
   PortfolioAsset,
@@ -276,10 +286,15 @@ function setAsset(
   map: Map<string, PortfolioAsset>,
   asset: PortfolioAsset,
   contract?: string,
+  contracts?: Map<string, string>,
 ) {
   const k = assetKey(asset.chainId ?? asset.chain, asset.symbol, contract);
   const prev = map.get(k);
   map.set(k, prev ? mergeAsset(prev, asset) : asset);
+  const stored = map.get(k)!;
+  if (contract?.startsWith("0x") && contracts) {
+    contracts.set(stored.id, contract);
+  }
 }
 
 function hasMeaningfulHolding(a: PortfolioAsset): boolean {
@@ -305,6 +320,7 @@ export async function buildPortfolioWalletFeed(
 
   const assetMap = new Map<string, PortfolioAsset>();
   const spamMap = new Map<string, PortfolioAsset>();
+  const contractByAssetId = new Map<string, string>();
   const nfts: PortfolioNft[] = [];
   const activities: PortfolioActivity[] = [];
   const spamActivities: PortfolioActivity[] = [];
@@ -321,10 +337,20 @@ export async function buildPortfolioWalletFeed(
   };
 
   const moralisOn = isMoralisConfigured();
+  const alchemyOn = isAlchemyConfigured();
+  const goPlusOn = isGoPlusConfigured();
   let moralisAvailable = false;
 
-  const [portfolio, positionsClean, positionsSpam, txs, nftPos, goldBundle, moralisTokens] =
-    await Promise.all([
+  const [
+    portfolio,
+    positionsClean,
+    positionsSpam,
+    txs,
+    nftPos,
+    goldBundle,
+    moralisTokens,
+    alchemyActivities,
+  ] = await Promise.all([
       zerionOn
         ? getWalletPortfolio(address, testnet).catch(zerionCatch("portfolio"))
         : Promise.resolve(null),
@@ -354,6 +380,9 @@ export async function buildPortfolioWalletFeed(
             [] as Awaited<ReturnType<typeof getWalletTokensMultichain>>,
           )
         : Promise.resolve([] as Awaited<ReturnType<typeof getWalletTokensMultichain>>),
+      alchemyOn
+        ? getWalletTransactionsAlchemy(address, testnet).catch(() => [] as PortfolioActivity[])
+        : Promise.resolve([] as PortfolioActivity[]),
     ]);
 
   const zerionPrimary = Boolean(portfolio?.data?.attributes?.total?.positions);
@@ -375,7 +404,7 @@ export async function buildPortfolioWalletFeed(
     for (const p of positionsClean.data) {
       const a = zerionPositionToAsset(p, false);
       if (!a) continue;
-      setAsset(assetMap, a, p.relationships?.fungible?.data?.id);
+      setAsset(assetMap, a, p.relationships?.fungible?.data?.id, contractByAssetId);
     }
   }
 
@@ -393,7 +422,7 @@ export async function buildPortfolioWalletFeed(
       : [];
 
   if (goldClean.length > 0 || goldSpam.length > 0 || goldNfts.length > 0) {
-    sources.push(testnet ? "GoldRush testnet" : "GoldRush");
+    sources.push(testnet ? "Covalent testnet" : "Covalent");
   }
 
   if (moralisTokens.length > 0) {
@@ -403,14 +432,14 @@ export async function buildPortfolioWalletFeed(
       const a = moralisTokenToAsset(chain, token);
       if (!a) continue;
       if (a.isSpam) {
-        if (hasMeaningfulHolding(a)) setAsset(spamMap, a, token.token_address);
+        if (hasMeaningfulHolding(a)) setAsset(spamMap, a, token.token_address, contractByAssetId);
         continue;
       }
       const k = assetKey(a.chainId ?? a.chain, a.symbol, token.token_address);
       const prev = assetMap.get(k);
       if (zerionPrimary && prev) continue;
       if (!prev || a.valueUsd > prev.valueUsd) {
-        setAsset(assetMap, a, token.token_address);
+        setAsset(assetMap, a, token.token_address, contractByAssetId);
       }
     }
   }
@@ -424,7 +453,7 @@ export async function buildPortfolioWalletFeed(
     const a = goldRushToAsset(t);
     if (!a) continue;
     if (a.isSpam) {
-      if (hasMeaningfulHolding(a)) setAsset(spamMap, a, t.contract_address);
+      if (hasMeaningfulHolding(a)) setAsset(spamMap, a, t.contract_address, contractByAssetId);
       continue;
     }
     const k = assetKey(a.chainId ?? a.chain, a.symbol, t.contract_address);
@@ -432,9 +461,9 @@ export async function buildPortfolioWalletFeed(
     if (zerionPrimary) {
       if (prev) continue;
       if (a.valueUsd < MIN_POSITION_USD && !hasMeaningfulHolding(a)) continue;
-      setAsset(assetMap, a, t.contract_address);
+      setAsset(assetMap, a, t.contract_address, contractByAssetId);
     } else if (!prev || a.valueUsd > prev.valueUsd) {
-      setAsset(assetMap, a, t.contract_address);
+      setAsset(assetMap, a, t.contract_address, contractByAssetId);
     }
   }
 
@@ -443,11 +472,17 @@ export async function buildPortfolioWalletFeed(
     for (const p of positionsSpam.data) {
       const a = zerionPositionToAsset(p, true);
       if (!a || !hasMeaningfulHolding(a)) continue;
-      setAsset(spamMap, a);
+      setAsset(spamMap, a, undefined, contractByAssetId);
     }
   }
 
-  if (txs?.data?.length) {
+  if (alchemyActivities.length > 0) {
+    sources.push("Alchemy history");
+    for (const a of alchemyActivities) {
+      if (a.isSpam) spamActivities.push(a);
+      else activities.push(a);
+    }
+  } else if (txs?.data?.length) {
     zerionAvailable = true;
     sources.push("Zerion history");
     for (const tx of txs.data) {
@@ -498,6 +533,16 @@ export async function buildPortfolioWalletFeed(
   cleanAssets = enrichAssetsWithMarketData(cleanAssets, market);
   sources.push("CoinGecko prices");
 
+  if (goPlusOn) {
+    const goPlus = await enrichAssetsWithGoPlus(cleanAssets, contractByAssetId);
+    if (goPlus.flagged > 0) sources.push("GoPlus scam scan");
+    for (const a of goPlus.assets) {
+      if (!a.isSpam) continue;
+      setAsset(spamMap, a, contractByAssetId.get(a.id), contractByAssetId);
+    }
+    cleanAssets = goPlus.assets.filter((a) => !a.isSpam);
+  }
+
   cleanAssets = cleanAssets
     .filter((a) => a.valueUsd >= MIN_POSITION_USD)
     .sort((a, b) => b.valueUsd - a.valueUsd)
@@ -536,15 +581,11 @@ export async function buildPortfolioWalletFeed(
     }
   }
 
-  const dataSourceLabel = zerionAvailable
-    ? moralisAvailable
-      ? "Zerion + Moralis + GoldRush + CoinGecko"
-      : "Zerion + GoldRush + CoinGecko"
-    : moralisAvailable
-      ? "Moralis + GoldRush + CoinGecko"
-      : zerionOn
-        ? "GoldRush + CoinGecko (Zerion unavailable)"
-        : "GoldRush + CoinGecko";
+  const providerStatus = readPortfolioProviderStatus();
+  const dataSourceLabel = portfolioDataSourceLabel(providerStatus);
+  const duneAnalytics = providerStatus.dune
+    ? await fetchPortfolioDuneAnalytics(address)
+    : null;
 
   let walletUsd = 0;
   let defiUsd = 0;
@@ -603,12 +644,8 @@ export async function buildPortfolioWalletFeed(
     dataFreshness: new Date().toISOString(),
     zerionAvailable,
     dataSourceLabel,
-    apisConfigured: {
-      zerion: zerionOn,
-      goldrush: Boolean(process.env.GOLDRUSH_API_KEY),
-      moralis: moralisOn,
-      coingecko: true,
-    },
+    apisConfigured: providerStatus,
+    duneAnalytics: duneAnalytics ?? undefined,
     zerionStatus,
     zerionMessage,
   };

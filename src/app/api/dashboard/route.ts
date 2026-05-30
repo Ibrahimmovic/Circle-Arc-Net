@@ -158,8 +158,12 @@ export async function GET(req: NextRequest) {
     apisConfigured: {
       circle: Boolean(process.env.CIRCLE_API_KEY),
       zerion: Boolean(process.env.ZERION_API_KEY),
-      goldrush: Boolean(process.env.GOLDRUSH_API_KEY),
-      moralis: Boolean(process.env.MORALIS_API_KEY),
+      alchemy: Boolean(process.env.ALCHEMY_API_KEY),
+      goplus: Boolean(
+        process.env.GOPLUS_API_KEY?.trim() && process.env.GOPLUS_API_SECRET?.trim(),
+      ),
+      dune: Boolean(process.env.DUNE_API_KEY),
+      covalent: Boolean(process.env.GOLDRUSH_API_KEY),
       kit: Boolean(getKitKey()),
       coingecko: true,
     },

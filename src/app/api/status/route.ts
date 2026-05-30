@@ -1,25 +1,29 @@
 import { NextResponse } from "next/server";
+import { getWalletTransactionsAlchemy, isAlchemyConfigured } from "@/lib/alchemy";
 import { listCircleWallets } from "@/lib/circle";
-import { getWalletBalanceChart, getWalletPortfolio } from "@/lib/zerion";
+import { isGoPlusConfigured } from "@/lib/goplus";
 import { getAllChainsBalances } from "@/lib/goldrush";
-import { getWalletTokensForChain, isMoralisConfigured } from "@/lib/moralis";
+import { readPortfolioProviderStatus } from "@/lib/portfolio-providers";
+import { getWalletBalanceChart, getWalletPortfolio } from "@/lib/zerion";
 
 export async function GET() {
   const demo =
     process.env.NEXT_PUBLIC_DEMO_WALLET ??
     "0x3D652FA69567eeC176c74027B256022B2bb05586";
 
+  const providers = readPortfolioProviderStatus();
+
   const status = {
     circle: false,
     kit: Boolean(process.env.NEXT_PUBLIC_CIRCLE_KIT_KEY),
     zerion: false,
     zerionChart: false,
-    goldrush: false,
-    moralis: false,
+    alchemy: false,
+    goplus: providers.goplus,
+    dune: providers.dune,
+    covalent: false,
     network: process.env.NEXT_PUBLIC_NETWORK ?? "mainnet",
-    zerionKeySet: Boolean(process.env.ZERION_API_KEY?.trim()),
-    goldrushKeySet: Boolean(process.env.GOLDRUSH_API_KEY?.trim()),
-    moralisKeySet: Boolean(process.env.MORALIS_API_KEY?.trim()),
+    providers,
     timestamp: new Date().toISOString(),
   };
   const errors: Record<string, string> = {};
@@ -45,23 +49,32 @@ export async function GET() {
     errors.zerionChart = e instanceof Error ? e.message.slice(0, 120) : "failed";
   }
 
-  try {
-    await getAllChainsBalances(demo);
-    status.goldrush = true;
-  } catch (e) {
-    errors.goldrush = e instanceof Error ? e.message.slice(0, 80) : "failed";
-  }
-
-  if (isMoralisConfigured()) {
+  if (isAlchemyConfigured()) {
     try {
-      const tokens = await getWalletTokensForChain(demo, "base");
-      status.moralis = tokens.length >= 0;
+      const txs = await getWalletTransactionsAlchemy(demo, false);
+      status.alchemy = txs.length >= 0;
     } catch (e) {
-      errors.moralis = e instanceof Error ? e.message.slice(0, 120) : "failed";
+      errors.alchemy = e instanceof Error ? e.message.slice(0, 120) : "failed";
     }
   }
 
-  const allOk = status.circle && status.kit && status.zerion && status.goldrush;
+  try {
+    await getAllChainsBalances(demo);
+    status.covalent = true;
+  } catch (e) {
+    errors.covalent = e instanceof Error ? e.message.slice(0, 80) : "failed";
+  }
 
-  return NextResponse.json({ ok: allOk, services: status, errors });
+  if (isGoPlusConfigured() && !providers.goplus) {
+    errors.goplus = "GOPLUS keys incomplete";
+  }
+
+  const portfolioOk =
+    (status.zerion || status.alchemy) && (status.covalent || providers.zerion);
+
+  return NextResponse.json({
+    ok: status.circle && status.kit && portfolioOk,
+    services: status,
+    errors,
+  });
 }

@@ -1,3 +1,6 @@
+import type { PortfolioDuneAnalytics } from "@/lib/dune";
+import type { PortfolioProviderStatus } from "@/lib/portfolio-providers";
+
 export type PortfolioAsset = {
   id: string;
   symbol: string;
@@ -116,12 +119,8 @@ export type PortfolioWalletFeed = {
   zerionAvailable: boolean;
   /** Human-readable primary indexer label for UI */
   dataSourceLabel: string;
-  apisConfigured?: {
-    zerion: boolean;
-    goldrush: boolean;
-    moralis: boolean;
-    coingecko: boolean;
-  };
+  apisConfigured?: PortfolioProviderStatus;
+  duneAnalytics?: PortfolioDuneAnalytics;
   /** ok | error | off — why Zerion data may be missing */
   zerionStatus?: "ok" | "error" | "off";
   zerionMessage?: string;

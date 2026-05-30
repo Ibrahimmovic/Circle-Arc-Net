@@ -24,6 +24,7 @@ import { PortfolioNftGrid } from "./portfolio-nft-grid";
 import { assetMatchesChain } from "@/lib/portfolio-chain-utils";
 import { PortfolioActivityList } from "./portfolio-activity-list";
 import { PortfolioAdaptivePanel } from "./portfolio-adaptive-panel";
+import { PortfolioDunePanel } from "./portfolio-dune-panel";
 import { PortfolioPositionCards } from "./portfolio-position-cards";
 import { PortfolioSetupBanner } from "./portfolio-setup-banner";
 import { MarketTicker } from "@/components/dashboard/market-ticker";
@@ -341,7 +342,7 @@ export function PortfolioCommandCenter() {
                   </div>
                   <PortfolioActivityList
                     items={data.activities.slice(0, 6)}
-                    emptyLabel="No transactions — connect Zerion API key on server."
+                    emptyLabel="No transactions — add ALCHEMY_API_KEY on Vercel."
                   />
                 </div>
               </div>
@@ -429,7 +430,7 @@ export function PortfolioCommandCenter() {
               </div>
               {!data.zerionAvailable && (
                 <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-                  Set ZERION_API_KEY on Vercel for full labeled history.
+                  Set ALCHEMY_API_KEY on Vercel for labeled transaction history.
                 </p>
               )}
               <PortfolioActivityList
@@ -467,7 +468,13 @@ export function PortfolioCommandCenter() {
           )}
 
           {tab === "adaptive" && analysis && (
-            <PortfolioAdaptivePanel analysis={analysis} />
+            <div className="space-y-6">
+              <PortfolioAdaptivePanel analysis={analysis} />
+              <div className="glass-panel rounded-2xl p-5 sm:p-6">
+                <h3 className="mb-4 text-lg font-semibold text-white">Dune analytics</h3>
+                <PortfolioDunePanel analytics={data.duneAnalytics} />
+              </div>
+            </div>
           )}
 
           {tab === "adaptive" && !analysis && (
