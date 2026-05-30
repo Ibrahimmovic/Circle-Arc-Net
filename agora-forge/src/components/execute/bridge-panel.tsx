@@ -18,10 +18,27 @@ type ChainName = (typeof CHAINS)[number];
 
 type Status = "idle" | "estimating" | "executing" | "success" | "error";
 
-export function BridgePanel() {
+function toBridgeChain(name: string): ChainName {
+  const clean = name.replace(/ testnet/gi, "").trim();
+  if (clean === "Arc") return "Base";
+  if ((CHAINS as readonly string[]).includes(clean)) return clean as ChainName;
+  return "Ethereum";
+}
+
+export function BridgePanel({
+  prefillFrom,
+  prefillTo,
+}: {
+  prefillFrom?: string;
+  prefillTo?: string;
+}) {
   const { address, isConnected } = useAccount();
-  const [fromChain, setFromChain] = useState<ChainName>("Ethereum");
-  const [toChain, setToChain] = useState<ChainName>("Base");
+  const [fromChain, setFromChain] = useState<ChainName>(() =>
+    prefillFrom ? toBridgeChain(prefillFrom) : "Ethereum",
+  );
+  const [toChain, setToChain] = useState<ChainName>(() =>
+    prefillTo ? toBridgeChain(prefillTo) : "Base",
+  );
   const [amount, setAmount] = useState("10");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string | null>(null);

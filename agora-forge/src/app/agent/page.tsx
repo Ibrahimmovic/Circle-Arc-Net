@@ -14,8 +14,8 @@ const AGENT_STEPS = [
   "Ingest Zerion portfolio + GoldRush multichain balances",
   "Detect market regime from 24h momentum",
   "Compute cross-chain drift vs regime targets",
-  "Queue CCTP rebalance actions for Circle App Kit",
-  "Execute on Arc-optimized USDC fee surface",
+  "Scan arb signals + execution queue (/api/execute/plan)",
+  "Execute live legs via CCTP · plan intent/calldata routes",
 ];
 
 export default function AgentPage() {
@@ -24,6 +24,7 @@ export default function AgentPage() {
   const [analysis, setAnalysis] = useState<PortfolioAnalysis | null>(null);
   const [tick, setTick] = useState(0);
   const [log, setLog] = useState<string[]>([]);
+  const [execCount, setExecCount] = useState(0);
 
   useEffect(() => {
     fetch(`/api/portfolio/analyze?address=${watchAddress}`)
@@ -34,14 +35,24 @@ export default function AgentPage() {
   }, [watchAddress, tick]);
 
   useEffect(() => {
+    fetch(`/api/execute/plan?address=${watchAddress}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.plan?.opportunities) setExecCount(j.plan.opportunities.length);
+      })
+      .catch(() => {});
+  }, [watchAddress, tick]);
+
+  useEffect(() => {
     const lines = [
       `[${new Date().toISOString()}] Agent cycle #${tick + 1}`,
       `Regime: ${analysis?.regime ?? "pending"}`,
-      `Actions queued: ${analysis?.rebalanceActions.length ?? 0}`,
+      `Rebalance actions: ${analysis?.rebalanceActions.length ?? 0}`,
+      `Execution queue: ${execCount} (rebalance + arb + planned intents)`,
       `Circle Kit: ${process.env.NEXT_PUBLIC_CIRCLE_KIT_KEY ? "configured" : "missing"}`,
     ];
     setLog((prev) => [...lines, ...prev].slice(0, 20));
-  }, [analysis, tick]);
+  }, [analysis, tick, execCount]);
 
   return (
     <AppShell
