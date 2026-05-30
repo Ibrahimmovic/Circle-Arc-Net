@@ -3302,9 +3302,21 @@ body {
 }
 
 .exec-visual--glass .exec-visual__shell {
-  border: none;
-  background: transparent;
-  box-shadow: none;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(24px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.1) inset,
+    0 24px 64px rgba(0, 0, 0, 0.45);
+}
+
+.exec-visual--home {
+  max-width: 100%;
+}
+
+.home-exec-only {
+  min-height: min(72vh, 720px);
+  justify-content: center;
 }
 
 .exec-visual--glass .exec-node {

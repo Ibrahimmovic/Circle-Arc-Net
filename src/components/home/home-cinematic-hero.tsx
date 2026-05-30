@@ -84,7 +84,7 @@ export function HomeCinematicHero({
               </div>
               <div>
                 <p className="home-glass-metric__label">Data</p>
-                <p className="home-glass-metric__value">Zerion · GoldRush · CoinGecko</p>
+                <p className="home-glass-metric__value">Zerion · Covalent · CoinGecko</p>
               </div>
             </div>
           </GlassPanel>
@@ -111,7 +111,7 @@ export function HomeCinematicHero({
               </p>
             </GlassPanel>
           )}
-          <HomeExecutionVisual compact={compact} />
+          <HomeExecutionVisual />
         </motion.div>
       </div>
     </section>

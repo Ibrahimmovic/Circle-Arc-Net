@@ -81,12 +81,16 @@ function AnimatedMetric({
   );
 }
 
+const NODE_VARIANTS = ["cyan", "violet", "coral"] as const;
+
 function FlowNodeCard({
   node,
   delay,
+  variant = "cyan",
 }: {
   node: FlowNode;
   delay: number;
+  variant?: (typeof NODE_VARIANTS)[number];
 }) {
   return (
     <motion.div
@@ -95,7 +99,11 @@ function FlowNodeCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ ...figmaEaseOut, delay }}
     >
-      <div className="exec-node__avatar exec-token-wrap">
+      <div
+        className={`exec-node__avatar exec-token-wrap ${
+          variant !== "cyan" ? `exec-token-wrap--${variant}` : ""
+        }`}
+      >
         <TokenAvatar symbol={node.symbol} chainKey={node.chainKey} size={48} />
       </div>
       <p className="exec-node__symbol">{node.symbol}</p>
@@ -148,10 +156,12 @@ function RailBadge({
   );
 }
 
-export function HomeExecutionVisual({ compact }: { compact?: boolean }) {
+import { GlassPanel } from "@/components/ui/glass-ui";
+
+export function HomeExecutionVisual() {
   return (
-    <div className={`exec-visual exec-visual--glass ${compact ? "exec-visual--compact" : ""}`}>
-      <div className="exec-visual__shell glass-panel glass-panel--strong">
+    <div className="exec-visual exec-visual--glass exec-visual--home">
+      <GlassPanel strong className="exec-visual__shell !rounded-2xl !p-0 overflow-hidden">
         <div className="exec-visual__chrome">
           <div className="exec-visual__chrome-left">
             <span className="exec-visual__dot exec-visual__dot--live" />
@@ -161,17 +171,17 @@ export function HomeExecutionVisual({ compact }: { compact?: boolean }) {
         </div>
 
         <div className="exec-visual__flow">
-          <FlowNodeCard node={PRIMARY_FLOW[0]} delay={0.06} />
+          <FlowNodeCard node={PRIMARY_FLOW[0]} delay={0.06} variant="cyan" />
           <div className="exec-visual__rail-col">
             <FlowLink delay={0.12} />
             <RailBadge {...RAILS[0]} delay={0.18} />
           </div>
-          <FlowNodeCard node={PRIMARY_FLOW[1]} delay={0.14} />
+          <FlowNodeCard node={PRIMARY_FLOW[1]} delay={0.14} variant="violet" />
           <div className="exec-visual__rail-col">
             <FlowLink delay={0.2} />
             <RailBadge {...RAILS[1]} delay={0.26} />
           </div>
-          <FlowNodeCard node={PRIMARY_FLOW[2]} delay={0.22} />
+          <FlowNodeCard node={PRIMARY_FLOW[2]} delay={0.22} variant="coral" />
         </div>
 
         <div className="exec-visual__metrics">
@@ -191,7 +201,7 @@ export function HomeExecutionVisual({ compact }: { compact?: boolean }) {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.55 + i * 0.05 }}
               >
-                <span className="exec-chip__icon">
+                <span className="exec-chip__icon exec-token-wrap exec-token-wrap--sm">
                   <TokenAvatar symbol={symbol} chainKey={chainKey} size={18} />
                 </span>
                 <span>{label}</span>
@@ -199,7 +209,7 @@ export function HomeExecutionVisual({ compact }: { compact?: boolean }) {
             ))}
           </div>
         </div>
-      </div>
+      </GlassPanel>
 
       <div className="exec-visual__sheen" aria-hidden />
       <div className="exec-visual__depth" aria-hidden />
