@@ -13,6 +13,7 @@ import { ChainBalanceGrid } from "@/components/portfolio/chain-balance-grid";
 import { HomeCinematicHero } from "@/components/home/home-cinematic-hero";
 import { HomeFeatureGrid } from "@/components/home/home-feature-grid";
 import { MotionScrollReveal } from "@/components/motion/motion-primitives";
+import { NeoGlass } from "@/components/ui/neo-glass";
 import { PremiumIcon } from "@/components/ui/premium-icon";
 import { useDashboard } from "@/hooks/use-dashboard";
 import { useNetwork } from "@/providers/network-context";
@@ -48,14 +49,22 @@ export default function HomePage() {
 
   return (
     <AppShell title="Overview" subtitle="" variant="home">
-      <HomeCinematicHero compact={isConnected} showCta={!isConnected} />
+      <HomeCinematicHero
+        compact={isConnected}
+        showCta={!isConnected}
+        walletPreview={
+          isConnected && analysis
+            ? { totalUsd, change24hPct: change24h }
+            : undefined
+        }
+      />
 
       <div className="home-content space-y-8">
         <MotionScrollReveal>
-          <div className="home-ticker-wrap space-y-0">
+          <NeoGlass glow="indigo" padding="none" className="home-ticker-wrap overflow-hidden">
             <MarketTicker />
             <CoinStrip />
-          </div>
+          </NeoGlass>
         </MotionScrollReveal>
 
         {!isConnected && (
@@ -73,12 +82,12 @@ export default function HomePage() {
             </span>
 
             {data?.hint && (
-              <div className="home-panel rounded-xl border-amber-500/25 bg-amber-950/20 px-4 py-3 text-sm text-amber-100">
+              <NeoGlass glow="amber" padding="md" className="text-sm text-amber-100">
                 {data.hint}{" "}
                 <Link href="/execute" className="font-semibold text-cyan-300">
                   Fund →
                 </Link>
-              </div>
+              </NeoGlass>
             )}
 
             {analysis ? (
@@ -92,11 +101,11 @@ export default function HomePage() {
                 loading={loading}
               />
             ) : (
-              <div className="home-panel p-8 text-center">
+              <NeoGlass glow="indigo" padding="lg" className="text-center">
                 <p className="text-slate-300">
                   {loading ? "Scanning all chains…" : "No balance yet — use Fund tab."}
                 </p>
-              </div>
+              </NeoGlass>
             )}
 
             <div className="flex flex-wrap gap-3">
@@ -148,21 +157,21 @@ export default function HomePage() {
             </div>
 
             {data?.chainBalances && data.chainBalances.length > 0 && (
-              <div className="home-panel card-shine p-6">
+              <NeoGlass glow="cyan" padding="lg">
                 <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-white">
                   <PremiumIcon icon={Globe} variant="cyan" size="sm" />
-                  By chain
+                  <span className="text-slate-500">/</span> By chain
                 </h3>
                 <ChainBalanceGrid chains={data.chainBalances} />
-              </div>
+              </NeoGlass>
             )}
 
             <div className="grid gap-6 lg:grid-cols-2">
-              <div className="home-panel card-shine p-6">
+              <NeoGlass glow="violet" padding="lg">
                 <div className="flex items-center justify-between">
                   <h3 className="flex items-center gap-2 font-semibold text-white">
                     <PremiumIcon icon={Zap} variant="violet" size="sm" />
-                    Quick actions
+                    <span className="text-slate-500">/</span> Quick actions
                   </h3>
                   <RegimeBadge regime={regime} />
                 </div>
@@ -180,10 +189,10 @@ export default function HomePage() {
                     Portfolio <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
-              </div>
-              <div className="home-panel overflow-hidden p-1">
+              </NeoGlass>
+              <NeoGlass glow="indigo" padding="sm" className="overflow-hidden">
                 <ActivityFeed />
-              </div>
+              </NeoGlass>
             </div>
           </div>
           </MotionScrollReveal>

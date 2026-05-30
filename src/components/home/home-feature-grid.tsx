@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowLeftRight, ArrowRight, Globe, Zap } from "lucide-react";
+import { NeoGlass } from "@/components/ui/neo-glass";
 import {
   fadeUpContainer,
-  scaleInItem,
   figmaSpringSnappy,
+  scaleInItem,
 } from "@/design/motion-presets";
 
 const FEATURES = [
@@ -15,21 +16,21 @@ const FEATURES = [
     label: "Swap & Bridge",
     text: "Quote, compare routes, execute in one cinematic flow.",
     href: "/execute",
-    accent: "home-feature--cyan",
+    glow: "cyan" as const,
   },
   {
     icon: Globe,
     label: "Portfolio",
     text: "Multichain net worth, tokens, NFTs, and activity.",
     href: "/portfolio",
-    accent: "home-feature--violet",
+    glow: "violet" as const,
   },
   {
     icon: Zap,
     label: "Agent",
     text: "Save goals and run portfolio-linked CCTP jobs.",
     href: "/agent",
-    accent: "home-feature--emerald",
+    glow: "indigo" as const,
   },
 ] as const;
 
@@ -42,21 +43,23 @@ export function HomeFeatureGrid() {
       whileInView="show"
       viewport={{ once: true, margin: "-5% 0px" }}
     >
-      {FEATURES.map(({ icon: Icon, label, text, href, accent }) => (
+      {FEATURES.map(({ icon: Icon, label, text, href, glow }) => (
         <motion.div key={href} variants={scaleInItem}>
-          <Link href={href} className={`home-feature-card ${accent} group block`}>
-            <motion.div
-              className="home-feature-card__icon"
-              whileHover={{ rotate: [0, -8, 8, 0], scale: 1.08 }}
-              transition={figmaSpringSnappy}
-            >
-              <Icon className="h-6 w-6" strokeWidth={1.75} />
-            </motion.div>
-            <p className="home-feature-card__title">{label}</p>
-            <p className="home-feature-card__text">{text}</p>
-            <span className="home-feature-card__link">
-              Explore <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
-            </span>
+          <Link href={href} className="group block h-full">
+            <NeoGlass glow={glow} padding="md" className="home-feature-card h-full transition-transform duration-300 group-hover:-translate-y-1">
+              <motion.div
+                className="home-feature-card__icon"
+                whileHover={{ rotate: [0, -6, 6, 0], scale: 1.08 }}
+                transition={figmaSpringSnappy}
+              >
+                <Icon className="h-6 w-6" strokeWidth={1.75} />
+              </motion.div>
+              <p className="home-feature-card__title">{label}</p>
+              <p className="home-feature-card__text">{text}</p>
+              <span className="home-feature-card__link">
+                Explore <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
+              </span>
+            </NeoGlass>
           </Link>
         </motion.div>
       ))}
