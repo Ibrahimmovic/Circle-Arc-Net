@@ -5,7 +5,7 @@ import { useAccount } from "wagmi";
 import { AppShell } from "@/components/layout/app-shell";
 import { MarketTicker } from "@/components/dashboard/market-ticker";
 import { CoinStrip } from "@/components/dashboard/coin-strip";
-import { ExecuteCinematicHero } from "@/components/execute/execute-cinematic-hero";
+import { ExecuteDeskBanner } from "@/components/execute/execute-desk-banner";
 import { MotionScrollReveal } from "@/components/motion/motion-primitives";
 import { GlassPanel } from "@/components/ui/glass-ui";
 import { useNetwork } from "@/providers/network-context";
@@ -32,9 +32,7 @@ export default function ExecutePage() {
 
   return (
     <AppShell title="Execution Desk" subtitle="" variant="execute">
-      <ExecuteCinematicHero />
-
-      <div className="execute-glass-context execute-workbench mx-auto w-full max-w-6xl space-y-5 px-4 pb-8 sm:px-6">
+      <div className="execute-glass-context execute-workbench mx-auto w-full max-w-6xl space-y-5">
         {!isConnected && isTestnet && (
           <p className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-center text-sm text-cyan-100 backdrop-blur-md">
             Connect wallet · fund test tokens on Arc + Base Sepolia if needed ·{" "}
@@ -42,6 +40,7 @@ export default function ExecutePage() {
           </p>
         )}
 
+        <ExecuteDeskBanner />
         <CrossChainStudio />
 
         <MotionScrollReveal>

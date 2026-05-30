@@ -10,6 +10,7 @@ import { CrossChainRouteCard } from "@/components/execute/cross-chain-route-card
 import { ForgeExecutionPipeline } from "@/components/execute/forge-execution-pipeline";
 import { ForgeRoutePath } from "@/components/execute/forge-route-path";
 import { ForgeCctpPending } from "@/components/execute/forge-cctp-pending";
+import { ExecuteRouteStrip } from "@/components/execute/execute-route-strip";
 import { GlassPanel } from "@/components/ui/glass-ui";
 import type { ExecutionKind, ExecutionPipelineStep } from "@/lib/execution/execution-intent-ui";
 import { classifyExecution } from "@/lib/execution/execution-intent-ui";
@@ -139,9 +140,12 @@ export function ForgeRoutesPanel({
           <p className="py-8 text-center text-sm text-white/50">Connect wallet for routes</p>
         )}
         {isConnected && !intent.amount && (
-          <p className="py-10 text-center text-sm text-white/50">
-            Enter an amount in the swap panel to load live routes
-          </p>
+          <ExecuteRouteStrip
+            fromChain={intent.fromChain}
+            toChain={intent.toChain}
+            fromToken={intent.fromToken}
+            toToken={intent.toToken}
+          />
         )}
         {routes.map((r) => (
           <CrossChainRouteCard
