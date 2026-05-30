@@ -31,6 +31,7 @@ import { CoinStrip } from "@/components/dashboard/coin-strip";
 import { cn, formatUsd } from "@/lib/utils";
 import type { MarketRegime } from "@/lib/types";
 import { DEFAULT_CHART_PERIOD, type ChartPeriod } from "@/lib/chart-period";
+import { PremiumIcon } from "@/components/ui/premium-icon";
 
 const TABS = [
   { id: "overview", label: "Portfolio", icon: LayoutGrid },
@@ -120,12 +121,13 @@ export function PortfolioCommandCenter() {
     return (
       <div className="space-y-6">
         <MarketTicker />
-        <div className="luxury-hero rounded-2xl p-8 text-center sm:p-10">
-          <Wallet className="mx-auto h-12 w-12 text-cyan-400" />
-          <p className="mt-4 font-display text-2xl font-bold text-white">
+        <div className="portfolio-hero-premium p-8 text-center sm:p-10">
+          <div className="portfolio-hero-premium__mesh" aria-hidden />
+          <PremiumIcon icon={Wallet} variant="cyan" size="xl" className="mx-auto" pulse />
+          <p className="relative mt-6 font-display text-2xl font-bold text-white">
             Connect wallet for DeBank-style portfolio
           </p>
-          <p className="mx-auto mt-2 max-w-lg text-sm text-slate-400">
+          <p className="relative mx-auto mt-2 max-w-lg text-sm text-slate-400">
             Multichain net worth, per-chain breakdown, aggregated tokens across
             networks, NFT collections, and labeled transaction history — Zerion
             + GoldRush, like DeBank and Zerion.
@@ -204,21 +206,29 @@ export function PortfolioCommandCenter() {
           />
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex gap-1 overflow-x-auto rounded-2xl border border-slate-800/80 bg-slate-950/70 p-1 scrollbar-thin">
-              {TABS.map(({ id, label, icon: Icon }) => (
+            <div className="premium-tab-bar flex gap-1 overflow-x-auto scrollbar-thin">
+              {TABS.map(({ id, label, icon: Icon }) => {
+                const variant =
+                  id === "adaptive"
+                    ? "emerald"
+                    : id === "spam"
+                      ? "amber"
+                      : id === "nfts"
+                        ? "violet"
+                        : "cyan";
+                return (
                 <button
                   key={id}
                   type="button"
                   onClick={() => setTab(id)}
                   className={cn(
-                    "flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition touch-manipulation sm:px-4",
-                    tab === id
-                      ? "bg-gradient-to-r from-cyan-500/25 to-violet-500/20 text-white ring-1 ring-cyan-500/30"
-                      : "text-slate-400 hover:text-slate-200",
+                    "premium-tab premium-tab--portfolio min-w-0 shrink-0 touch-manipulation sm:px-4",
+                    tab === id && "premium-tab--active",
+                    id === "spam" && tab === id && "premium-tab--amber",
                   )}
                 >
-                  <Icon className="h-3.5 w-3.5" />
-                  {label}
+                  <PremiumIcon icon={Icon} variant={variant} size="sm" />
+                  <span className="truncate">{label}</span>
                   {id === "assets" && counts.assets > 0 && (
                     <span className="text-[10px] text-slate-500">{counts.assets}</span>
                   )}
@@ -234,7 +244,8 @@ export function PortfolioCommandCenter() {
                     </span>
                   )}
                 </button>
-              ))}
+                );
+              })}
             </div>
 
             {tab !== "adaptive" && tab !== "spam" && (

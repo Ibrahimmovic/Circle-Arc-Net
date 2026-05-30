@@ -964,7 +964,7 @@ export function ExchangeWidget({
 
   return (
     <>
-      <div className="exchange-widget mx-auto w-full max-w-md">
+      <div className="exchange-widget exchange-widget-premium relative mx-auto w-full max-w-md">
         <div className="mb-3 flex items-center justify-between sm:mb-4">
           <h2 className="font-display text-base font-bold text-white sm:text-lg">
             Swap & Bridge
