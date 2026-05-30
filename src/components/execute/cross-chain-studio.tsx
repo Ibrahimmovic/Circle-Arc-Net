@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { motion } from "framer-motion";
 import { ArrowLeftRight, Sparkles } from "lucide-react";
 import { useNetwork } from "@/providers/network-context";
 import { cn } from "@/lib/utils";
@@ -11,8 +10,7 @@ import { ForgeArbitraryPanel } from "@/components/execute/forge-arbitrary-panel"
 import { ForgeRoutesPanel } from "@/components/execute/forge-routes-panel";
 import { ForgeRailsStrip } from "@/components/execute/forge-rails-strip";
 import { ExchangeWidget } from "@/components/execute/exchange-widget";
-import { GlassPanel } from "@/components/ui/glass-ui";
-import { figmaEaseOut } from "@/design/motion-presets";
+import { GlassBadge, GlassPanel } from "@/components/ui/glass-ui";
 
 const SendPanel = dynamic(() => import("./send-panel").then((m) => m.SendPanel), {
   ssr: false,
@@ -51,34 +49,35 @@ export function CrossChainStudio() {
 
   return (
     <div className="space-y-5">
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={figmaEaseOut}
-      >
-        <GlassPanel strong className="execute-desk-hero forge-studio-hero !overflow-visible px-4 py-4 sm:px-5 sm:py-5">
-          <p className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-400/90">
-            Agora Forge
-          </p>
-          <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h2 className="font-display text-xl font-bold text-white sm:text-2xl">
-                <span className="text-gradient">Execution Desk</span>
-              </h2>
-              <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/60">
-                Swap, bridge, and compare live routes — quote on the left, paths on the right.
-              </p>
-              {process.env.NEXT_PUBLIC_BUILD_SHA &&
-                process.env.NEXT_PUBLIC_BUILD_SHA !== "local" && (
-                  <p className="mt-1 text-[10px] text-white/25">
-                    Deploy {process.env.NEXT_PUBLIC_BUILD_SHA}
-                  </p>
-                )}
-            </div>
+      <GlassPanel strong className="home-glass-hero__copy execute-desk-header">
+        <div className="home-glass-hero__badges">
+          <GlassBadge>Agora Forge</GlassBadge>
+          <GlassBadge>Circle CCTP</GlassBadge>
+          <GlassBadge>Execution Desk</GlassBadge>
+        </div>
+
+        <h2 className="home-glass-hero__title execute-desk-header__title font-display">
+          Swap · bridge · execute
+          <br />
+          <span className="home-glass-hero__accent">on every chain.</span>
+        </h2>
+
+        <p className="home-glass-hero__lede execute-desk-header__lede">
+          Quote Circle CCTP, LI.FI, and Uniswap routes — compare paths on the right,
+          confirm with Quote and Exchange on the left.
+        </p>
+
+        <div className="home-glass-hero__metrics execute-desk-header__metrics">
+          <div>
+            <p className="home-glass-metric__label">Rails</p>
             <ForgeRailsStrip />
           </div>
-        </GlassPanel>
-      </motion.div>
+          <div>
+            <p className="home-glass-metric__label">Data</p>
+            <p className="home-glass-metric__value">Zerion · Covalent · CoinGecko</p>
+          </div>
+        </div>
+      </GlassPanel>
 
       <div className="portfolio-glass-tab-bar flex gap-1 overflow-x-auto scrollbar-thin">
         {(
@@ -114,12 +113,7 @@ export function CrossChainStudio() {
           <ForgeArbitraryPanel />
         </GlassPanel>
       ) : (
-        <motion.div
-          className="grid items-start gap-5 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-6"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ ...figmaEaseOut, delay: 0.08 }}
-        >
+        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-6">
           <GlassPanel strong className="exchange-widget-premium p-4 sm:p-5">
             <ExchangeWidget
               onIntentChange={setIntent}
@@ -131,7 +125,7 @@ export function CrossChainStudio() {
             cctpPending={cctpPending}
             onDismissCctp={() => setCctpPending(null)}
           />
-        </motion.div>
+        </div>
       )}
 
       <nav className="flex flex-wrap gap-2 border-t border-white/10 pt-4">
