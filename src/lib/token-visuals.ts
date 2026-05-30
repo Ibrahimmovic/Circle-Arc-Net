@@ -37,7 +37,7 @@ export const VERIFIED_TOKEN_SYMBOLS = new Set([
 export const CHAIN_ICONS: Record<string, string> = {
   Arc_Testnet: "https://docs.arc.network/favicon.ico",
   "Arc Testnet": "https://docs.arc.network/favicon.ico",
-  Base_Sepolia: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
+  Base_Sepolia: "https://icons.llamao.fi/icons/chains/rsz_base.jpg",
   Ethereum_Sepolia: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
   Arbitrum_Sepolia: "https://assets.coingecko.com/coins/images/16547/small/arb.jpg",
   Optimism_Sepolia: "https://assets.coingecko.com/coins/images/25244/small/Optimism.png",

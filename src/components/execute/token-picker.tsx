@@ -215,7 +215,7 @@ export function TokenPicker({
                         : "hover:bg-white/[0.06]"
                     }`}
                   >
-                    <TokenAvatar symbol={token.symbol} chainKey={chain.appKitChain} size={36} />
+                    <TokenAvatar symbol={token.symbol} chainKey={chain.appKitChain} size={36} glass glassVariant="cyan" />
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-white">{token.symbol}</p>
                       <p className="truncate text-xs text-slate-400">

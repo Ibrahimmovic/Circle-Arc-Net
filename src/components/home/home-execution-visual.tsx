@@ -87,10 +87,12 @@ function FlowNodeCard({
   node,
   delay,
   variant = "cyan",
+  glassIcons = false,
 }: {
   node: FlowNode;
   delay: number;
   variant?: (typeof NODE_VARIANTS)[number];
+  glassIcons?: boolean;
 }) {
   return (
     <motion.div
@@ -104,7 +106,13 @@ function FlowNodeCard({
           variant !== "cyan" ? `exec-token-wrap--${variant}` : ""
         }`}
       >
-        <TokenAvatar symbol={node.symbol} chainKey={node.chainKey} size={48} />
+        <TokenAvatar
+          symbol={node.symbol}
+          chainKey={node.chainKey}
+          size={48}
+          glass={glassIcons}
+          glassVariant={variant}
+        />
       </div>
       <p className="exec-node__symbol">{node.symbol}</p>
       <p className="exec-node__chain">{node.chainLabel}</p>
@@ -158,7 +166,7 @@ function RailBadge({
 
 import { GlassPanel } from "@/components/ui/glass-ui";
 
-export function HomeExecutionVisual() {
+export function HomeExecutionVisual({ glassIcons = false }: { glassIcons?: boolean } = {}) {
   return (
     <div className="exec-visual exec-visual--glass exec-visual--home">
       <GlassPanel strong className="exec-visual__shell !rounded-2xl !p-0 overflow-hidden">
@@ -171,17 +179,17 @@ export function HomeExecutionVisual() {
         </div>
 
         <div className="exec-visual__flow">
-          <FlowNodeCard node={PRIMARY_FLOW[0]} delay={0.06} variant="cyan" />
+          <FlowNodeCard node={PRIMARY_FLOW[0]} delay={0.06} variant="cyan" glassIcons={glassIcons} />
           <div className="exec-visual__rail-col">
             <FlowLink delay={0.12} />
             <RailBadge {...RAILS[0]} delay={0.18} />
           </div>
-          <FlowNodeCard node={PRIMARY_FLOW[1]} delay={0.14} variant="violet" />
+          <FlowNodeCard node={PRIMARY_FLOW[1]} delay={0.14} variant="violet" glassIcons={glassIcons} />
           <div className="exec-visual__rail-col">
             <FlowLink delay={0.2} />
             <RailBadge {...RAILS[1]} delay={0.26} />
           </div>
-          <FlowNodeCard node={PRIMARY_FLOW[2]} delay={0.22} variant="coral" />
+          <FlowNodeCard node={PRIMARY_FLOW[2]} delay={0.22} variant="coral" glassIcons={glassIcons} />
         </div>
 
         <div className="exec-visual__metrics">
@@ -202,7 +210,13 @@ export function HomeExecutionVisual() {
                 transition={{ delay: 0.55 + i * 0.05 }}
               >
                 <span className="exec-chip__icon exec-token-wrap exec-token-wrap--sm">
-                  <TokenAvatar symbol={symbol} chainKey={chainKey} size={18} />
+                  <TokenAvatar
+                    symbol={symbol}
+                    chainKey={chainKey}
+                    size={18}
+                    glass={glassIcons}
+                    glassVariant="cyan"
+                  />
                 </span>
                 <span>{label}</span>
               </motion.div>
