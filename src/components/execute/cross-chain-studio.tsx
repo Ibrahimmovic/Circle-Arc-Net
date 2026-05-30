@@ -49,7 +49,7 @@ export function CrossChainStudio() {
   } | null>(null);
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       <div className="portfolio-glass-tab-bar execute-mode-tabs flex gap-1 overflow-x-auto scrollbar-thin">
         {(
           [
@@ -85,7 +85,7 @@ export function CrossChainStudio() {
         </GlassPanel>
       ) : (
         <motion.div
-          className="grid items-start gap-5 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-6"
+          className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-6"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={figmaEaseOut}
