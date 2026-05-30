@@ -8,7 +8,7 @@ import {
 export const APP_NAV = [
   { href: "/", label: "Overview", shortLabel: "Home", icon: LayoutDashboard },
   { href: "/portfolio", label: "Portfolio", shortLabel: "Portfolio", icon: PieChart },
-  { href: "/execute", label: "Bridge & Swap", shortLabel: "Execute", icon: Zap },
+  { href: "/execute", label: "Execution Desk", shortLabel: "Execute", icon: Zap },
 ] as const satisfies ReadonlyArray<{
   href: string;
   label: string;

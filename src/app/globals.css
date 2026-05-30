@@ -3314,10 +3314,49 @@ body {
   max-width: 100%;
 }
 
-.home-exec-only {
-  min-height: min(72vh, 720px);
-  justify-content: center;
+.app-shell--execute .app-shell-main {
+  padding-top: 0;
 }
+
+.execute-glass-context .forge-panel,
+.execute-glass-context .exchange-widget-premium {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.execute-glass-context .forge-amount-input {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.execute-glass-context .forge-amount-input:focus {
+  border-color: rgba(34, 211, 238, 0.45);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.12);
+}
+
+.execute-glass-context .forge-chip {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.execute-glass-context .forge-chip--active {
+  border-color: rgba(34, 211, 238, 0.45);
+  background: rgba(34, 211, 238, 0.12);
+  color: #a5f3fc;
+}
+
+.execute-glass-context .text-slate-400,
+.execute-glass-context .text-slate-500 {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
+.execute-glass-context .text-slate-300 {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
 
 .exec-visual--glass .exec-node {
   border-color: rgba(255, 255, 255, 0.14);

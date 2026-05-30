@@ -4,6 +4,9 @@ import dynamic from "next/dynamic";
 import { useAccount } from "wagmi";
 import { AppShell } from "@/components/layout/app-shell";
 import { MarketTicker } from "@/components/dashboard/market-ticker";
+import { CoinStrip } from "@/components/dashboard/coin-strip";
+import { MotionScrollReveal } from "@/components/motion/motion-primitives";
+import { GlassPanel } from "@/components/ui/glass-ui";
 import { useNetwork } from "@/providers/network-context";
 import { ARC_FEE_USDC } from "@/lib/network";
 
@@ -16,7 +19,7 @@ const CrossChainStudio = dynamic(
     ssr: false,
     loading: () => (
       <div className="flex h-64 items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-violet-500/30 border-t-violet-400" />
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/20 border-t-cyan-400" />
       </div>
     ),
   },
@@ -27,19 +30,23 @@ export default function ExecutePage() {
   const { isTestnet } = useNetwork();
 
   return (
-    <AppShell
-      title="Execute"
-      subtitle="Agora Forge · compare routes · execute in one flow"
-    >
-      <div className="space-y-6">
-        <MarketTicker />
+    <AppShell title="Execution Desk" subtitle="" variant="execute">
+      <div className="execute-glass-context mx-auto w-full max-w-6xl space-y-6">
         {!isConnected && isTestnet && (
-          <p className="mx-auto max-w-lg rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-center text-sm text-cyan-100">
+          <p className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-center text-sm text-cyan-100 backdrop-blur-md">
             Connect wallet · fund test tokens on Arc + Base Sepolia if needed ·{" "}
             {ARC_FEE_USDC} platform fee per run
           </p>
         )}
+
         <CrossChainStudio />
+
+        <MotionScrollReveal>
+          <GlassPanel strong className="overflow-hidden">
+            <MarketTicker variant="glass" />
+            <CoinStrip variant="glass" />
+          </GlassPanel>
+        </MotionScrollReveal>
       </div>
     </AppShell>
   );

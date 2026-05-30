@@ -17,11 +17,12 @@ export function AppShell({
   children: React.ReactNode;
   title: string;
   subtitle?: string;
-  variant?: "default" | "home" | "portfolio";
+  variant?: "default" | "home" | "portfolio" | "execute";
 }) {
   const isHome = variant === "home";
   const isPortfolio = variant === "portfolio";
-  const isCinematic = isHome || isPortfolio;
+  const isExecute = variant === "execute";
+  const isCinematic = isHome || isPortfolio || isExecute;
 
   return (
     <div
@@ -30,6 +31,7 @@ export function AppShell({
         isCinematic ? "app-shell--cinematic" : "bg-[#030712]",
         isHome && "app-shell--home",
         isPortfolio && "app-shell--portfolio",
+        isExecute && "app-shell--execute",
       )}
     >
       {isCinematic && <CinematicCloudBackdrop className="app-shell__sky" />}
@@ -49,13 +51,13 @@ export function AppShell({
             <NetworkToggle variant={isCinematic ? "home" : "default"} />
             <WalletButton variant={isCinematic ? "home" : "default"} />
           </div>
-          {isHome && (
+          {(isHome || isExecute) && (
             <div className="mt-2 overflow-x-auto">
               <ApiStatusBar />
             </div>
           )}
         </div>
-        {!isHome && (
+        {!isHome && !isExecute && (
           <header
             className={cn(
               "app-shell-header border-b px-4 py-4 sm:px-6 lg:px-10 lg:py-5",
@@ -91,8 +93,9 @@ export function AppShell({
           className={cn(
             "app-shell-main relative z-10 flex-1",
             isHome && "grid-mesh",
+            isExecute && "execute-main grid-mesh px-4 py-5 sm:px-6 sm:py-8 lg:px-10",
             isPortfolio && "portfolio-main px-4 py-5 sm:px-6 sm:py-8 lg:px-10",
-            !isHome && !isPortfolio && "grid-mesh px-4 py-5 sm:px-6 sm:py-8 lg:px-10",
+            !isHome && !isPortfolio && !isExecute && "grid-mesh px-4 py-5 sm:px-6 sm:py-8 lg:px-10",
           )}
         >
           {children}

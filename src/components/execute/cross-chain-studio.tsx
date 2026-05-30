@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import { motion } from "framer-motion";
 import { ArrowLeftRight, Sparkles } from "lucide-react";
 import { useNetwork } from "@/providers/network-context";
 import { cn } from "@/lib/utils";
@@ -10,8 +11,9 @@ import { ForgeArbitraryPanel } from "@/components/execute/forge-arbitrary-panel"
 import { ForgeRoutesPanel } from "@/components/execute/forge-routes-panel";
 import { ForgeRailsStrip } from "@/components/execute/forge-rails-strip";
 import { ExchangeWidget } from "@/components/execute/exchange-widget";
-import { ForgeCrossChainVisual } from "@/components/ui/forge-cross-chain-visual";
-import { PremiumIcon } from "@/components/ui/premium-icon";
+import { HomeExecutionVisual } from "@/components/home/home-execution-visual";
+import { figmaEaseOut } from "@/design/motion-presets";
+import { GlassBadge, GlassPanel } from "@/components/ui/glass-ui";
 
 const SendPanel = dynamic(() => import("./send-panel").then((m) => m.SendPanel), {
   ssr: false,
@@ -49,73 +51,97 @@ export function CrossChainStudio() {
   } | null>(null);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <header className="forge-studio-hero relative px-6 py-7 sm:px-8 sm:py-9">
-        <div className="premium-hero__aurora opacity-60" aria-hidden />
-        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="max-w-xl">
-            <p className="font-display flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-400/90">
-              <Sparkles className="h-3.5 w-3.5" /> Agora Forge
-            </p>
-            <h2 className="relative mt-2 font-display text-2xl font-bold text-white sm:text-3xl">
-              <span className="text-gradient">Cross-chain</span> execution
-            </h2>
-            <p className="relative mt-3 text-sm leading-relaxed text-slate-400">
-              Swap, bridge, and full execution in one flow — compare routes on the right,
-              quote and exchange on the left. Save custom goals for the agent when you
-              need more than a single transaction.
-            </p>
-            <div className="relative mt-5">
-              <ForgeRailsStrip />
-            </div>
-          </div>
-          <ForgeCrossChainVisual />
-        </div>
-      </header>
+    <div className="space-y-6">
+      <section className="home-glass-hero home-glass-hero--compact relative overflow-hidden">
+        <div className="home-glass-hero__inner relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={figmaEaseOut}
+          >
+            <GlassPanel strong className="home-glass-hero__copy">
+              <div className="home-glass-hero__badges">
+                <GlassBadge>Agora Forge</GlassBadge>
+                <GlassBadge>Circle CCTP</GlassBadge>
+                <GlassBadge>Execution Desk</GlassBadge>
+              </div>
 
-      <div className="premium-tab-bar flex gap-1">
+              <h1 className="home-glass-hero__title font-display">
+                Bridge &amp; swap
+                <br />
+                <span className="home-glass-hero__accent">across every chain.</span>
+              </h1>
+
+              <p className="home-glass-hero__lede">
+                Quote Circle CCTP, LI.FI, and Uniswap routes in one flow — compare paths,
+                confirm gas, and execute with live CoinGecko token icons.
+              </p>
+
+              <div className="home-glass-hero__metrics">
+                <div>
+                  <p className="home-glass-metric__label">Rails</p>
+                  <ForgeRailsStrip />
+                </div>
+                <div>
+                  <p className="home-glass-metric__label">Data</p>
+                  <p className="home-glass-metric__value">Zerion · Covalent · CoinGecko</p>
+                </div>
+              </div>
+            </GlassPanel>
+          </motion.div>
+
+          <motion.div
+            className="home-glass-hero__visual"
+            initial={{ opacity: 0, scale: 0.96, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ ...figmaEaseOut, delay: 0.12 }}
+          >
+            <HomeExecutionVisual />
+          </motion.div>
+        </div>
+      </section>
+
+      <div className="portfolio-glass-tab-bar flex gap-1 overflow-x-auto scrollbar-thin">
         {(
           [
-            {
-              id: "swap" as const,
-              label: "Swap & Bridge",
-              icon: ArrowLeftRight,
-              variant: "cyan" as const,
-            },
-            {
-              id: "arbitrary" as const,
-              label: "Arbitrary",
-              icon: Sparkles,
-              variant: "amber" as const,
-            },
+            { id: "swap" as const, label: "Swap & Bridge", icon: ArrowLeftRight },
+            { id: "arbitrary" as const, label: "Arbitrary", icon: Sparkles },
           ] as const
-        ).map(({ id, label, icon, variant }) => (
+        ).map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             type="button"
             onClick={() => setTab(id)}
             className={cn(
-              "premium-tab flex-1",
-              tab === id && "premium-tab--active",
-              id === "arbitrary" && "premium-tab--amber",
+              "portfolio-glass-tab min-w-0 shrink-0 touch-manipulation sm:px-4",
+              tab === id && "portfolio-glass-tab--active",
+              id === "arbitrary" && tab === id && "portfolio-glass-tab--amber",
             )}
           >
-            <PremiumIcon icon={icon} variant={variant} size="sm" />
-            {label}
+            <Icon
+              className={cn(
+                "h-4 w-4 shrink-0",
+                tab === id ? "text-white" : "text-white/55",
+              )}
+              strokeWidth={2}
+            />
+            <span className="truncate">{label}</span>
           </button>
         ))}
       </div>
 
       {tab === "arbitrary" ? (
-        <ForgeArbitraryPanel />
+        <GlassPanel strong className="p-4 sm:p-5">
+          <ForgeArbitraryPanel />
+        </GlassPanel>
       ) : (
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-6">
-          <div className="forge-panel exchange-widget-premium p-4 sm:p-5">
+          <GlassPanel strong className="exchange-widget-premium p-4 sm:p-5">
             <ExchangeWidget
               onIntentChange={setIntent}
               onCctpPending={(p) => setCctpPending(p)}
             />
-          </div>
+          </GlassPanel>
           <ForgeRoutesPanel
             intent={intent}
             cctpPending={cctpPending}
@@ -124,7 +150,7 @@ export function CrossChainStudio() {
         </div>
       )}
 
-      <nav className="flex flex-wrap gap-2 border-t border-slate-800/60 pt-5">
+      <nav className="flex flex-wrap gap-2 border-t border-white/10 pt-5">
         {(
           [
             { id: "send" as const, label: "Send" },
@@ -137,17 +163,29 @@ export function CrossChainStudio() {
             type="button"
             onClick={() => setUtility(utility === id ? null : id)}
             className={cn(
-              "forge-utility-pill",
-              utility === id && "forge-utility-pill--on",
+              "portfolio-glass-tab !min-h-[2.5rem] !flex-none !px-4 !py-2",
+              utility === id && "portfolio-glass-tab--active",
             )}
           >
             {label}
           </button>
         ))}
       </nav>
-      {utility === "send" && <SendPanel />}
-      {utility === "fund" && isTestnet && <FaucetPanel />}
-      {utility === "activity" && <ActivityFeed expanded />}
+      {utility === "send" && (
+        <GlassPanel strong className="p-4 sm:p-5">
+          <SendPanel />
+        </GlassPanel>
+      )}
+      {utility === "fund" && isTestnet && (
+        <GlassPanel strong className="p-4 sm:p-5">
+          <FaucetPanel />
+        </GlassPanel>
+      )}
+      {utility === "activity" && (
+        <GlassPanel strong className="overflow-hidden p-1">
+          <ActivityFeed expanded />
+        </GlassPanel>
+      )}
     </div>
   );
 }

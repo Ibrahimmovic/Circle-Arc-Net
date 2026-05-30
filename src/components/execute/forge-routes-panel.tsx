@@ -10,6 +10,7 @@ import { CrossChainRouteCard } from "@/components/execute/cross-chain-route-card
 import { ForgeExecutionPipeline } from "@/components/execute/forge-execution-pipeline";
 import { ForgeRoutePath } from "@/components/execute/forge-route-path";
 import { ForgeCctpPending } from "@/components/execute/forge-cctp-pending";
+import { GlassPanel } from "@/components/ui/glass-ui";
 import type { ExecutionKind, ExecutionPipelineStep } from "@/lib/execution/execution-intent-ui";
 import { classifyExecution } from "@/lib/execution/execution-intent-ui";
 import { getExecChains } from "@/lib/execution/chain-catalog";
@@ -91,11 +92,11 @@ export function ForgeRoutesPanel({
   const selected = routes.find((r) => r.id === selectedId);
 
   return (
-    <div className="forge-panel forge-panel--routes flex h-full min-h-[28rem] flex-col p-4 sm:p-5">
+    <GlassPanel strong className="forge-panel forge-panel--routes flex h-full min-h-[28rem] flex-col p-4 sm:p-5">
       <h3 className="font-display text-sm font-bold text-white">Routes & plan</h3>
-      <p className="mt-1 text-xs text-slate-500">
-        Compare paths — confirm with <strong className="text-slate-400">Quote</strong> and{" "}
-        <strong className="text-slate-400">Exchange</strong> on the left.
+      <p className="mt-1 text-xs text-white/55">
+        Compare paths — confirm with <strong className="text-white/75">Quote</strong> and{" "}
+        <strong className="text-white/75">Exchange</strong> on the left.
       </p>
 
       {intentText && Number(intent.amount) > 0 && (
@@ -135,10 +136,10 @@ export function ForgeRoutesPanel({
 
       <div className="mt-3 flex-1 space-y-2 overflow-y-auto">
         {!isConnected && (
-          <p className="py-8 text-center text-sm text-slate-500">Connect wallet for routes</p>
+          <p className="py-8 text-center text-sm text-white/50">Connect wallet for routes</p>
         )}
         {isConnected && !intent.amount && (
-          <p className="py-8 text-center text-sm text-slate-500">Enter amount on the left</p>
+          <p className="py-8 text-center text-sm text-white/50">Enter amount on the left</p>
         )}
         {routes.map((r) => (
           <CrossChainRouteCard
@@ -174,6 +175,6 @@ export function ForgeRoutesPanel({
           />
         </div>
       )}
-    </div>
+    </GlassPanel>
   );
 }
