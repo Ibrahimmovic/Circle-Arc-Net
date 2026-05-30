@@ -1,25 +1,33 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import { AppShell } from "@/components/layout/app-shell";
 import { MarketTicker } from "@/components/dashboard/market-ticker";
 import { CoinStrip } from "@/components/dashboard/coin-strip";
-import { HomeExecutionVisual } from "@/components/home/home-execution-visual";
+import { HomeCinematicHero } from "@/components/home/home-cinematic-hero";
 import { MotionScrollReveal } from "@/components/motion/motion-primitives";
 import { GlassPanel } from "@/components/ui/glass-ui";
-import { figmaEaseOut } from "@/design/motion-presets";
+import { useDashboard } from "@/hooks/use-dashboard";
 import { useAccount } from "wagmi";
 
 export default function HomePage() {
-  const { status } = useAccount();
+  const { address, isConnected, status } = useAccount();
   const [walletReady, setWalletReady] = useState(false);
+  const { data } = useDashboard(isConnected ? address : undefined);
 
   useEffect(() => {
     if (status !== "connecting" && status !== "reconnecting") {
       setWalletReady(true);
     }
   }, [status]);
+
+  const analysis = data?.analysis;
+  const totalUsd = analysis?.totalUsd ?? 0;
+  const change24h =
+    analysis?.change24hPct ??
+    (data?.markets
+      ? (data.markets.ethChange24h + data.markets.btcChange24h) / 2
+      : 0);
 
   if (!walletReady) {
     return (
@@ -33,15 +41,16 @@ export default function HomePage() {
 
   return (
     <AppShell title="Overview" subtitle="" variant="home">
-      <div className="home-exec-only mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:py-10">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={figmaEaseOut}
-        >
-          <HomeExecutionVisual />
-        </motion.div>
+      <HomeCinematicHero
+        compact={isConnected}
+        walletPreview={
+          isConnected && analysis
+            ? { totalUsd, change24hPct: change24h }
+            : undefined
+        }
+      />
 
+      <div className="home-content mx-auto w-full max-w-6xl space-y-6 px-4 pb-8 sm:px-6">
         <MotionScrollReveal>
           <GlassPanel strong className="overflow-hidden">
             <MarketTicker variant="glass" />

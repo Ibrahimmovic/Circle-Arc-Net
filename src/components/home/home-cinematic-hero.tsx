@@ -9,11 +9,9 @@ import { GlassPanel, GlassBadge, LiquidGlassButton } from "@/components/ui/glass
 
 export function HomeCinematicHero({
   compact,
-  showCta = true,
   walletPreview,
 }: {
   compact?: boolean;
-  showCta?: boolean;
   walletPreview?: { totalUsd: number; change24hPct: number };
 }) {
   return (
@@ -46,7 +44,7 @@ export function HomeCinematicHero({
             </p>
 
             {walletPreview && (
-              <div className="home-glass-wallet-strip lg:hidden">
+              <div className="home-glass-wallet-strip">
                 <span className="home-glass-wallet-strip__label">Portfolio</span>
                 <span className="home-glass-wallet-strip__value">
                   {formatUsd(walletPreview.totalUsd)}
@@ -63,19 +61,17 @@ export function HomeCinematicHero({
               </div>
             )}
 
-            {showCta && (
-              <div className="home-glass-hero__actions">
-                <LiquidGlassButton href="/execute" variant="primary">
-                  <Zap className="h-4 w-4" />
-                  Open Execute
-                  <ArrowRight className="h-4 w-4" />
-                </LiquidGlassButton>
-                <LiquidGlassButton href="/portfolio" variant="secondary">
-                  <BarChart3 className="h-4 w-4" />
-                  Portfolio
-                </LiquidGlassButton>
-              </div>
-            )}
+            <div className="home-glass-hero__actions">
+              <LiquidGlassButton href="/execute" variant="primary">
+                <Zap className="h-4 w-4" />
+                Execution
+                <ArrowRight className="h-4 w-4" />
+              </LiquidGlassButton>
+              <LiquidGlassButton href="/portfolio" variant="secondary">
+                <BarChart3 className="h-4 w-4" />
+                Portfolio
+              </LiquidGlassButton>
+            </div>
 
             <div className="home-glass-hero__metrics">
               <div>
@@ -96,21 +92,6 @@ export function HomeCinematicHero({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ ...figmaEaseOut, delay: 0.14 }}
         >
-          {walletPreview && (
-            <GlassPanel className="home-glass-wallet-card hidden lg:block">
-              <span className="home-glass-metric__label">Connected portfolio</span>
-              <p className="font-display mt-2 text-2xl font-semibold tabular-nums text-white">
-                {formatUsd(walletPreview.totalUsd)}
-              </p>
-              <p
-                className={`mt-1 text-sm tabular-nums ${
-                  walletPreview.change24hPct >= 0 ? "text-emerald-300" : "text-rose-300"
-                }`}
-              >
-                {formatPct(walletPreview.change24hPct)} · 24h
-              </p>
-            </GlassPanel>
-          )}
           <HomeExecutionVisual />
         </motion.div>
       </div>
