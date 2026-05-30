@@ -11,16 +11,17 @@ const QUOTE_ENGINES = ["CCTP", "LI.FI", "Uniswap"] as const;
 export function ExecuteDeskBanner() {
   return (
     <motion.div
+      className="min-w-0 max-w-full overflow-hidden"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={figmaEaseOut}
     >
-      <GlassPanel strong className="execute-desk-banner relative overflow-hidden px-4 py-3 sm:px-5">
+      <GlassPanel strong className="execute-desk-banner relative w-full max-w-full overflow-hidden px-4 py-3 sm:px-5">
         <div className="execute-desk-banner__scan" aria-hidden />
         <div className="execute-desk-banner__glow execute-desk-banner__glow--violet" aria-hidden />
         <div className="execute-desk-banner__glow execute-desk-banner__glow--coral" aria-hidden />
 
-        <div className="relative z-10 flex items-center gap-4">
+        <div className="relative z-10 flex min-w-0 items-center gap-3 sm:gap-4">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="execute-live-dot" aria-hidden />
@@ -69,7 +70,7 @@ export function ExecuteDeskBanner() {
             </div>
           </div>
 
-          <div className="execute-desk-banner__orbit hidden shrink-0 sm:block">
+          <div className="execute-desk-banner__orbit hidden shrink-0 lg:block">
             <ForgeCrossChainVisual />
           </div>
         </div>

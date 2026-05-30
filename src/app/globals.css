@@ -3319,8 +3319,15 @@ body {
 }
 
 .app-shell--execute .app-shell-main {
-  padding-top: 0;
+  padding-top: 0.75rem;
   background: transparent;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.execute-main {
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 .app-shell--execute .app-shell-topbar {
@@ -3333,6 +3340,8 @@ body {
 
 .execute-desk-banner {
   border-color: rgba(34, 211, 238, 0.22);
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .execute-desk-banner__scan {
@@ -3444,10 +3453,22 @@ body {
   pointer-events: none;
 }
 
+.execute-desk-banner__orbit {
+  overflow: hidden;
+  width: 5.5rem;
+  height: 5.5rem;
+  flex-shrink: 0;
+}
+
 .execute-desk-banner__orbit .forge-exec-visual {
-  width: 6.5rem;
-  height: 6.5rem;
+  width: 5.5rem;
+  height: 5.5rem;
   display: block;
+}
+
+.execute-desk-banner__orbit .forge-exec-visual__orbit {
+  overflow: hidden;
+  border-radius: 50%;
 }
 
 .execute-route-strip {
@@ -3522,6 +3543,10 @@ body {
 
 .execute-workbench {
   padding-top: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .execute-glass-context .btn-primary {
