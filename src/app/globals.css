@@ -3331,28 +3331,197 @@ body {
   display: none;
 }
 
-.execute-desk-header.home-glass-hero__copy {
-  padding: 1.5rem 1.25rem;
+.execute-desk-banner {
+  border-color: rgba(34, 211, 238, 0.22);
 }
 
-@media (min-width: 640px) {
-  .execute-desk-header.home-glass-hero__copy {
-    padding: 1.75rem 1.5rem 2rem;
+.execute-desk-banner__scan {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(34, 211, 238, 0.06) 50%,
+    transparent 60%
+  );
+  animation: execute-banner-scan 4.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.execute-desk-banner__glow {
+  position: absolute;
+  width: 12rem;
+  height: 12rem;
+  border-radius: 50%;
+  filter: blur(48px);
+  pointer-events: none;
+  opacity: 0.35;
+}
+
+.execute-desk-banner__glow--violet {
+  top: -4rem;
+  right: 2rem;
+  background: rgba(139, 92, 246, 0.45);
+}
+
+.execute-desk-banner__glow--coral {
+  bottom: -5rem;
+  right: 6rem;
+  background: rgba(255, 127, 80, 0.35);
+}
+
+@keyframes execute-banner-scan {
+  0%,
+  100% {
+    transform: translateX(-120%);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  50% {
+    transform: translateX(120%);
+    opacity: 1;
+  }
+  85% {
+    opacity: 0;
   }
 }
 
-.execute-desk-header__title {
-  font-size: clamp(1.65rem, 3.5vw, 2.35rem) !important;
+.execute-live-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: #34d399;
+  box-shadow: 0 0 10px rgba(52, 211, 153, 0.8);
+  animation: execute-live-pulse 2s ease-in-out infinite;
 }
 
-.execute-desk-header__lede {
-  margin-top: 0.85rem;
-  font-size: 0.875rem;
+@keyframes execute-live-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
-.execute-desk-header__metrics {
-  margin-top: 1.25rem;
-  padding-top: 1rem;
+.execute-engine-rail {
+  position: relative;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.35rem 0.5rem;
+  max-width: 100%;
+}
+
+.execute-engine-rail__chip {
+  position: relative;
+  z-index: 1;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.2rem 0.55rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.execute-engine-rail__beam {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2.5rem;
+  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.25), transparent);
+  pointer-events: none;
+}
+
+.execute-desk-banner__orbit .forge-exec-visual {
+  width: 6.5rem;
+  height: 6.5rem;
+  display: block;
+}
+
+.execute-route-strip {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.execute-route-strip__node {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.execute-route-strip__node--dest {
+  justify-content: flex-end;
+}
+
+.execute-route-strip__bridge {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 5.5rem;
+  padding: 0 0.25rem;
+}
+
+.execute-route-strip__line {
+  position: relative;
+  width: 100%;
+  height: 2px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.execute-route-strip__packet {
+  position: absolute;
+  top: -3px;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: #a5f3fc;
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.75);
+}
+
+.execute-route-strip__label {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.4);
+  white-space: nowrap;
+}
+
+.execute-route-strip__hint {
+  margin-top: 0.35rem;
+}
+
+.execute-mode-tabs {
+  border-radius: 1rem;
+  padding: 0.35rem;
+}
+
+.execute-workbench {
+  padding-top: 0;
 }
 
 .execute-glass-context .btn-primary {
