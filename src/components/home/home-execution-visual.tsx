@@ -164,8 +164,8 @@ function RailBadge({
 
 export function HomeExecutionVisual({ compact }: { compact?: boolean }) {
   return (
-    <div className={`exec-visual ${compact ? "exec-visual--compact" : ""}`}>
-      <div className="exec-visual__shell">
+    <div className={`exec-visual exec-visual--glass ${compact ? "exec-visual--compact" : ""}`}>
+      <div className="exec-visual__shell glass-panel glass-panel--strong">
         <div className="exec-visual__chrome">
           <div className="exec-visual__chrome-left">
             <span className="exec-visual__dot exec-visual__dot--live" />

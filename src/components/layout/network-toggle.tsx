@@ -13,7 +13,7 @@ export function NetworkToggle({ variant = "default" }: { variant?: "default" | "
       <div
         className={
           isHome
-            ? "flex rounded-lg border border-white/10 bg-white/[0.03] p-0.5"
+            ? "glass-nav-toggle flex p-0.5"
             : "flex rounded-xl border border-slate-700/80 bg-slate-900/90 p-1"
         }
       >
@@ -24,7 +24,7 @@ export function NetworkToggle({ variant = "default" }: { variant?: "default" | "
             "rounded-md px-4 py-2 text-xs font-semibold uppercase tracking-wide transition-all",
             isTestnet
               ? isHome
-                ? "bg-white text-black"
+                ? "glass-nav-toggle__active"
                 : "bg-gradient-to-r from-cyan-500 to-violet-600 text-white shadow-md"
               : "text-slate-400 hover:text-white",
           )}
@@ -38,7 +38,7 @@ export function NetworkToggle({ variant = "default" }: { variant?: "default" | "
             "rounded-md px-4 py-2 text-xs font-semibold uppercase tracking-wide transition-all",
             !isTestnet
               ? isHome
-                ? "bg-white text-black"
+                ? "glass-nav-toggle__active"
                 : "bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-md"
               : "text-slate-400 hover:text-white",
           )}

@@ -16,7 +16,6 @@ export function WalletButton({ variant = "default" }: { variant?: "default" | "h
 
   const targetChainId = defaultWalletChainId;
   const onWrongChain = isConnected && chainId !== targetChainId;
-
   const isHome = variant === "home";
 
   if (isConnected && address) {
@@ -37,13 +36,13 @@ export function WalletButton({ variant = "default" }: { variant?: "default" | "h
           onClick={() => disconnect()}
           className={
             isHome
-              ? "flex max-w-[min(100%,11rem)] items-center gap-1.5 rounded-lg border border-white/12 bg-white/[0.04] px-2.5 py-2 text-xs font-medium text-slate-200 sm:max-w-none sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm touch-manipulation"
+              ? "liquid-glass-btn liquid-glass-btn--ghost !min-h-0 !px-3 !py-2 !text-xs max-w-[min(100%,11rem)] sm:max-w-none touch-manipulation"
               : "flex max-w-[min(100%,11rem)] items-center gap-1.5 rounded-xl border border-cyan-500/40 bg-slate-900/90 px-2.5 py-2 text-xs font-medium text-cyan-100 sm:max-w-none sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm touch-manipulation"
           }
         >
-          <Wallet className={`h-4 w-4 shrink-0 ${isHome ? "text-slate-400" : "text-cyan-400"}`} />
-          <span className="truncate font-mono">{shortenAddress(address)}</span>
-          <LogOut className="h-4 w-4 shrink-0 opacity-60" />
+          <Wallet className={`relative z-10 h-4 w-4 shrink-0 ${isHome ? "text-white/80" : "text-cyan-400"}`} />
+          <span className="relative z-10 truncate font-mono">{shortenAddress(address)}</span>
+          <LogOut className="relative z-10 h-4 w-4 shrink-0 opacity-60" />
         </button>
       </div>
     );
@@ -51,16 +50,31 @@ export function WalletButton({ variant = "default" }: { variant?: "default" | "h
 
   const injected = connectors.find((c) => c.id === "injected") ?? connectors[0];
 
+  if (isHome) {
+    return (
+      <button
+        type="button"
+        disabled={isPending || !injected}
+        onClick={() => connect({ connector: injected, chainId: targetChainId })}
+        className="liquid-glass-btn liquid-glass-btn--primary !min-h-[44px] touch-manipulation disabled:opacity-50 sm:px-6 sm:text-sm"
+      >
+        <span className="liquid-glass-btn__core" aria-hidden />
+        {isPending ? (
+          <Loader2 className="relative z-10 h-4 w-4 animate-spin" />
+        ) : (
+          <Wallet className="relative z-10 h-4 w-4" />
+        )}
+        <span className="relative z-10 text-xs font-semibold sm:text-sm">Connect Wallet</span>
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
       disabled={isPending || !injected}
       onClick={() => connect({ connector: injected, chainId: targetChainId })}
-      className={
-        isHome
-          ? "flex min-h-[44px] items-center gap-2 rounded-lg border border-white/14 bg-white px-4 py-2.5 text-xs font-semibold text-black transition hover:bg-slate-100 disabled:opacity-50 sm:px-6 sm:text-sm touch-manipulation"
-          : "flex min-h-[44px] items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-cyan-500/30 hover:brightness-110 disabled:opacity-50 sm:px-6 sm:text-sm touch-manipulation"
-      }
+      className="flex min-h-[44px] items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-cyan-500/30 hover:brightness-110 disabled:opacity-50 sm:px-6 sm:text-sm touch-manipulation"
     >
       {isPending ? (
         <Loader2 className="h-4 w-4 animate-spin" />
