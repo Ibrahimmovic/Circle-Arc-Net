@@ -92,9 +92,12 @@ export function ForgeRoutesPanel({
 
   const selected = routes.find((r) => r.id === selectedId);
 
+  const hasAmount = Boolean(intent.amount && Number(intent.amount) > 0);
+  const showIdleStrip = isConnected && (!intent.amount || (hasAmount && routes.length === 0 && !loading));
+
   return (
-    <GlassPanel strong className="exec-visual--glass forge-panel forge-panel--routes flex h-full min-h-[28rem] flex-col overflow-hidden p-0">
-      <div className="exec-visual__chrome">
+    <GlassPanel strong className="exec-visual--glass forge-panel forge-panel--routes flex min-w-0 flex-col overflow-hidden p-0 xl:max-h-[22rem]">
+      <div className="exec-visual__chrome shrink-0">
         <div className="exec-visual__chrome-left">
           <span className="exec-visual__dot exec-visual__dot--live" />
           <span className="exec-visual__title">Routes &amp; plan</span>
@@ -102,60 +105,56 @@ export function ForgeRoutesPanel({
         <span className="exec-visual__tag">Multichain · live quotes</span>
       </div>
 
-      <div className="flex flex-1 flex-col p-4 sm:p-5">
-      <p className="text-xs text-white/55">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-3 sm:p-4">
+      <p className="shrink-0 text-xs text-white/55">
         Compare paths — confirm with <strong className="text-white/75">Quote</strong> and{" "}
         <strong className="text-white/75">Exchange</strong> on the left.
       </p>
 
-      {intentText && Number(intent.amount) > 0 && (
-        <div className="forge-intent-banner mt-3">
+      {intentText && hasAmount && (
+        <div className="forge-intent-banner mt-2 shrink-0">
           <p className="forge-intent-banner__label">Your move</p>
           <p className="forge-intent-banner__text text-sm">{intentText}</p>
         </div>
       )}
 
-      {kind === "full" && intent.fromToken === intent.toToken && intent.fromChain !== intent.toChain && (
-        <p className="forge-transfer-notice mt-2 text-xs">
+      {kind === "full" && intent.fromToken === intent.toToken && intent.fromChain !== intent.toChain && hasAmount && (
+        <p className="forge-transfer-notice mt-2 shrink-0 text-xs">
           Same token across chains = stable transfer. Circle route below is recommended.
         </p>
       )}
 
-      {pipeline.length > 0 && Number(intent.amount) > 0 && (
-        <div className="mt-3 rounded-xl border border-slate-800/80 bg-slate-950/40 p-3">
+      {pipeline.length > 0 && hasAmount && (
+        <div className="mt-2 shrink-0 rounded-xl border border-slate-800/80 bg-slate-950/40 p-2.5">
           <ForgeExecutionPipeline steps={pipeline} />
         </div>
       )}
 
-      <ForgeRoutePath
-        className="mt-3"
-        fromLabel={fromLabel}
-        toLabel={toLabel}
-        loading={loading}
-      />
-      {loading && (
-        <div className="forge-scan-bar mt-2" aria-hidden>
-          <div className="forge-scan-bar__fill" />
-        </div>
+      {hasAmount && (
+        <>
+          <ForgeRoutePath
+            className="mt-2 shrink-0"
+            fromLabel={fromLabel}
+            toLabel={toLabel}
+            loading={loading}
+          />
+          {loading && (
+            <div className="forge-scan-bar mt-2 shrink-0" aria-hidden>
+              <div className="forge-scan-bar__fill" />
+            </div>
+          )}
+        </>
       )}
 
       {cctpNote && (
-        <p className="mt-2 text-xs text-amber-200/90">{cctpNote}</p>
+        <p className="mt-2 shrink-0 text-xs text-amber-200/90">{cctpNote}</p>
       )}
 
-      <div className="mt-3 flex-1 space-y-2 overflow-y-auto">
+      <div className="mt-2 min-h-0 flex-1 space-y-2 overflow-y-auto">
         {!isConnected && (
-          <p className="py-8 text-center text-sm text-white/50">Connect wallet for routes</p>
+          <p className="py-4 text-center text-sm text-white/50">Connect wallet for routes</p>
         )}
-        {isConnected && !intent.amount && (
-          <ExecuteRouteStrip
-            fromChain={intent.fromChain}
-            toChain={intent.toChain}
-            fromToken={intent.fromToken}
-            toToken={intent.toToken}
-          />
-        )}
-        {isConnected && intent.amount && routes.length === 0 && !loading && (
+        {showIdleStrip && (
           <ExecuteRouteStrip
             fromChain={intent.fromChain}
             toChain={intent.toChain}

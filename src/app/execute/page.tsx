@@ -3,10 +3,7 @@
 import dynamic from "next/dynamic";
 import { useAccount } from "wagmi";
 import { AppShell } from "@/components/layout/app-shell";
-import { MarketTicker } from "@/components/dashboard/market-ticker";
-import { CoinStrip } from "@/components/dashboard/coin-strip";
 import { ExecuteDeskBanner } from "@/components/execute/execute-desk-banner";
-import { GlassPanel } from "@/components/ui/glass-ui";
 import { useNetwork } from "@/providers/network-context";
 import { ARC_FEE_USDC } from "@/lib/network";
 
@@ -41,11 +38,6 @@ export default function ExecutePage() {
 
         <ExecuteDeskBanner />
         <CrossChainStudio />
-
-        <GlassPanel strong className="overflow-hidden">
-          <MarketTicker variant="glass" />
-          <CoinStrip variant="glass" />
-        </GlassPanel>
       </div>
     </AppShell>
   );

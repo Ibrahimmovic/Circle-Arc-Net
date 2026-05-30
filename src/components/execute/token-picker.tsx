@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useAccount } from "wagmi";
 import { X, Search } from "lucide-react";
 import type { ChainOption } from "@/lib/network";
@@ -71,6 +72,11 @@ export function TokenPicker({
   const [balances, setBalances] = useState<TokenBalanceRow[]>([]);
   const [balancesLoading, setBalancesLoading] = useState(false);
   const [ethUsd, setEthUsd] = useState(0);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const chainList = useMemo(
     () => chains.map((c) => c.appKitChain).join(","),
@@ -149,19 +155,23 @@ export function TokenPicker({
     return list;
   }, [chains, netFilter, q]);
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 p-2 pb-nav backdrop-blur-md sm:items-center sm:p-4 sm:pb-4"
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-2 pb-nav backdrop-blur-md sm:items-center sm:p-4 sm:pb-4"
       onClick={onClose}
       role="presentation"
     >
       <div
-        className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/[0.12] bg-slate-900/45 shadow-[0_24px_80px_rgba(0,0,0,0.5)] backdrop-blur-2xl sm:max-w-3xl sm:flex-row"
+        className="flex max-h-[min(85vh,640px)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/[0.12] bg-slate-950/90 shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur-2xl sm:max-w-2xl lg:max-w-3xl lg:flex-row"
         role="dialog"
+        aria-modal="true"
+        aria-label={title}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex min-w-0 flex-1 flex-col border-white/10 sm:border-r">
-          <div className="flex items-center gap-2 border-b border-white/10 bg-white/[0.03] px-4 py-3">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:border-r lg:border-white/10">
+          <div className="flex shrink-0 items-center gap-2 border-b border-white/10 bg-white/[0.03] px-4 py-3">
             <button
               type="button"
               onClick={onClose}
@@ -176,7 +186,38 @@ export function TokenPicker({
               </span>
             )}
           </div>
-          <div className="px-4 py-2">
+
+          <div className="shrink-0 border-b border-white/10 px-3 py-2 lg:hidden">
+            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+              <button
+                type="button"
+                onClick={() => setNetFilter("all")}
+                className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition ${
+                  netFilter === "all"
+                    ? "bg-white/12 text-white ring-1 ring-white/15"
+                    : "bg-white/5 text-slate-400"
+                }`}
+              >
+                All
+              </button>
+              {chains.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setNetFilter(c.appKitChain)}
+                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition ${
+                    netFilter === c.appKitChain
+                      ? "bg-white/12 text-white ring-1 ring-white/15"
+                      : "bg-white/5 text-slate-400"
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="shrink-0 px-4 py-2">
             <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 backdrop-blur-sm">
               <Search className="h-4 w-4 text-slate-500" />
               <input
@@ -187,7 +228,7 @@ export function TokenPicker({
               />
             </div>
           </div>
-          <ul className="flex-1 overflow-y-auto px-2 pb-4">
+          <ul className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
             {!address && (
               <li className="px-3 py-4 text-center text-xs text-slate-500">
                 Connect wallet to see balances
@@ -249,7 +290,7 @@ export function TokenPicker({
             )}
           </ul>
         </div>
-        <div className="flex max-h-32 shrink-0 flex-col overflow-y-auto border-t border-white/10 bg-black/20 backdrop-blur-xl sm:max-h-none sm:w-44 sm:border-t-0 sm:border-l">
+        <div className="hidden max-h-none w-40 shrink-0 flex-col overflow-y-auto border-white/10 bg-black/25 backdrop-blur-xl lg:flex lg:border-l xl:w-44">
           <p className="px-3 py-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
             Network
           </p>
@@ -280,6 +321,7 @@ export function TokenPicker({
           ))}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

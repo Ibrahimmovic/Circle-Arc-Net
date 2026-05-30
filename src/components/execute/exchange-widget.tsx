@@ -1008,11 +1008,11 @@ export function ExchangeWidget({
           />
         )}
 
-        <div className="flex flex-col gap-2 md:grid md:grid-cols-[1fr_auto_1fr] md:items-stretch">
+        <div className="flex min-w-0 flex-col gap-2 md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-stretch">
           <button
             type="button"
             onClick={() => setPicker("from")}
-            className="exchange-tile rounded-2xl p-3 text-left transition hover:border-violet-500/40 touch-manipulation"
+            className="exchange-tile min-w-0 rounded-2xl p-3 text-left transition hover:border-violet-500/40 touch-manipulation"
           >
             <p className="text-[10px] text-slate-500">From</p>
             <div className="mt-2 flex items-center gap-2">
@@ -1043,7 +1043,7 @@ export function ExchangeWidget({
           <button
             type="button"
             onClick={() => setPicker("to")}
-            className="exchange-tile rounded-2xl p-3 text-left transition hover:border-violet-500/40 touch-manipulation"
+            className="exchange-tile min-w-0 rounded-2xl p-3 text-left transition hover:border-violet-500/40 touch-manipulation"
           >
             <p className="text-[10px] text-slate-500">To</p>
             <div className="mt-2 flex items-center gap-2">
