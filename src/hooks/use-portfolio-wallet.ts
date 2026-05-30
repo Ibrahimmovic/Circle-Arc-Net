@@ -30,7 +30,8 @@ export function usePortfolioWallet(
     setLoading(true);
     try {
       const res = await fetch(
-        `/api/portfolio/wallet?address=${address}&network=${network}&chartPeriod=${chartPeriod}`,
+        `/api/portfolio/wallet?address=${address}&network=${network}&chartPeriod=${chartPeriod}&_t=${Date.now()}`,
+        { cache: "no-store" },
       );
       const json = await res.json();
       if (!res.ok) {
@@ -108,6 +109,14 @@ export function usePortfolioWallet(
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (!address) return;
+    const interval = setInterval(() => {
+      refresh();
+    }, 45_000);
+    return () => clearInterval(interval);
+  }, [address, refresh]);
 
   return { data, loading, refresh };
 }

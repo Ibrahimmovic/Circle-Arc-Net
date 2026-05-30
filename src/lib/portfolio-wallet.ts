@@ -583,9 +583,6 @@ export async function buildPortfolioWalletFeed(
 
   const providerStatus = readPortfolioProviderStatus();
   const dataSourceLabel = portfolioDataSourceLabel(providerStatus);
-  const duneAnalytics = providerStatus.dune
-    ? await fetchPortfolioDuneAnalytics(address)
-    : null;
 
   let walletUsd = 0;
   let defiUsd = 0;
@@ -621,6 +618,17 @@ export async function buildPortfolioWalletFeed(
   const chainBalances = allChainBalances.filter(
     (c) => c.valueUsd >= MIN_CHAIN_USD || c.percent >= MIN_CHAIN_PERCENT,
   );
+
+  const duneAnalytics = providerStatus.dune
+    ? await fetchPortfolioDuneAnalytics(address, {
+        totalUsd,
+        assetCount: cleanAssets.length,
+        txCount: activities.length,
+        chainCount: allChainBalances.length,
+        spamCount: spamAssets.length,
+        sources: [...new Set(sources)],
+      })
+    : null;
 
   const feed: PortfolioWalletFeed = {
     address,

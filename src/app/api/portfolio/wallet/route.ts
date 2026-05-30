@@ -4,6 +4,9 @@ import { resolveApiTestnet } from "@/lib/network";
 import { buildPortfolioWalletFeed } from "@/lib/portfolio-wallet";
 import type { ZerionChartPeriod } from "@/lib/zerion";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const CHART_PERIODS = new Set<ZerionChartPeriod>([
   "hour",
   "day",
@@ -16,10 +19,20 @@ const CHART_PERIODS = new Set<ZerionChartPeriod>([
   "max",
 ]);
 
+function portfolioJson(body: unknown, status = 200) {
+  return NextResponse.json(body, {
+    status,
+    headers: {
+      "Cache-Control": "no-store, no-cache, must-revalidate",
+      Pragma: "no-cache",
+    },
+  });
+}
+
 export async function GET(req: NextRequest) {
   const address = req.nextUrl.searchParams.get("address");
   if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
-    return NextResponse.json({ error: "Invalid address" }, { status: 400 });
+    return portfolioJson({ error: "Invalid address" }, 400);
   }
 
   const networkParam = req.nextUrl.searchParams.get("network");
@@ -39,7 +52,7 @@ export async function GET(req: NextRequest) {
       feed.change24hPct,
     );
     const sparkline = portfolioChart.values;
-    return NextResponse.json({
+    return portfolioJson({
       ...feed,
       analysis,
       portfolioChart,
@@ -52,11 +65,11 @@ export async function GET(req: NextRequest) {
           : undefined,
     });
   } catch (e) {
-    return NextResponse.json(
+    return portfolioJson(
       {
         error: e instanceof Error ? e.message : "Portfolio load failed",
       },
-      { status: 502 },
+      502,
     );
   }
 }

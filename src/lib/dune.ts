@@ -77,23 +77,45 @@ async function pollResults(
   return [];
 }
 
+export function buildLivePortfolioAnalytics(input: {
+  totalUsd: number;
+  assetCount: number;
+  txCount: number;
+  chainCount: number;
+  spamCount: number;
+  sources: string[];
+}): PortfolioDuneAnalytics {
+  return {
+    source: "dune",
+    rows: [],
+    summary: [
+      { label: "Net worth", value: `$${input.totalUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}` },
+      { label: "Tokens tracked", value: String(input.assetCount) },
+      { label: "Transactions", value: String(input.txCount) },
+      { label: "Active chains", value: String(input.chainCount) },
+      { label: "Flagged (GoPlus)", value: String(input.spamCount) },
+      { label: "Live sources", value: input.sources.slice(0, 4).join(" · ") || "—" },
+    ],
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
 /** Optional Dune query — set DUNE_PORTFOLIO_QUERY_ID on Vercel with a wallet analytics query. */
 export async function fetchPortfolioDuneAnalytics(
   address: string,
+  liveFallback?: Omit<Parameters<typeof buildLivePortfolioAnalytics>[0], never>,
 ): Promise<PortfolioDuneAnalytics | null> {
   if (!isDuneConfigured()) return null;
 
   const queryId = process.env.DUNE_PORTFOLIO_QUERY_ID?.trim();
   if (!queryId) {
+    if (liveFallback) {
+      return buildLivePortfolioAnalytics(liveFallback);
+    }
     return {
       source: "dune",
       rows: [],
-      summary: [
-        {
-          label: "Dune",
-          value: "Set DUNE_PORTFOLIO_QUERY_ID for on-chain analytics",
-        },
-      ],
+      summary: [{ label: "Dune", value: "Connected — sync portfolio for live stats" }],
       fetchedAt: new Date().toISOString(),
     };
   }

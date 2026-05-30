@@ -114,7 +114,7 @@ async function fetchTokenSecurityBatch(
   const res = await fetch(
     `${GOPLUS_BASE}/api/v1/token_security/${chainId}?${params.toString()}`,
     {
-      headers: { Authorization: token },
+      headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     },
   );
