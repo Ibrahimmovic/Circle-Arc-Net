@@ -121,8 +121,40 @@ export function GlassIconOrb({
         className,
       )}
     >
+      <span className="glass-icon-orb__rim" aria-hidden />
       <span className="glass-icon-orb__core" aria-hidden />
       <Icon className="relative z-10" strokeWidth={1.75} />
+    </div>
+  );
+}
+
+/** Theme 2 — liquid glass shell for token / coin icons */
+export function LiquidGlassTokenOrb({
+  children,
+  variant = "cyan",
+  size = 40,
+  className,
+}: {
+  children: React.ReactNode;
+  variant?: "cyan" | "violet" | "coral" | "emerald";
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "liquid-token-orb",
+        variant === "cyan" && "liquid-token-orb--cyan",
+        variant === "violet" && "liquid-token-orb--violet",
+        variant === "coral" && "liquid-token-orb--coral",
+        variant === "emerald" && "liquid-token-orb--emerald",
+        className,
+      )}
+      style={{ width: size, height: size }}
+    >
+      <span className="liquid-token-orb__rim" aria-hidden />
+      <span className="liquid-token-orb__core" aria-hidden />
+      <div className="liquid-token-orb__content">{children}</div>
     </div>
   );
 }

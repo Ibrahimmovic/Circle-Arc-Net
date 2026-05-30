@@ -60,9 +60,9 @@ export default function HomePage() {
 
       <div className="home-content space-y-8">
         <MotionScrollReveal>
-          <div className="glass-panel glass-panel--flush overflow-hidden">
-            <MarketTicker />
-            <CoinStrip />
+          <div className="glass-panel glass-panel--strong glass-panel--flush overflow-hidden">
+            <MarketTicker variant="glass" />
+            <CoinStrip variant="glass" />
           </div>
         </MotionScrollReveal>
 

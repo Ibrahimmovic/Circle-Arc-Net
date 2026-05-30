@@ -1216,6 +1216,12 @@ body {
   pointer-events: none;
 }
 
+.app-shell--cinematic .app-shell-main,
+.app-shell--cinematic .sidebar-glass-home {
+  position: relative;
+  z-index: 1;
+}
+
 .app-shell--home .app-shell-main {
   background: transparent;
   padding: 0;
@@ -2789,57 +2795,75 @@ body {
 }
 
 .cinematic-cloud--coral-1 {
-  top: 8%;
-  left: -10%;
-  width: 70%;
-  height: 42%;
-  background: radial-gradient(ellipse, rgba(255, 127, 80, 0.42) 0%, transparent 68%);
+  top: 6%;
+  left: -12%;
+  width: 75%;
+  height: 48%;
+  background: radial-gradient(ellipse, rgba(255, 127, 80, 0.58) 0%, transparent 68%);
 }
 
 .cinematic-cloud--coral-2 {
-  top: 22%;
-  right: -15%;
-  width: 65%;
-  height: 38%;
-  background: radial-gradient(ellipse, rgba(255, 140, 90, 0.32) 0%, transparent 70%);
+  top: 18%;
+  right: -18%;
+  width: 70%;
+  height: 42%;
+  background: radial-gradient(ellipse, rgba(255, 140, 90, 0.48) 0%, transparent 70%);
 }
 
 .cinematic-cloud--amber {
-  top: 45%;
-  left: 15%;
-  width: 55%;
-  height: 35%;
-  background: radial-gradient(ellipse, rgba(255, 160, 90, 0.26) 0%, transparent 72%);
+  top: 42%;
+  left: 10%;
+  width: 60%;
+  height: 38%;
+  background: radial-gradient(ellipse, rgba(255, 160, 90, 0.38) 0%, transparent 72%);
 }
 
 .cinematic-cloud--slate {
-  top: 5%;
-  right: 10%;
-  width: 50%;
-  height: 30%;
-  background: radial-gradient(ellipse, rgba(100, 116, 140, 0.28) 0%, transparent 70%);
+  top: 2%;
+  right: 5%;
+  width: 55%;
+  height: 34%;
+  background: radial-gradient(ellipse, rgba(100, 116, 140, 0.35) 0%, transparent 70%);
 }
 
 .cinematic-cloud--violet {
-  bottom: 15%;
-  left: -5%;
-  width: 60%;
-  height: 40%;
-  background: radial-gradient(ellipse, rgba(120, 90, 180, 0.22) 0%, transparent 72%);
+  bottom: 10%;
+  left: -8%;
+  width: 65%;
+  height: 45%;
+  background: radial-gradient(ellipse, rgba(120, 90, 180, 0.32) 0%, transparent 72%);
+}
+
+.cinematic-cloud--mist-1 {
+  top: 55%;
+  right: 5%;
+  width: 50%;
+  height: 30%;
+  background: radial-gradient(ellipse, rgba(255, 180, 120, 0.22) 0%, transparent 75%);
+  filter: blur(90px);
+}
+
+.cinematic-cloud--mist-2 {
+  bottom: 25%;
+  right: 20%;
+  width: 45%;
+  height: 28%;
+  background: radial-gradient(ellipse, rgba(180, 140, 200, 0.2) 0%, transparent 75%);
+  filter: blur(85px);
 }
 
 .cinematic-sky__haze {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 90% 60% at 50% 35%, rgba(255, 127, 80, 0.08), transparent 65%);
+  background: radial-gradient(ellipse 95% 70% at 50% 38%, rgba(255, 127, 80, 0.14), transparent 62%);
 }
 
 .cinematic-sky__vignette {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 85% 75% at 50% 40%, transparent 25%, rgba(0, 0, 0, 0.55) 100%),
-    linear-gradient(180deg, rgba(0, 0, 0, 0.35) 0%, transparent 30%, rgba(0, 0, 0, 0.75) 100%);
+    radial-gradient(ellipse 90% 80% at 50% 42%, transparent 35%, rgba(0, 0, 0, 0.42) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.25) 0%, transparent 35%, rgba(0, 0, 0, 0.55) 100%);
 }
 
 .cinematic-sky__cryptic {
@@ -2992,24 +3016,34 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px) saturate(160%);
   color: #fff;
   overflow: hidden;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.25),
-    0 8px 24px rgba(0, 0, 0, 0.35);
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -2px 8px rgba(0, 0, 0, 0.25),
+    0 10px 28px rgba(0, 0, 0, 0.4);
+}
+
+.glass-icon-orb__rim {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.08);
+  pointer-events: none;
 }
 
 .glass-icon-orb__core {
   position: absolute;
-  inset: 2px;
+  inset: 3px;
   border-radius: 50%;
-  opacity: 0.9;
+  opacity: 0.92;
 }
 
 .glass-icon-orb--cyan .glass-icon-orb__core {
@@ -3203,7 +3237,7 @@ body {
 .home-content {
   position: relative;
   z-index: 1;
-  background: #030303;
+  background: transparent;
 }
 
 .home-glass-features {
@@ -3277,4 +3311,139 @@ body {
 .exec-visual--glass .exec-arc__pulse {
   background: rgba(255, 180, 140, 0.85);
   box-shadow: 0 0 14px rgba(255, 127, 80, 0.45);
+}
+
+/* —— Theme 2: Liquid glass token orbs —— */
+
+.liquid-token-orb {
+  position: relative;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px) saturate(180%);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -3px 10px rgba(0, 0, 0, 0.3),
+    0 8px 24px rgba(0, 0, 0, 0.35);
+  overflow: visible;
+}
+
+.liquid-token-orb__rim {
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+
+.liquid-token-orb__core {
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.liquid-token-orb--cyan .liquid-token-orb__core {
+  background: linear-gradient(145deg, rgba(34, 211, 238, 0.45), rgba(99, 102, 241, 0.4));
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.35);
+}
+
+.liquid-token-orb--violet .liquid-token-orb__core {
+  background: linear-gradient(145deg, rgba(139, 92, 246, 0.5), rgba(236, 72, 153, 0.38));
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.35);
+}
+
+.liquid-token-orb--coral .liquid-token-orb__core {
+  background: linear-gradient(145deg, rgba(255, 127, 80, 0.5), rgba(251, 146, 60, 0.42));
+  box-shadow: 0 0 20px rgba(255, 127, 80, 0.32);
+}
+
+.liquid-token-orb--emerald .liquid-token-orb__core {
+  background: linear-gradient(145deg, rgba(52, 211, 153, 0.45), rgba(34, 211, 238, 0.35));
+  box-shadow: 0 0 20px rgba(52, 211, 153, 0.3);
+}
+
+.liquid-token-orb__content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.liquid-token-orb__content > * {
+  border-radius: 50%;
+}
+
+.liquid-token-orb__content img {
+  width: 78%;
+  height: 78%;
+  object-fit: cover;
+}
+
+/* —— Home market panel (glass) —— */
+
+.home-market-macro {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.home-market-coins__scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+.liquid-glass-coin {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem 0.35rem 0.35rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(14px);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.liquid-glass-coin:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+  transform: translateY(-1px);
+}
+
+.liquid-glass-coin--active {
+  border-color: rgba(255, 127, 80, 0.45);
+  background: rgba(255, 127, 80, 0.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 8px 28px rgba(255, 127, 80, 0.18);
+}
+
+.liquid-glass-coin__symbol {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.liquid-glass-coin__change {
+  font-size: 0.625rem;
+}
+
+.home-glass-feature {
+  padding: 0;
+}
+
+.home-glass-feature__top {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.home-glass-feature__text {
+  margin-top: 0.65rem;
+  padding: 0 0.25rem 0.5rem;
 }

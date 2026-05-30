@@ -5,32 +5,42 @@ import { motion } from "framer-motion";
 const CLOUD_LAYERS = [
   {
     className: "cinematic-cloud cinematic-cloud--coral-1",
-    animate: { x: [0, 60, 0], y: [0, -30, 0], scale: [1, 1.06, 1] },
-    duration: 52,
+    animate: { x: [0, 80, 0], y: [0, -40, 0], scale: [1, 1.08, 1] },
+    duration: 85,
   },
   {
     className: "cinematic-cloud cinematic-cloud--coral-2",
-    animate: { x: [0, -50, 0], y: [0, 25, 0], scale: [1, 1.04, 1] },
-    duration: 44,
+    animate: { x: [0, -70, 0], y: [0, 35, 0], scale: [1, 1.05, 1] },
+    duration: 72,
   },
   {
     className: "cinematic-cloud cinematic-cloud--amber",
-    animate: { x: [0, 35, 0], y: [0, -18, 0] },
-    duration: 38,
+    animate: { x: [0, 50, 0], y: [0, -25, 0] },
+    duration: 64,
   },
   {
     className: "cinematic-cloud cinematic-cloud--slate",
-    animate: { x: [0, -40, 0], y: [0, 20, 0] },
-    duration: 58,
+    animate: { x: [0, -55, 0], y: [0, 30, 0] },
+    duration: 90,
   },
   {
     className: "cinematic-cloud cinematic-cloud--violet",
-    animate: { x: [0, 25, 0], y: [0, -12, 0] },
-    duration: 48,
+    animate: { x: [0, 40, 0], y: [0, -20, 0] },
+    duration: 78,
+  },
+  {
+    className: "cinematic-cloud cinematic-cloud--mist-1",
+    animate: { x: [0, 30, 0], y: [0, 15, 0] },
+    duration: 95,
+  },
+  {
+    className: "cinematic-cloud cinematic-cloud--mist-2",
+    animate: { x: [0, -35, 0], y: [0, -18, 0] },
+    duration: 88,
   },
 ];
 
-/** Theme 1 — moody sky + drifting clouds for cinematic glassmorphism shells. */
+/** Theme 1 — moody sky + gently drifting clouds for cinematic glassmorphism shells. */
 export function CinematicCloudBackdrop({ className = "" }: { className?: string }) {
   return (
     <div className={`cinematic-sky ${className}`} aria-hidden>
@@ -45,14 +55,14 @@ export function CinematicCloudBackdrop({ className = "" }: { className?: string 
             repeat: Infinity,
             repeatType: "mirror",
             ease: "easeInOut",
-            delay: i * 2.5,
+            delay: i * 3,
           }}
         />
       ))}
       <motion.div
         className="cinematic-sky__haze"
-        animate={{ opacity: [0.35, 0.55, 0.35] }}
-        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+        animate={{ opacity: [0.45, 0.65, 0.45] }}
+        transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
       />
       <div className="cinematic-sky__vignette" />
       <div className="cinematic-sky__cryptic" />

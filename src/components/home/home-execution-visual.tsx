@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { TokenAvatar } from "@/components/execute/token-avatar";
+import { LiquidGlassTokenOrb } from "@/components/ui/glass-ui";
 import { figmaEaseOut } from "@/design/motion-presets";
 
 type FlowNode = {
@@ -81,7 +82,17 @@ function AnimatedMetric({
   );
 }
 
-function FlowNodeCard({ node, delay }: { node: FlowNode; delay: number }) {
+const NODE_VARIANTS = ["cyan", "violet", "coral"] as const;
+
+function FlowNodeCard({
+  node,
+  delay,
+  variant,
+}: {
+  node: FlowNode;
+  delay: number;
+  variant: (typeof NODE_VARIANTS)[number];
+}) {
   return (
     <motion.div
       className="exec-node"
@@ -90,7 +101,9 @@ function FlowNodeCard({ node, delay }: { node: FlowNode; delay: number }) {
       transition={{ ...figmaEaseOut, delay }}
     >
       <div className="exec-node__avatar">
-        <TokenAvatar symbol={node.symbol} chainKey={node.chainKey} size={52} />
+        <LiquidGlassTokenOrb variant={variant} size={56}>
+          <TokenAvatar symbol={node.symbol} chainKey={node.chainKey} size={44} />
+        </LiquidGlassTokenOrb>
       </div>
       <p className="exec-node__symbol">{node.symbol}</p>
       <p className="exec-node__chain">{node.chainLabel}</p>
@@ -175,17 +188,17 @@ export function HomeExecutionVisual({ compact }: { compact?: boolean }) {
         </div>
 
         <div className="exec-visual__flow">
-          <FlowNodeCard node={PRIMARY_FLOW[0]} delay={0.06} />
+          <FlowNodeCard node={PRIMARY_FLOW[0]} delay={0.06} variant="cyan" />
           <div className="exec-visual__rail-col">
             <FlowArc delay={0.12} />
             <RailBadge {...RAILS[0]} delay={0.18} />
           </div>
-          <FlowNodeCard node={PRIMARY_FLOW[1]} delay={0.14} />
+          <FlowNodeCard node={PRIMARY_FLOW[1]} delay={0.14} variant="violet" />
           <div className="exec-visual__rail-col">
             <FlowArc delay={0.2} />
             <RailBadge {...RAILS[1]} delay={0.26} />
           </div>
-          <FlowNodeCard node={PRIMARY_FLOW[2]} delay={0.22} />
+          <FlowNodeCard node={PRIMARY_FLOW[2]} delay={0.22} variant="coral" />
         </div>
 
         <div className="exec-visual__metrics">
@@ -205,7 +218,12 @@ export function HomeExecutionVisual({ compact }: { compact?: boolean }) {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.55 + i * 0.05 }}
               >
-                <TokenAvatar symbol={symbol} chainKey={chainKey} size={18} />
+                <LiquidGlassTokenOrb
+                  variant={NODE_VARIANTS[i % NODE_VARIANTS.length]}
+                  size={22}
+                >
+                  <TokenAvatar symbol={symbol} chainKey={chainKey} size={16} />
+                </LiquidGlassTokenOrb>
                 <span>{label}</span>
               </motion.div>
             ))}
