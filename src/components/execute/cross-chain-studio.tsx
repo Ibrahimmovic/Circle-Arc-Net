@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import type { ExchangeIntentSnapshot } from "@/lib/exchange-intent";
 import { ForgeArbitraryPanel } from "@/components/execute/forge-arbitrary-panel";
 import { ForgeRoutesPanel } from "@/components/execute/forge-routes-panel";
+import { ForgeRailsStrip } from "@/components/execute/forge-rails-strip";
 import { ExchangeWidget } from "@/components/execute/exchange-widget";
 import { GlassPanel } from "@/components/ui/glass-ui";
 import { figmaEaseOut } from "@/design/motion-presets";
@@ -50,7 +51,30 @@ export function CrossChainStudio() {
 
   return (
     <div className="space-y-5">
-      <div className="portfolio-glass-tab-bar execute-mode-tabs flex gap-1 overflow-x-auto scrollbar-thin">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={figmaEaseOut}
+      >
+        <GlassPanel strong className="execute-desk-hero forge-studio-hero !overflow-visible px-4 py-4 sm:px-5 sm:py-5">
+          <p className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-400/90">
+            Agora Forge
+          </p>
+          <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 className="font-display text-xl font-bold text-white sm:text-2xl">
+                <span className="text-gradient">Execution Desk</span>
+              </h2>
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/60">
+                Swap, bridge, and compare live routes — quote on the left, paths on the right.
+              </p>
+            </div>
+            <ForgeRailsStrip />
+          </div>
+        </GlassPanel>
+      </motion.div>
+
+      <div className="portfolio-glass-tab-bar flex gap-1 overflow-x-auto scrollbar-thin">
         {(
           [
             { id: "swap" as const, label: "Swap & Bridge", icon: ArrowLeftRight },
@@ -104,7 +128,7 @@ export function CrossChainStudio() {
         </motion.div>
       )}
 
-      <nav className="execute-utility-nav flex flex-wrap gap-2">
+      <nav className="flex flex-wrap gap-2 border-t border-white/10 pt-4">
         {(
           [
             { id: "send" as const, label: "Send" },

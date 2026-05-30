@@ -94,7 +94,7 @@ export function AppShell({
           className={cn(
             "app-shell-main relative z-10 flex-1",
             isHome && "grid-mesh",
-            isExecute && "execute-main grid-mesh px-4 py-5 sm:px-6 sm:py-6 lg:px-8",
+            isExecute && "execute-main execute-main--cinematic grid-mesh px-4 py-5 sm:px-6 sm:py-8 lg:px-10",
             isPortfolio && "portfolio-main px-4 py-5 sm:px-6 sm:py-8 lg:px-10",
             !isHome && !isPortfolio && !isExecute && "grid-mesh px-4 py-5 sm:px-6 sm:py-8 lg:px-10",
           )}
