@@ -3318,11 +3318,54 @@ body {
   padding-top: 0;
 }
 
-.execute-glass-context .forge-panel,
-.execute-glass-context .exchange-widget-premium {
-  border: none;
+.execute-glass-context .exchange-widget {
   background: transparent;
+  border: none;
   box-shadow: none;
+  padding: 0;
+}
+
+.execute-glass-context .exchange-widget-premium::before {
+  display: none;
+}
+
+.execute-glass-context .exchange-tile {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.execute-glass-context .exchange-tile:hover {
+  border-color: rgba(139, 92, 246, 0.35);
+}
+
+.execute-glass-context .forge-panel.forge-panel--routes {
+  border-color: rgba(34, 211, 238, 0.2);
+}
+
+.execute-glass-context .forge-route-card {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(10px);
+}
+
+.execute-glass-context .forge-route-card--selected {
+  border-color: rgba(34, 211, 238, 0.45);
+  background: rgba(34, 211, 238, 0.08);
+  box-shadow: 0 0 24px rgba(34, 211, 238, 0.12);
+}
+
+.execute-glass-context .forge-route-path {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.execute-glass-context .forge-settings-panel {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(16px);
 }
 
 .execute-glass-context .forge-amount-input {

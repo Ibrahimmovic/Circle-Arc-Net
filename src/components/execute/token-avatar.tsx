@@ -1,23 +1,28 @@
 "use client";
 
 import { tokenIcon, chainIcon } from "@/lib/token-visuals";
+import { LiquidGlassTokenOrb } from "@/components/ui/glass-ui";
 
 export function TokenAvatar({
   symbol,
   chainKey,
   size = 40,
+  glass = false,
+  glassVariant = "cyan",
 }: {
   symbol: string;
   chainKey?: string;
   size?: number;
+  glass?: boolean;
+  glassVariant?: "cyan" | "violet" | "coral" | "emerald";
 }) {
   const src = tokenIcon(symbol);
   const badge = chainKey ? chainIcon(chainKey) : undefined;
   const s = size;
   const badgeS = Math.round(size * 0.38);
 
-  return (
-    <div className="relative shrink-0" style={{ width: s, height: s }}>
+  const inner = (
+    <>
       {src ? (
         <img
           src={src}
@@ -41,6 +46,22 @@ export function TokenAvatar({
           style={{ width: badgeS, height: badgeS }}
         />
       )}
+    </>
+  );
+
+  if (glass) {
+    return (
+      <LiquidGlassTokenOrb variant={glassVariant} size={s} className="shrink-0">
+        <div className="relative" style={{ width: s, height: s }}>
+          {inner}
+        </div>
+      </LiquidGlassTokenOrb>
+    );
+  }
+
+  return (
+    <div className="relative shrink-0" style={{ width: s, height: s }}>
+      {inner}
     </div>
   );
 }

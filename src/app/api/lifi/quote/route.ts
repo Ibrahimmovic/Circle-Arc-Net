@@ -10,6 +10,8 @@ export async function GET(req: NextRequest) {
   const fromAmount = p.get("fromAmount");
   const fromAddress = p.get("fromAddress");
   const toAddress = p.get("toAddress") ?? fromAddress;
+  const slippageRaw = p.get("slippage");
+  const slippage = slippageRaw ? Number(slippageRaw) : undefined;
 
   if (!fromChain || !toChain || !fromToken || !toToken || !fromAmount || !fromAddress) {
     return NextResponse.json({ error: "Missing quote parameters" }, { status: 400 });
@@ -24,6 +26,7 @@ export async function GET(req: NextRequest) {
       fromAmount,
       fromAddress,
       toAddress: toAddress ?? undefined,
+      slippage,
     });
     return NextResponse.json(quote);
   } catch (e) {

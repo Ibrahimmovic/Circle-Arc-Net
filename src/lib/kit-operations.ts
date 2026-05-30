@@ -1,11 +1,11 @@
 import type { BridgeConfig } from "@circle-fin/app-kit";
 import { TESTNET_HOME_CHAIN } from "@/lib/network";
 
-export function getSwapKitConfig(kitKey: string) {
+export function getSwapKitConfig(kitKey: string, slippageBps = 150) {
   return {
     kitKey,
     allowanceStrategy: "permit" as const,
-    slippageBps: 150,
+    slippageBps,
   };
 }
 
