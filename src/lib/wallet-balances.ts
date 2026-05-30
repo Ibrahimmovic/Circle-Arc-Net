@@ -5,9 +5,20 @@ import {
   http,
   type Address,
 } from "viem";
-import { baseSepolia, arbitrumSepolia, optimismSepolia } from "viem/chains";
+import {
+  base,
+  baseSepolia,
+  arbitrum,
+  arbitrumSepolia,
+  mainnet,
+  optimism,
+  optimismSepolia,
+  polygon,
+} from "viem/chains";
 import { arcTestnet, APP_KIT_TO_WAGMI_CHAIN_ID } from "@/lib/chains";
-import { getTokensForChain, type ExecuteToken } from "@/lib/execute-tokens";
+import { getExecTokens } from "@/lib/execution/chain-catalog";
+import type { NetworkMode } from "@/lib/network";
+import type { ExecuteToken } from "@/lib/execute-tokens";
 import { getArcTestnetUsdBalances } from "@/lib/arc-balance";
 
 const RPC: Record<number, string> = {
@@ -16,6 +27,12 @@ const RPC: Record<number, string> = {
   11155111: "https://rpc.sepolia.org",
   421614: "https://sepolia-rollup.arbitrum.io/rpc",
   11155420: "https://sepolia.optimism.io",
+  1: "https://eth.llamarpc.com",
+  8453: "https://mainnet.base.org",
+  42161: "https://arb1.arbitrum.io/rpc",
+  10: "https://mainnet.optimism.io",
+  137: "https://polygon-rpc.com",
+  43114: "https://api.avax.network/ext/bc/C/rpc",
 };
 
 function chainForId(chainId: number) {
@@ -23,6 +40,11 @@ function chainForId(chainId: number) {
   if (chainId === 84532) return baseSepolia;
   if (chainId === 421614) return arbitrumSepolia;
   if (chainId === 11155420) return optimismSepolia;
+  if (chainId === 1) return mainnet;
+  if (chainId === 8453) return base;
+  if (chainId === 42161) return arbitrum;
+  if (chainId === 10) return optimism;
+  if (chainId === 137) return polygon;
   return undefined;
 }
 
@@ -105,6 +127,7 @@ async function tokenBalance(
 export async function fetchWalletBalances(
   address: string,
   appKitChains: string[],
+  mode: NetworkMode = "testnet",
 ): Promise<TokenBalanceRow[]> {
   const user = address as Address;
   const rows: TokenBalanceRow[] = [];
@@ -113,12 +136,15 @@ export async function fetchWalletBalances(
     const chainId = APP_KIT_TO_WAGMI_CHAIN_ID[appKit];
     if (chainId == null || !RPC[chainId]) continue;
 
+    const viemChain = chainForId(chainId);
+    if (!viemChain) continue;
+
     const client = createPublicClient({
-      chain: chainForId(chainId),
+      chain: viemChain,
       transport: http(RPC[chainId]),
     });
 
-    const tokens = getTokensForChain(appKit);
+    const tokens = getExecTokens(appKit, mode);
     for (const token of tokens) {
       const row = await tokenBalance(client, user, token, chainId);
       rows.push({ ...row, chain: appKit });

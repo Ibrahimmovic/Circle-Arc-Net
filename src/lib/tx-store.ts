@@ -2,7 +2,7 @@ import type { TxScanStep } from "@/lib/tx-scanner";
 
 export interface TxRecord {
   id: string;
-  type: "bridge" | "swap" | "faucet" | "send";
+  type: "bridge" | "swap" | "faucet" | "send" | "execution";
   status: "pending" | "success" | "error";
   summary: string;
   feeUsd?: string;

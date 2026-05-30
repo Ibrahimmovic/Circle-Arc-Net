@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchWalletBalances } from "@/lib/wallet-balances";
+import { resolveApiTestnet, type NetworkMode } from "@/lib/network";
 
 export async function GET(req: NextRequest) {
   const address = req.nextUrl.searchParams.get("address");
   const chains = req.nextUrl.searchParams.get("chains");
+  const mode: NetworkMode = resolveApiTestnet(req.nextUrl.searchParams.get("network"))
+    ? "testnet"
+    : "mainnet";
 
   if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
     return NextResponse.json({ error: "Invalid address" }, { status: 400 });
@@ -18,7 +22,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const balances = await fetchWalletBalances(address, list);
+    const balances = await fetchWalletBalances(address, list, mode);
     return NextResponse.json({ balances });
   } catch (e) {
     return NextResponse.json(

@@ -4,6 +4,7 @@ import {
   getExecChain,
 } from "@/lib/execution/chain-catalog";
 import { fetchCrossChainRoutes } from "@/lib/lifi-routes";
+import { fetchLifiQuote } from "@/lib/lifi";
 import { toBaseUnits } from "@/lib/execute-tokens";
 import { resolveApiTestnet, type NetworkMode } from "@/lib/network";
 import { useCircleCctpBridge } from "@/lib/execute-tokens";
@@ -105,6 +106,23 @@ export async function POST(req: NextRequest) {
       hint: "Stable transfer only — same token across chains",
       executionHint: "Position migration · no swap leg",
     });
+  }
+
+  const primaryLifi = routes.find((r) => r.executable && !r.circleDirect && !r.lifiQuote);
+  if (primaryLifi) {
+    try {
+      primaryLifi.lifiQuote = await fetchLifiQuote({
+        fromChain: fromCfg.lifiChainId,
+        toChain: toCfg.lifiChainId,
+        fromToken: fromMeta.symbol,
+        toToken: toMeta.symbol,
+        fromAmount: toBaseUnits(amount, fromMeta.decimals),
+        fromAddress,
+        toAddress: body.toAddress ?? fromAddress,
+      });
+    } catch {
+      /* execute path will re-quote */
+    }
   }
 
   return NextResponse.json({

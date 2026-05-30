@@ -75,7 +75,7 @@ export default function AgentPage() {
   return (
     <AppShell
       title="Agent Console"
-      subtitle="Autonomous cross-chain execution on Circle CCTP"
+      subtitle="Portfolio → plan → automated CCTP · manual runs on Execute"
     >
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="luxury-card rounded-2xl p-8">
@@ -111,7 +111,7 @@ export default function AgentPage() {
             href="/execute"
             className="mt-3 block text-center text-xs text-cyan-400"
           >
-            Execution center →
+            Open Cross-Chain Studio →
           </Link>
         </div>
         <div className="luxury-card rounded-2xl p-6 font-mono text-xs">

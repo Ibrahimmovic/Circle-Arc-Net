@@ -20,6 +20,11 @@ import { TokenAvatar } from "@/components/execute/token-avatar";
 import type { ExecutionKind, ExecutionPipelineStep } from "@/lib/execution/execution-intent-ui";
 import { classifyExecution } from "@/lib/execution/execution-intent-ui";
 import { RecipientField } from "@/components/ui/recipient-field";
+import { ForgeRailsStrip } from "@/components/execute/forge-rails-strip";
+import { useExecBalances } from "@/hooks/use-exec-balances";
+import { pushTx } from "@/lib/tx-store";
+import { installCircleProxyFetch } from "@/lib/circle-proxy-fetch";
+import { formatUnits } from "viem";
 import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
 
@@ -70,6 +75,22 @@ export function CrossChainStudio() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const localKind = classifyExecution(fromChain, toChain, fromToken, toToken);
+
+  const balanceChains = useMemo(
+    () => [...new Set([fromChain, toChain, isTestnet ? "Arc_Testnet" : fromChain])],
+    [fromChain, toChain, isTestnet],
+  );
+  const { getBalance, loading: balanceLoading } = useExecBalances(
+    address,
+    balanceChains,
+    isConnected,
+    network,
+  );
+  const sourceBal = getBalance(fromChain, fromToken);
+
+  useEffect(() => {
+    installCircleProxyFetch();
+  }, []);
 
   const fromTokens = useMemo(
     () => getExecTokens(fromChain, network),
@@ -166,15 +187,43 @@ export function CrossChainStudio() {
         setToChain("Ethereum_Sepolia");
         setFromToken("USDC");
         setToToken("WETH");
+        setAmount("25");
       } else {
         setFromChain("Base");
         setToChain("Ethereum");
         setFromToken("USDC");
         setToToken("WETH");
+        setAmount("100");
       }
     }
     if (mode === "transfer") {
       setToToken(fromToken);
+      setAmount("50");
+    }
+  };
+
+  const applyPct = (pct: number) => {
+    setPctActive(pct);
+    if (!sourceBal?.balanceRaw) {
+      if (pct === 100) setAmount((prev) => prev || "100");
+      return;
+    }
+    try {
+      const fromMetaLocal = findExecToken(fromChain, fromToken, network);
+      if (!fromMetaLocal) return;
+      const raw = BigInt(sourceBal.balanceRaw);
+      const slice = (raw * BigInt(pct)) / BigInt(100);
+      const formatted = formatUnits(slice, fromMetaLocal.decimals);
+      const n = Number(formatted);
+      setAmount(
+        n < 0.0001
+          ? formatted
+          : n < 1
+            ? n.toFixed(6).replace(/\.?0+$/, "")
+            : n.toFixed(4).replace(/\.?0+$/, ""),
+      );
+    } catch {
+      if (pct === 100) setAmount(sourceBal.balance);
     }
   };
 
@@ -191,6 +240,12 @@ export function CrossChainStudio() {
           testnet: isTestnet,
           onProgress: setMessage,
         });
+        pushTx({
+          type: "execution",
+          status: "success",
+          summary: `Transfer ${amount} ${fromToken} · ${fromLabel} → ${toLabel}`,
+          chain: fromChain,
+        });
         setMessage(res.message);
         setStatus("ok");
       } else {
@@ -199,7 +254,15 @@ export function CrossChainStudio() {
           fromAddress: address,
           testnet: isTestnet,
           mode: network,
+          preloadedQuote: selectedRoute.lifiQuote,
           onProgress: setMessage,
+        });
+        pushTx({
+          type: "execution",
+          status: "success",
+          summary: `${fromToken} → ${toToken} · ${fromLabel} → ${toLabel}`,
+          chain: fromChain,
+          hash: txHash,
         });
         setMessage(`Confirmed · ${tool ?? "route"} · ${txHash.slice(0, 14)}…`);
         setStatus("ok");
@@ -226,8 +289,11 @@ export function CrossChainStudio() {
         </h2>
         <p className="relative mt-3 max-w-lg text-sm leading-relaxed text-slate-400">
           State an outcome — we orchestrate debit, routing, conversion, and delivery.
-          Not just a bridge form: full execution, stable transfers, or arbitrary calls.
+          Full execution, stable transfers, and arbitrary onchain calls in one product.
         </p>
+        <div className="relative mt-5">
+          <ForgeRailsStrip />
+        </div>
       </header>
 
       <div className="flex gap-2 rounded-2xl border border-slate-800/80 bg-slate-950/50 p-1">
@@ -331,15 +397,20 @@ export function CrossChainStudio() {
             </div>
           </label>
 
+          <p className="text-xs text-slate-500">
+            {balanceLoading
+              ? "Balance…"
+              : sourceBal
+                ? `Available: ${sourceBal.balance} ${fromToken}`
+                : "Connect wallet for balance"}
+          </p>
+
           <div className="flex gap-2">
             {[25, 50, 75, 100].map((p) => (
               <button
                 key={p}
                 type="button"
-                onClick={() => {
-                  setPctActive(p);
-                  if (p === 100) setAmount((prev) => prev || "100");
-                }}
+                onClick={() => applyPct(p)}
                 className={cn(
                   "forge-chip flex-1 rounded-lg py-2",
                   pctActive === p && "forge-chip--active",

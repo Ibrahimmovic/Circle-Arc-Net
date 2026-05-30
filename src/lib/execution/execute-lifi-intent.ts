@@ -41,6 +41,7 @@ export async function executeLifiIntent(params: {
   fromAddress: string;
   testnet: boolean;
   mode?: NetworkMode;
+  preloadedQuote?: LifiQuoteResult;
   onProgress?: (msg: string) => void;
 }): Promise<{ txHash: string; tool?: string }> {
   const { intent, fromAddress, testnet, onProgress } = params;
@@ -55,8 +56,12 @@ export async function executeLifiIntent(params: {
   const fromCfg = getExecChain(intent.fromChain, mode);
   if (!fromCfg) throw new Error("Unsupported source chain.");
 
-  onProgress?.("Fetching best route…");
-  const quote = await fetchIntentLifiQuote(intent, fromAddress, mode);
+  const quote =
+    params.preloadedQuote ??
+    (await (async () => {
+      onProgress?.("Fetching best route…");
+      return fetchIntentLifiQuote(intent, fromAddress, mode);
+    })());
   const tx = quote.transactionRequest;
   if (!tx?.to || !tx?.data) {
     throw new Error("No executable transaction — try another pair or amount.");
