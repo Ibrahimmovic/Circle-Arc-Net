@@ -13,8 +13,12 @@ import { executeLifiIntent } from "@/lib/execution/execute-lifi-intent";
 import { executeCircleDirectIntent } from "@/lib/execution/execute-circle-intent";
 import type { CrossChainRouteOption } from "@/lib/lifi-routes";
 import { CrossChainRouteCard } from "@/components/execute/cross-chain-route-card";
+import { ForgeArbitraryPanel } from "@/components/execute/forge-arbitrary-panel";
+import { ForgeExecutionPipeline } from "@/components/execute/forge-execution-pipeline";
 import { ForgeRoutePath } from "@/components/execute/forge-route-path";
 import { TokenAvatar } from "@/components/execute/token-avatar";
+import type { ExecutionKind, ExecutionPipelineStep } from "@/lib/execution/execution-intent-ui";
+import { classifyExecution } from "@/lib/execution/execution-intent-ui";
 import { RecipientField } from "@/components/ui/recipient-field";
 import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
@@ -31,6 +35,7 @@ const ActivityFeed = dynamic(
 );
 
 type UtilityTab = "send" | "fund" | "activity" | null;
+type StudioMode = "goal" | "transfer" | "arbitrary";
 
 export function CrossChainStudio() {
   const { address, isConnected } = useAccount();
@@ -57,8 +62,14 @@ export function CrossChainStudio() {
   const [message, setMessage] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "ok" | "error">("idle");
   const [utility, setUtility] = useState<UtilityTab>(null);
+  const [studioMode, setStudioMode] = useState<StudioMode>("goal");
+  const [intentText, setIntentText] = useState<string | null>(null);
+  const [pipeline, setPipeline] = useState<ExecutionPipelineStep[]>([]);
+  const [executionKind, setExecutionKind] = useState<ExecutionKind>("full");
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const localKind = classifyExecution(fromChain, toChain, fromToken, toToken);
 
   const fromTokens = useMemo(
     () => getExecTokens(fromChain, network),
@@ -102,6 +113,9 @@ export function CrossChainStudio() {
       const list = (json.routes ?? []) as CrossChainRouteOption[];
       setRoutes(list);
       setSelectedId(list.find((r) => r.executable)?.id ?? list[0]?.id ?? null);
+      setIntentText(json.intent ?? null);
+      setPipeline(json.pipeline ?? []);
+      setExecutionKind(json.executionKind ?? "full");
       setStatus("idle");
       setMessage(null);
     } catch (e) {
@@ -133,14 +147,36 @@ export function CrossChainStudio() {
   }, [fetchRoutes]);
 
   useEffect(() => {
-    if (isTestnet) {
-      setFromChain("Base_Sepolia");
-      setToChain("Ethereum_Sepolia");
-    } else {
-      setFromChain("Base");
-      setToChain("Ethereum");
+    if (studioMode === "transfer") {
+      setToToken(fromToken);
     }
-  }, [isTestnet]);
+  }, [studioMode, fromToken]);
+
+  useEffect(() => {
+    if (studioMode === "goal" && fromToken === toToken && fromChain !== toChain) {
+      setToToken("WETH");
+    }
+  }, [studioMode, fromChain, toChain, fromToken, toToken]);
+
+  const applyMode = (mode: StudioMode) => {
+    setStudioMode(mode);
+    if (mode === "goal") {
+      if (isTestnet) {
+        setFromChain("Base_Sepolia");
+        setToChain("Ethereum_Sepolia");
+        setFromToken("USDC");
+        setToToken("WETH");
+      } else {
+        setFromChain("Base");
+        setToChain("Ethereum");
+        setFromToken("USDC");
+        setToToken("WETH");
+      }
+    }
+    if (mode === "transfer") {
+      setToToken(fromToken);
+    }
+  };
 
   const execute = async () => {
     if (!address || !selectedRoute?.executable) return;
@@ -189,15 +225,56 @@ export function CrossChainStudio() {
           <span className="text-gradient">Cross-chain</span> execution
         </h2>
         <p className="relative mt-3 max-w-lg text-sm leading-relaxed text-slate-400">
-          One intent across chains — we compare rails, bundle bridge and swap when
-          possible, and cut manual steps so you sign less and move faster.
+          State an outcome — we orchestrate debit, routing, conversion, and delivery.
+          Not just a bridge form: full execution, stable transfers, or arbitrary calls.
         </p>
       </header>
 
+      <div className="flex gap-2 rounded-2xl border border-slate-800/80 bg-slate-950/50 p-1">
+        {(
+          [
+            { id: "goal" as const, label: "Full execution" },
+            { id: "transfer" as const, label: "Stable transfer" },
+            { id: "arbitrary" as const, label: "Arbitrary" },
+          ] as const
+        ).map(({ id, label }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => applyMode(id)}
+            className={cn(
+              "forge-mode-tab",
+              studioMode === id && "forge-mode-tab--active",
+              id === "arbitrary" && "forge-mode-tab--arbitrary",
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {studioMode === "arbitrary" ? (
+        <ForgeArbitraryPanel />
+      ) : (
       <div className="grid gap-5 lg:grid-cols-2 lg:gap-6">
         <section className="forge-panel space-y-4 p-5 sm:p-6">
+          {intentText && amount && (
+            <div className="forge-intent-banner">
+              <p className="forge-intent-banner__label">Execution intent</p>
+              <p className="forge-intent-banner__text">{intentText}</p>
+            </div>
+          )}
+
+          {studioMode === "goal" && localKind === "transfer" && (
+            <p className="forge-transfer-notice">
+              Same token across chains = stable transfer only. Pick a different{" "}
+              <strong className="text-slate-300">receive token</strong> for full execution
+              (e.g. USDC → WETH), or switch to Stable transfer mode.
+            </p>
+          )}
+
           <h3 className="font-display text-xs font-bold uppercase tracking-[0.15em] text-slate-500">
-            From
+            Spend (source)
           </h3>
 
           <div className="flex items-center gap-3">
@@ -286,7 +363,7 @@ export function CrossChainStudio() {
             <TokenAvatar symbol={toToken} chainKey={toChain} size={44} />
             <div className="grid flex-1 gap-2">
               <p className="text-[10px] font-bold uppercase tracking-wider text-violet-300/80">
-                To
+                Outcome (receive)
               </p>
               <select
                 value={toChain}
@@ -337,8 +414,19 @@ export function CrossChainStudio() {
 
         <section className="forge-panel forge-panel--routes flex flex-col p-5 sm:p-6">
           <h3 className="font-display text-xs font-bold uppercase tracking-[0.15em] text-slate-500">
-            Routes
+            Execution plan
           </h3>
+
+          {pipeline.length > 0 && amount && (
+            <div className="mt-3 rounded-xl border border-slate-800/80 bg-slate-950/50 p-3">
+              <ForgeExecutionPipeline steps={pipeline} />
+            </div>
+          )}
+
+          <p className="mt-4 font-display text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
+            Solver paths
+            {executionKind === "full" && " · bundled cross-chain"}
+          </p>
 
           <ForgeRoutePath
             className="mt-3"
@@ -392,7 +480,11 @@ export function CrossChainStudio() {
             onClick={execute}
             className="forge-execute-btn mt-5"
           >
-            {executing ? "Confirm in wallet…" : "Execute route"}
+            {executing
+              ? "Confirm in wallet…"
+              : executionKind === "full"
+                ? "Run execution"
+                : "Run transfer"}
           </button>
 
           {message && (
@@ -412,6 +504,7 @@ export function CrossChainStudio() {
           )}
         </section>
       </div>
+      )}
 
       <nav className="flex flex-wrap gap-2 border-t border-slate-800/60 pt-5">
         {(

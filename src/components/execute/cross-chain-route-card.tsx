@@ -73,9 +73,9 @@ export function CrossChainRouteCard({
           )}
         </dl>
       )}
-      {route.hint && (
-        <p className="mt-2 border-t border-slate-800/80 pt-2 text-xs leading-relaxed text-slate-400">
-          {route.hint}
+      {(route.executionHint ?? route.hint) && (
+        <p className="mt-2 border-t border-slate-800/80 pt-2 text-xs leading-relaxed text-cyan-200/70">
+          {route.executionHint ?? route.hint}
         </p>
       )}
     </button>

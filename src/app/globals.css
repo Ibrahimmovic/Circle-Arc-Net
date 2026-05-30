@@ -476,3 +476,87 @@ body {
   background: rgba(34, 211, 238, 0.1);
   color: #a5f3fc;
 }
+
+.forge-mode-tab {
+  flex: 1;
+  min-height: 2.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(71, 85, 105, 0.45);
+  background: rgba(8, 12, 24, 0.9);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.forge-mode-tab:hover {
+  color: #cbd5e1;
+}
+
+.forge-mode-tab--active {
+  border-color: rgba(34, 211, 238, 0.45);
+  background: rgba(34, 211, 238, 0.08);
+  color: #a5f3fc;
+}
+
+.forge-mode-tab--arbitrary.forge-mode-tab--active {
+  border-color: rgba(251, 191, 36, 0.45);
+  background: rgba(251, 191, 36, 0.08);
+  color: #fde68a;
+}
+
+.forge-intent-banner {
+  border-radius: 1rem;
+  border: 1px solid rgba(124, 58, 237, 0.35);
+  background: linear-gradient(
+    90deg,
+    rgba(124, 58, 237, 0.12) 0%,
+    rgba(15, 23, 42, 0.95) 100%
+  );
+  padding: 1rem 1.125rem;
+}
+
+.forge-intent-banner__label {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #c4b5fd;
+}
+
+.forge-intent-banner__text {
+  margin-top: 0.35rem;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: #f1f5f9;
+}
+
+.forge-pipeline__dot {
+  border: 1px solid rgba(71, 85, 105, 0.6);
+  background: rgba(15, 23, 42, 0.95);
+  color: #64748b;
+}
+
+.forge-pipeline__dot--active {
+  border-color: rgba(34, 211, 238, 0.5);
+  background: rgba(34, 211, 238, 0.15);
+  color: #67e8f9;
+}
+
+.forge-pipeline__connector {
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.35), rgba(124, 58, 237, 0.2));
+}
+
+.forge-transfer-notice {
+  border-radius: 0.75rem;
+  border: 1px dashed rgba(148, 163, 184, 0.35);
+  background: rgba(30, 41, 59, 0.4);
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}

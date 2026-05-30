@@ -85,8 +85,8 @@ export const EXECUTION_RAILS: ExecutionRail[] = [
   {
     id: "generic_calldata",
     label: "Generic calldata",
-    description: "Arbitrary contract calls on source/dest chain — agent-guarded.",
-    status: "planned",
+    description: "Arbitrary contract calls on any supported EVM chain.",
+    status: "beta",
   },
   {
     id: "external_bridge",

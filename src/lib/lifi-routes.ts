@@ -19,6 +19,8 @@ export interface CrossChainRouteOption {
   circleDirect?: boolean;
   executable: boolean;
   hint?: string;
+  /** How this path fulfills the user goal */
+  executionHint?: string;
 }
 
 interface LifiAdvancedRoute {
@@ -43,6 +45,18 @@ function providerName(route: LifiAdvancedRoute): string {
   return route.toolDetails?.name ?? route.tool ?? "LI.FI";
 }
 
+function dedupeRoutes(options: CrossChainRouteOption[]): CrossChainRouteOption[] {
+  const seen = new Set<string>();
+  const out: CrossChainRouteOption[] = [];
+  for (const o of options) {
+    const key = `${o.provider}:${o.toAmount ?? ""}:${o.badge}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(o);
+  }
+  return out.slice(0, 3);
+}
+
 /** Fetch multiple LI.FI routes, fallback to single quote. */
 export async function fetchCrossChainRoutes(params: {
   fromChainId: number;
@@ -52,7 +66,11 @@ export async function fetchCrossChainRoutes(params: {
   fromAmount: string;
   fromAddress: string;
   toAddress?: string;
+  executionHint?: string;
 }): Promise<CrossChainRouteOption[]> {
+  const hint =
+    params.executionHint ??
+    "Single signature · orchestrated bridge + swap + delivery";
   const body = {
     fromChainId: params.fromChainId,
     toChainId: params.toChainId,
@@ -96,7 +114,8 @@ export async function fetchCrossChainRoutes(params: {
           gasUsd: r.gasCostUSD,
           durationSec: r.executionDuration,
           executable: true,
-          hint: "One wallet confirm — bridge + swap bundled",
+          hint,
+          executionHint: hint,
         });
       }
       if (options.length) {
@@ -111,10 +130,11 @@ export async function fetchCrossChainRoutes(params: {
             gasUsd: fastest.gasCostUSD,
             durationSec: fastest.executionDuration,
             executable: true,
-            hint: "Fastest estimated arrival",
+            hint: "Lowest latency path",
+            executionHint: "Lowest latency path",
           });
         }
-        return options.slice(0, 3);
+        return dedupeRoutes(options);
       }
     }
   } catch {
@@ -143,7 +163,8 @@ export async function fetchCrossChainRoutes(params: {
         toAmount: quote.estimate?.toAmountMin ?? quote.estimate?.toAmount,
         executable: hasTx,
         lifiQuote: quote,
-        hint: hasTx ? "One wallet confirm" : "Quote only — adjust amount",
+        hint: hasTx ? hint : "Quote only — adjust amount",
+        executionHint: hint,
       },
     ];
   } catch (e) {
