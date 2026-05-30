@@ -79,8 +79,8 @@ export const EXECUTION_RAILS: ExecutionRail[] = [
   {
     id: "intent_solver",
     label: "Intent solver",
-    description: "Signed execution intents settled by solvers — plug-in slot.",
-    status: "planned",
+    description: "One-shot goals (e.g. USDC Base → token elsewhere) via LI.FI route on testnet.",
+    status: "beta",
   },
   {
     id: "generic_calldata",

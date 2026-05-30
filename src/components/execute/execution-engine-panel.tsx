@@ -71,7 +71,7 @@ export function ExecutionEnginePanel({
               <strong className="text-slate-300">adaptive rebalance</strong>,{" "}
               <strong className="text-slate-300">arbitrage signals</strong> (RFB
               #5), and planned{" "}
-              <strong className="text-slate-300">intents / generic calldata</strong>.
+              <strong className="text-slate-300">Intent tab</strong> for one-shot routes.
               Live actions run on Circle App Kit below.
             </p>
           </div>

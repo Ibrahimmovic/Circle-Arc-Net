@@ -3,25 +3,27 @@
 import { useState } from "react";
 import { ExecutionEnginePanel } from "@/components/execute/execution-engine-panel";
 import { ExecutionRunnerPanel } from "@/components/execute/execution-runner-panel";
+import { CrossChainIntentPanel } from "@/components/execute/cross-chain-intent-panel";
 import { cn } from "@/lib/utils";
 
 export function CrossChainExecutionStack() {
-  const [sub, setSub] = useState<"engine" | "queue">("engine");
+  const [sub, setSub] = useState<"intent" | "engine" | "queue">("intent");
 
   return (
     <div className="space-y-4">
       <div className="luxury-card rounded-2xl p-4 text-sm text-slate-400">
         <p>
-          <strong className="text-white">Cross-chain execution system</strong>{" "}
-          — plan (engine) → compile jobs (queue) → execute via Exchange tab
-          (CCTP bridge / swap). Arb + rebalance auto-queue; LiFi + intents on
-          roadmap.
+          <strong className="text-white">Cross-chain execution</strong> — state
+          what you want (Intent) → we route bridge + swap in fewer steps than
+          doing it manually. Engine/Queue still auto-run rebalance & arb; Exchange
+          handles full Circle CCTP UI.
         </p>
       </div>
 
       <div className="flex gap-1 rounded-2xl border border-slate-800/80 bg-slate-950/60 p-1">
         {(
           [
+            { id: "intent" as const, label: "Intent" },
             { id: "engine" as const, label: "Engine" },
             { id: "queue" as const, label: "Queue" },
           ] as const
@@ -42,11 +44,11 @@ export function CrossChainExecutionStack() {
         ))}
       </div>
 
-      {sub === "engine" ? (
+      {sub === "intent" && <CrossChainIntentPanel />}
+      {sub === "engine" && (
         <ExecutionEnginePanel onOpenQueue={() => setSub("queue")} />
-      ) : (
-        <ExecutionRunnerPanel />
       )}
+      {sub === "queue" && <ExecutionRunnerPanel />}
     </div>
   );
 }
