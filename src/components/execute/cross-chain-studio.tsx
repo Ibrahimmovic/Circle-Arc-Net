@@ -1,33 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useAccount } from "wagmi";
-import { ChevronDown, Repeat2 } from "lucide-react";
-import { useNetwork } from "@/providers/network-context";
-import {
-  getExecChains,
-  getExecTokens,
-  findExecToken,
-} from "@/lib/execution/chain-catalog";
-import { executeLifiIntent } from "@/lib/execution/execute-lifi-intent";
-import { executeCircleDirectIntent } from "@/lib/execution/execute-circle-intent";
-import type { CrossChainRouteOption } from "@/lib/lifi-routes";
-import { CrossChainRouteCard } from "@/components/execute/cross-chain-route-card";
-import { ForgeArbitraryPanel } from "@/components/execute/forge-arbitrary-panel";
-import { ForgeExecutionPipeline } from "@/components/execute/forge-execution-pipeline";
-import { ForgeRoutePath } from "@/components/execute/forge-route-path";
-import { TokenAvatar } from "@/components/execute/token-avatar";
-import type { ExecutionKind, ExecutionPipelineStep } from "@/lib/execution/execution-intent-ui";
-import { classifyExecution } from "@/lib/execution/execution-intent-ui";
-import { RecipientField } from "@/components/ui/recipient-field";
-import { ForgeRailsStrip } from "@/components/execute/forge-rails-strip";
-import { ForgeCctpPending } from "@/components/execute/forge-cctp-pending";
-import { useExecBalances } from "@/hooks/use-exec-balances";
-import { pushTx } from "@/lib/tx-store";
-import { installCircleProxyFetch } from "@/lib/circle-proxy-fetch";
-import { formatUnits } from "viem";
-import { cn } from "@/lib/utils";
+import { useState } from "react";
 import dynamic from "next/dynamic";
+import { useNetwork } from "@/providers/network-context";
+import { cn } from "@/lib/utils";
+import type { ExchangeIntentSnapshot } from "@/lib/exchange-intent";
+import { ForgeArbitraryPanel } from "@/components/execute/forge-arbitrary-panel";
+import { ForgeRoutesPanel } from "@/components/execute/forge-routes-panel";
+import { ForgeRailsStrip } from "@/components/execute/forge-rails-strip";
+import { ExchangeWidget } from "@/components/execute/exchange-widget";
 
 const SendPanel = dynamic(() => import("./send-panel").then((m) => m.SendPanel), {
   ssr: false,
@@ -40,277 +21,32 @@ const ActivityFeed = dynamic(
   { ssr: false },
 );
 
+type StudioTab = "swap" | "arbitrary";
 type UtilityTab = "send" | "fund" | "activity" | null;
-type StudioMode = "goal" | "transfer" | "arbitrary";
+
+const defaultIntent = (): ExchangeIntentSnapshot => ({
+  fromChain: "Arc_Testnet",
+  toChain: "Base_Sepolia",
+  fromToken: "USDC",
+  toToken: "USDC",
+  amount: "",
+  recipient: "",
+});
 
 export function CrossChainStudio() {
-  const { address, isConnected } = useAccount();
-  const { network, isTestnet } = useNetwork();
-  const chains = useMemo(() => getExecChains(network), [network]);
-
-  const [fromChain, setFromChain] = useState(
-    isTestnet ? "Base_Sepolia" : "Base",
-  );
-  const [toChain, setToChain] = useState(
-    isTestnet ? "Ethereum_Sepolia" : "Ethereum",
-  );
-  const [fromToken, setFromToken] = useState("USDC");
-  const [toToken, setToToken] = useState("WETH");
-  const [amount, setAmount] = useState("");
-  const [recipient, setRecipient] = useState("");
-  const [showRecipient, setShowRecipient] = useState(false);
-  const [pctActive, setPctActive] = useState<number | null>(null);
-
-  const [routes, setRoutes] = useState<CrossChainRouteOption[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [quoteLoading, setQuoteLoading] = useState(false);
-  const [executing, setExecuting] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "ok" | "error">("idle");
+  const { isTestnet } = useNetwork();
+  const [tab, setTab] = useState<StudioTab>("swap");
   const [utility, setUtility] = useState<UtilityTab>(null);
-  const [studioMode, setStudioMode] = useState<StudioMode>("goal");
-  const [intentText, setIntentText] = useState<string | null>(null);
-  const [pipeline, setPipeline] = useState<ExecutionPipelineStep[]>([]);
-  const [executionKind, setExecutionKind] = useState<ExecutionKind>("full");
-  const [cctpNote, setCctpNote] = useState<string | null>(null);
+  const [intent, setIntent] = useState<ExchangeIntentSnapshot>(defaultIntent);
   const [cctpPending, setCctpPending] = useState<{
     burnTx?: string;
     amount: string;
+    fromChain: string;
+    toChain: string;
   } | null>(null);
-  const [balanceRefresh, setBalanceRefresh] = useState(0);
-
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const localKind = classifyExecution(fromChain, toChain, fromToken, toToken);
-
-  const balanceChains = useMemo(
-    () => [...new Set([fromChain, toChain, isTestnet ? "Arc_Testnet" : fromChain])],
-    [fromChain, toChain, isTestnet],
-  );
-  const { getBalance, loading: balanceLoading } = useExecBalances(
-    address,
-    balanceChains,
-    isConnected,
-    network,
-    balanceRefresh,
-  );
-  const sourceBal = getBalance(fromChain, fromToken);
-
-  useEffect(() => {
-    installCircleProxyFetch();
-  }, []);
-
-  const fromTokens = useMemo(
-    () => getExecTokens(fromChain, network),
-    [fromChain, network],
-  );
-  const toTokens = useMemo(() => getExecTokens(toChain, network), [toChain, network]);
-  const toMeta = findExecToken(toChain, toToken, network);
-
-  const selectedRoute = routes.find((r) => r.id === selectedId) ?? routes[0];
-
-  const flip = () => {
-    setFromChain(toChain);
-    setToChain(fromChain);
-    setFromToken(toToken);
-    setToToken(fromToken);
-  };
-
-  const fetchRoutes = useCallback(async () => {
-    if (!address || !amount || Number(amount) <= 0) {
-      setRoutes([]);
-      setSelectedId(null);
-      return;
-    }
-    setQuoteLoading(true);
-    try {
-      const res = await fetch(`/api/execute/routes?network=${network}`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          fromChain,
-          toChain,
-          fromToken,
-          toToken,
-          amount,
-          fromAddress: address,
-          toAddress: recipient.trim() || address,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Could not load routes");
-      const list = (json.routes ?? []) as CrossChainRouteOption[];
-      setRoutes(list);
-      setSelectedId(list.find((r) => r.executable)?.id ?? list[0]?.id ?? null);
-      setIntentText(json.intent ?? null);
-      setPipeline(json.pipeline ?? []);
-      setExecutionKind(json.executionKind ?? "full");
-      setCctpNote(json.cctpNote ?? null);
-      const circle = list.find((r) => r.circleDirect);
-      if (json.executionKind === "transfer" && circle) {
-        setSelectedId(circle.id);
-      }
-      setStatus("idle");
-      setMessage(null);
-    } catch (e) {
-      setRoutes([]);
-      setMessage(e instanceof Error ? e.message : "Route fetch failed");
-      setStatus("error");
-    } finally {
-      setQuoteLoading(false);
-    }
-  }, [
-    address,
-    amount,
-    network,
-    fromChain,
-    toChain,
-    fromToken,
-    toToken,
-    recipient,
-  ]);
-
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      void fetchRoutes();
-    }, 600);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [fetchRoutes]);
-
-  useEffect(() => {
-    if (studioMode === "transfer") {
-      setToToken(fromToken);
-    }
-  }, [studioMode, fromToken]);
-
-  useEffect(() => {
-    if (studioMode === "goal" && fromToken === toToken && fromChain !== toChain) {
-      setToToken("WETH");
-    }
-  }, [studioMode, fromChain, toChain, fromToken, toToken]);
-
-  const applyMode = (mode: StudioMode) => {
-    setStudioMode(mode);
-    if (mode === "goal") {
-      if (isTestnet) {
-        setFromChain("Base_Sepolia");
-        setToChain("Ethereum_Sepolia");
-        setFromToken("USDC");
-        setToToken("WETH");
-        setAmount("25");
-      } else {
-        setFromChain("Base");
-        setToChain("Ethereum");
-        setFromToken("USDC");
-        setToToken("WETH");
-        setAmount("100");
-      }
-    }
-    if (mode === "transfer") {
-      if (isTestnet) {
-        setFromChain("Arc_Testnet");
-        setToChain("Base_Sepolia");
-        setFromToken("USDC");
-        setToToken("USDC");
-      }
-      setAmount("10");
-    }
-  };
-
-  const applyPct = (pct: number) => {
-    setPctActive(pct);
-    if (!sourceBal?.balanceRaw) {
-      if (pct === 100) setAmount((prev) => prev || "100");
-      return;
-    }
-    try {
-      const fromMetaLocal = findExecToken(fromChain, fromToken, network);
-      if (!fromMetaLocal) return;
-      const raw = BigInt(sourceBal.balanceRaw);
-      const slice = (raw * BigInt(pct)) / BigInt(100);
-      const formatted = formatUnits(slice, fromMetaLocal.decimals);
-      const n = Number(formatted);
-      setAmount(
-        n < 0.0001
-          ? formatted
-          : n < 1
-            ? n.toFixed(6).replace(/\.?0+$/, "")
-            : n.toFixed(4).replace(/\.?0+$/, ""),
-      );
-    } catch {
-      if (pct === 100) setAmount(sourceBal.balance);
-    }
-  };
-
-  const execute = async () => {
-    if (!address || !selectedRoute?.executable) return;
-    const balStr = sourceBal?.balance ?? "0";
-    const bal =
-      balStr.startsWith("<") ? 0 : Number.parseFloat(balStr.replace(/,/g, "")) || 0;
-    if (bal < Number(amount)) {
-      setMessage(
-        `Need ${amount} ${fromToken} on ${fromLabel} — available: ${sourceBal?.balance ?? "0"}. Fund via Fund wallet tab.`,
-      );
-      setStatus("error");
-      return;
-    }
-    setExecuting(true);
-    setMessage(null);
-    setCctpPending(null);
-    const intent = { fromChain, toChain, fromToken, toToken, amount };
-    try {
-      if (selectedRoute.circleDirect) {
-        const res = await executeCircleDirectIntent({
-          intent,
-          fromAddress: address,
-          testnet: isTestnet,
-          onProgress: setMessage,
-        });
-        pushTx({
-          type: "execution",
-          status: "success",
-          summary: `Transfer ${amount} ${fromToken} · ${fromLabel} → ${toLabel}`,
-          chain: fromChain,
-        });
-        setCctpPending({ burnTx: res.burnTx, amount });
-        setMessage(res.message);
-        setStatus("ok");
-        setTimeout(() => setBalanceRefresh((n) => n + 1), 2000);
-      } else {
-        const { txHash, tool } = await executeLifiIntent({
-          intent,
-          fromAddress: address,
-          testnet: isTestnet,
-          mode: network,
-          preloadedQuote: selectedRoute.lifiQuote,
-          onProgress: setMessage,
-        });
-        pushTx({
-          type: "execution",
-          status: "success",
-          summary: `${fromToken} → ${toToken} · ${fromLabel} → ${toLabel}`,
-          chain: fromChain,
-          hash: txHash,
-        });
-        setMessage(`Confirmed · ${tool ?? "route"} · ${txHash.slice(0, 14)}…`);
-        setStatus("ok");
-      }
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Transaction failed");
-      setStatus("error");
-    } finally {
-      setExecuting(false);
-    }
-  };
-
-  const fromLabel = chains.find((c) => c.appKitChain === fromChain)?.label ?? fromChain;
-  const toLabel = chains.find((c) => c.appKitChain === toChain)?.label ?? toChain;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       <header className="forge-studio-hero relative px-6 py-7 sm:px-8 sm:py-9">
         <p className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-400/90">
           Agora Forge
@@ -318,9 +54,10 @@ export function CrossChainStudio() {
         <h2 className="relative mt-2 font-display text-2xl font-bold text-white sm:text-3xl">
           <span className="text-gradient">Cross-chain</span> execution
         </h2>
-        <p className="relative mt-3 max-w-lg text-sm leading-relaxed text-slate-400">
-          State an outcome — we orchestrate debit, routing, conversion, and delivery.
-          Full execution, stable transfers, and arbitrary onchain calls in one product.
+        <p className="relative mt-3 max-w-xl text-sm leading-relaxed text-slate-400">
+          Swap, bridge, and full execution in one flow — compare routes on the right,
+          quote and exchange on the left. Save custom goals for the agent when you need
+          more than a single transaction.
         </p>
         <div className="relative mt-5">
           <ForgeRailsStrip />
@@ -330,18 +67,17 @@ export function CrossChainStudio() {
       <div className="flex gap-2 rounded-2xl border border-slate-800/80 bg-slate-950/50 p-1">
         {(
           [
-            { id: "goal" as const, label: "Full execution" },
-            { id: "transfer" as const, label: "Stable transfer" },
+            { id: "swap" as const, label: "Swap & Bridge" },
             { id: "arbitrary" as const, label: "Arbitrary" },
           ] as const
         ).map(({ id, label }) => (
           <button
             key={id}
             type="button"
-            onClick={() => applyMode(id)}
+            onClick={() => setTab(id)}
             className={cn(
-              "forge-mode-tab",
-              studioMode === id && "forge-mode-tab--active",
+              "forge-mode-tab flex-1",
+              tab === id && "forge-mode-tab--active",
               id === "arbitrary" && "forge-mode-tab--arbitrary",
             )}
           >
@@ -350,282 +86,22 @@ export function CrossChainStudio() {
         ))}
       </div>
 
-      {studioMode === "arbitrary" ? (
+      {tab === "arbitrary" ? (
         <ForgeArbitraryPanel />
       ) : (
-      <div className="grid gap-5 lg:grid-cols-2 lg:gap-6">
-        <section className="forge-panel space-y-4 p-5 sm:p-6">
-          {intentText && amount && (
-            <div className="forge-intent-banner">
-              <p className="forge-intent-banner__label">Execution intent</p>
-              <p className="forge-intent-banner__text">{intentText}</p>
-            </div>
-          )}
-
-          {studioMode === "goal" && localKind === "transfer" && (
-            <p className="forge-transfer-notice">
-              Same token across chains = stable transfer only. Pick a different{" "}
-              <strong className="text-slate-300">receive token</strong> for full execution
-              (e.g. USDC → WETH), or switch to Stable transfer mode.
-            </p>
-          )}
-
-          <h3 className="font-display text-xs font-bold uppercase tracking-[0.15em] text-slate-500">
-            Spend (source)
-          </h3>
-
-          <div className="flex items-center gap-3">
-            <TokenAvatar symbol={fromToken} chainKey={fromChain} size={48} />
-            <div className="grid flex-1 gap-2 sm:grid-cols-2">
-              <label className="block">
-                <span className="sr-only">Source chain</span>
-                <select
-                  value={fromChain}
-                  onChange={(e) => setFromChain(e.target.value)}
-                  className="w-full rounded-lg border border-slate-700/80 bg-slate-950/90 px-3 py-2.5 text-sm text-white"
-                >
-                  {chains.map((c) => (
-                    <option key={c.appKitChain} value={c.appKitChain}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
-                <span className="sr-only">Source token</span>
-                <select
-                  value={fromToken}
-                  onChange={(e) => setFromToken(e.target.value)}
-                  className="w-full rounded-lg border border-slate-700/80 bg-slate-950/90 px-3 py-2.5 text-sm font-semibold text-white"
-                >
-                  {fromTokens.map((t) => (
-                    <option key={t.symbol} value={t.symbol}>
-                      {t.symbol}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          </div>
-
-          <label className="block">
-            <span className="sr-only">Amount</span>
-            <div className="relative">
-              <input
-                type="text"
-                inputMode="decimal"
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => {
-                  setAmount(e.target.value);
-                  setPctActive(null);
-                }}
-                className="forge-amount-input w-full rounded-xl py-4 pl-4 pr-16 text-2xl font-semibold text-white"
-              />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-500">
-                {fromToken}
-              </span>
-            </div>
-          </label>
-
-          <p className="text-xs text-slate-500">
-            {balanceLoading
-              ? "Balance…"
-              : sourceBal
-                ? `Available on ${fromLabel}: ${sourceBal.balance} ${fromToken}`
-                : `Connect wallet · fund ${fromToken} on ${fromLabel}`}
-          </p>
-          {cctpNote && (
-            <p className="text-xs leading-relaxed text-amber-200/90">{cctpNote}</p>
-          )}
-
-          <div className="flex gap-2">
-            {[25, 50, 75, 100].map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => applyPct(p)}
-                className={cn(
-                  "forge-chip flex-1 rounded-lg py-2",
-                  pctActive === p && "forge-chip--active",
-                )}
-              >
-                {p === 100 ? "MAX" : `${p}%`}
-              </button>
-            ))}
-          </div>
-
-          <button
-            type="button"
-            onClick={flip}
-            className="forge-swap-control"
-            aria-label="Swap source and destination"
-          >
-            <Repeat2 className="h-4 w-4" strokeWidth={2.25} />
-          </button>
-
-          <div className="forge-receive-block flex items-center gap-3 p-3 sm:p-4">
-            <TokenAvatar symbol={toToken} chainKey={toChain} size={44} />
-            <div className="grid flex-1 gap-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-violet-300/80">
-                Outcome (receive)
-              </p>
-              <select
-                value={toChain}
-                onChange={(e) => setToChain(e.target.value)}
-                className="w-full rounded-lg border border-slate-700/60 bg-slate-950/80 px-2 py-2 text-sm text-white"
-              >
-                {chains.map((c) => (
-                  <option key={c.appKitChain} value={c.appKitChain}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={toToken}
-                onChange={(e) => setToToken(e.target.value)}
-                className="w-full rounded-lg border border-slate-700/60 bg-slate-950/80 px-2 py-2 text-sm font-semibold text-white"
-              >
-                {toTokens.map((t) => (
-                  <option key={t.symbol} value={t.symbol}>
-                    {t.symbol}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setShowRecipient((v) => !v)}
-            className="flex w-full items-center justify-between text-xs text-slate-500 hover:text-slate-300"
-          >
-            <span>Destination wallet (optional)</span>
-            <ChevronDown
-              className={cn("h-4 w-4 transition-transform duration-200", showRecipient && "rotate-180")}
+        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-6">
+          <div className="forge-panel p-4 sm:p-5">
+            <ExchangeWidget
+              onIntentChange={setIntent}
+              onCctpPending={(p) => setCctpPending(p)}
             />
-          </button>
-          {showRecipient && (
-            <RecipientField value={recipient} onChange={setRecipient} />
-          )}
-
-          {toChain === "Solana" && !isTestnet && (
-            <p className="rounded-lg border border-amber-500/25 bg-amber-950/30 px-3 py-2 text-xs text-amber-100/90">
-              Solana delivery needs a compatible recipient address when the route
-              supports it.
-            </p>
-          )}
-        </section>
-
-        <section className="forge-panel forge-panel--routes flex flex-col p-5 sm:p-6">
-          <h3 className="font-display text-xs font-bold uppercase tracking-[0.15em] text-slate-500">
-            Execution plan
-          </h3>
-
-          {pipeline.length > 0 && amount && (
-            <div className="mt-3 rounded-xl border border-slate-800/80 bg-slate-950/50 p-3">
-              <ForgeExecutionPipeline steps={pipeline} />
-            </div>
-          )}
-
-          <p className="mt-4 font-display text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
-            Solver paths
-            {executionKind === "full" && " · bundled cross-chain"}
-          </p>
-
-          <ForgeRoutePath
-            className="mt-3"
-            fromLabel={fromLabel}
-            toLabel={toLabel}
-            loading={quoteLoading}
-          />
-
-          {quoteLoading && (
-            <div className="forge-scan-bar mt-3" aria-hidden>
-              <div className="forge-scan-bar__fill" />
-            </div>
-          )}
-
-          <div className="mt-4 flex-1 space-y-3 overflow-y-auto min-h-[12rem]">
-            {!isConnected && (
-              <p className="rounded-xl border border-cyan-500/25 bg-cyan-950/20 px-4 py-8 text-center text-sm text-cyan-100/90">
-                Connect your wallet to scan routes
-              </p>
-            )}
-            {isConnected && !amount && (
-              <p className="py-10 text-center text-sm text-slate-500">
-                Enter an amount to compare paths
-              </p>
-            )}
-            {isConnected && amount && !quoteLoading && routes.length === 0 && (
-              <p className="py-10 text-center text-sm text-slate-500">
-                No path found — try USDC → WETH between Base and Ethereum
-              </p>
-            )}
-            {routes.map((r) => (
-              <CrossChainRouteCard
-                key={r.id}
-                route={r}
-                toSymbol={toToken}
-                toDecimals={toMeta?.decimals ?? 18}
-                selected={selectedId === r.id}
-                onSelect={() => setSelectedId(r.id)}
-              />
-            ))}
           </div>
-
-          <button
-            type="button"
-            disabled={
-              !isConnected ||
-              executing ||
-              !selectedRoute?.executable ||
-              quoteLoading
-            }
-            onClick={execute}
-            className="forge-execute-btn mt-5"
-          >
-            {executing
-              ? "Confirm in wallet…"
-              : executionKind === "full"
-                ? "Run execution"
-                : "Run transfer"}
-          </button>
-
-          {cctpPending && (
-            <div className="mt-4">
-              <ForgeCctpPending
-                amount={cctpPending.amount}
-                fromChain={fromChain}
-                fromLabel={fromLabel}
-                toLabel={toLabel}
-                toChain={toChain}
-                toToken={toToken}
-                burnTx={cctpPending.burnTx}
-                address={address!}
-                network={network}
-                onDismiss={() => setCctpPending(null)}
-              />
-            </div>
-          )}
-
-          {message && !cctpPending && (
-            <p
-              role="status"
-              className={cn(
-                "mt-3 rounded-lg px-3 py-2.5 text-xs leading-relaxed",
-                status === "error"
-                  ? "border border-red-500/30 bg-red-950/40 text-red-200"
-                  : status === "ok"
-                    ? "border border-emerald-500/25 bg-emerald-950/30 text-emerald-200"
-                    : "border border-slate-700/60 bg-slate-900/80 text-slate-300",
-              )}
-            >
-              {message}
-            </p>
-          )}
-        </section>
-      </div>
+          <ForgeRoutesPanel
+            intent={intent}
+            cctpPending={cctpPending}
+            onDismissCctp={() => setCctpPending(null)}
+          />
+        </div>
       )}
 
       <nav className="flex flex-wrap gap-2 border-t border-slate-800/60 pt-5">

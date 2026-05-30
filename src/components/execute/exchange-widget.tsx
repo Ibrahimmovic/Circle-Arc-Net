@@ -78,11 +78,25 @@ import {
   type WalletStep,
 } from "./wallet-steps-progress";
 import type { ChainOption } from "@/lib/network";
+import type { ExchangeIntentSnapshot } from "@/lib/exchange-intent";
 
 type Status = "idle" | "loading" | "success" | "error";
 type PickerSide = "from" | "to" | null;
 
-export function ExchangeWidget() {
+export type CctpPendingPayload = {
+  burnTx?: string;
+  amount: string;
+  fromChain: string;
+  toChain: string;
+};
+
+export function ExchangeWidget({
+  onIntentChange,
+  onCctpPending,
+}: {
+  onIntentChange?: (intent: ExchangeIntentSnapshot) => void;
+  onCctpPending?: (pending: CctpPendingPayload) => void;
+} = {}) {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChain, isPending: switching } = useSwitchChain();
@@ -185,6 +199,25 @@ export function ExchangeWidget() {
       setToToken("WETH");
     }
   }, [fromChain, toChain, fromToken, toToken, isTestnet]);
+
+  useEffect(() => {
+    onIntentChange?.({
+      fromChain,
+      toChain,
+      fromToken,
+      toToken,
+      amount,
+      recipient,
+    });
+  }, [
+    fromChain,
+    toChain,
+    fromToken,
+    toToken,
+    amount,
+    recipient,
+    onIntentChange,
+  ]);
 
   const swapEnds = () => {
     setFromChain(toChain);
@@ -738,6 +771,14 @@ export function ExchangeWidget() {
           feeUsd: "Arc USDC",
           hash: captureMerged.burnTx ?? captureMerged.approveTx,
         });
+        if (captureMerged.burnTx) {
+          onCctpPending?.({
+            burnTx: captureMerged.burnTx,
+            amount,
+            fromChain,
+            toChain,
+          });
+        }
         setStatus(submitted.uiStatus);
         setStep(null);
         setMessage(submitted.label);
@@ -835,6 +876,14 @@ export function ExchangeWidget() {
           feeUsd: "Arc USDC",
           hash: capture.burnTx,
         });
+        if (capture.burnTx) {
+          onCctpPending?.({
+            burnTx: capture.burnTx,
+            amount: usdcAmount,
+            fromChain,
+            toChain: TESTNET_HOME_CHAIN,
+          });
+        }
         setStatus("success");
         setStep(null);
         setMessage(`Done · ${fromToken}→USDC→Arc`);
