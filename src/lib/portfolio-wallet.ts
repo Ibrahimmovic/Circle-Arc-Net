@@ -32,6 +32,16 @@ import {
   enrichAssetsWithMarketData,
 } from "@/lib/portfolio-pricing";
 import {
+  capUsd,
+  resolvePortfolioTotalUsd,
+  sanitizeAssetUsd,
+} from "@/lib/portfolio-valuation";
+import {
+  getWalletTokensMultichain,
+  isMoralisConfigured,
+  moralisTokenToAsset,
+} from "@/lib/moralis";
+import {
   getWalletNftPositions,
   getWalletPortfolio,
   getWalletPositions,
@@ -127,7 +137,7 @@ function zerionPositionToAsset(p: ZerionPosition, isSpam: boolean): PortfolioAss
     name: p.attributes?.fungible_info?.name ?? p.attributes?.name ?? symbol,
     chain: chainLabel(chainId),
     chainId,
-    valueUsd: value,
+    valueUsd: sanitizeAssetUsd(symbol, capUsd(value)),
     balance: hasQty ? formatQuantityDisplay(qty, symbol) : undefined,
     priceUsd: p.attributes?.price,
     change24hPct: p.attributes?.percent_change_24h ?? 0,
@@ -148,6 +158,7 @@ function goldRushToAsset(t: GoldRushTokenBalance): PortfolioAsset | null {
 
   if (t.type === "nft" || (t.nft_data && t.nft_data.length > 0)) return null;
   if (!isSpam && quote < 0.0005 && !hasBalance) return null;
+  if (quote > 50_000_000) return null;
 
   const symbol = t.contract_ticker_symbol ?? "?";
   const chainId = t.chain_name ?? "unknown";
@@ -163,7 +174,7 @@ function goldRushToAsset(t: GoldRushTokenBalance): PortfolioAsset | null {
     name: t.contract_name ?? symbol,
     chain: t.chain_display_name ?? chainLabel(chainId),
     chainId,
-    valueUsd: Math.max(quote, 0),
+    valueUsd: sanitizeAssetUsd(symbol, capUsd(Math.max(quote, 0)), bal),
     balance: bal,
     change24hPct: change24h,
     logoUrl: resolveTokenLogo(symbol, goldRushTokenLogo(t), isNative),
@@ -309,7 +320,10 @@ export async function buildPortfolioWalletFeed(
     return null;
   };
 
-  const [portfolio, positionsClean, positionsSpam, txs, nftPos, goldBundle] =
+  const moralisOn = isMoralisConfigured();
+  let moralisAvailable = false;
+
+  const [portfolio, positionsClean, positionsSpam, txs, nftPos, goldBundle, moralisTokens] =
     await Promise.all([
       zerionOn
         ? getWalletPortfolio(address, testnet).catch(zerionCatch("portfolio"))
@@ -335,6 +349,11 @@ export async function buildPortfolioWalletFeed(
       testnet
         ? getBalancesForNetworkMode(address, true).catch(() => null)
         : getMainnetBalancesFull(address).catch(() => null),
+      moralisOn
+        ? getWalletTokensMultichain(address, testnet).catch(() =>
+            [] as Awaited<ReturnType<typeof getWalletTokensMultichain>>,
+          )
+        : Promise.resolve([] as Awaited<ReturnType<typeof getWalletTokensMultichain>>),
     ]);
 
   const zerionPrimary = Boolean(portfolio?.data?.attributes?.total?.positions);
@@ -375,6 +394,25 @@ export async function buildPortfolioWalletFeed(
 
   if (goldClean.length > 0 || goldSpam.length > 0 || goldNfts.length > 0) {
     sources.push(testnet ? "GoldRush testnet" : "GoldRush");
+  }
+
+  if (moralisTokens.length > 0) {
+    moralisAvailable = true;
+    sources.push(testnet ? "Moralis testnet" : "Moralis");
+    for (const { chain, token } of moralisTokens) {
+      const a = moralisTokenToAsset(chain, token);
+      if (!a) continue;
+      if (a.isSpam) {
+        if (hasMeaningfulHolding(a)) setAsset(spamMap, a, token.token_address);
+        continue;
+      }
+      const k = assetKey(a.chainId ?? a.chain, a.symbol, token.token_address);
+      const prev = assetMap.get(k);
+      if (zerionPrimary && prev) continue;
+      if (!prev || a.valueUsd > prev.valueUsd) {
+        setAsset(assetMap, a, token.token_address);
+      }
+    }
   }
 
   for (const t of goldNfts) {
@@ -472,25 +510,17 @@ export async function buildPortfolioWalletFeed(
   const nftCollections = groupNftCollections(nfts);
 
   let totalUsd = cleanAssets.reduce((s, a) => s + a.valueUsd, 0);
-  let chainDistribution: Record<string, number> = {};
+  const chainDistribution: Record<string, number> = {};
   for (const a of cleanAssets) {
     const key = canonicalChainKey(a.chainId ?? a.chain);
     chainDistribution[key] = (chainDistribution[key] ?? 0) + a.valueUsd;
   }
 
   const zTotal = portfolio?.data?.attributes?.total?.positions;
-  const zChains = portfolio?.data?.attributes?.positions_distribution_by_chain;
 
-  if (zerionAvailable && typeof zTotal === "number" && zTotal > 0) {
-    totalUsd = zTotal;
-    if (zChains && Object.keys(zChains).length > 0) {
-      chainDistribution = {};
-      for (const [chain, usd] of Object.entries(zChains)) {
-        chainDistribution[canonicalChainKey(chain)] =
-          (chainDistribution[canonicalChainKey(chain)] ?? 0) + usd;
-      }
-    }
-  } else if (!zerionAvailable && change24hPct === 0) {
+  totalUsd = resolvePortfolioTotalUsd(totalUsd, zTotal);
+
+  if (!zerionAvailable && change24hPct === 0) {
     try {
       const snap = await getMarketSnapshot();
       change24hPct = (snap.ethChange24h + snap.btcChange24h) / 2;
@@ -507,10 +537,14 @@ export async function buildPortfolioWalletFeed(
   }
 
   const dataSourceLabel = zerionAvailable
-    ? "Zerion + GoldRush + CoinGecko"
-    : zerionOn
-      ? "GoldRush + CoinGecko (Zerion unavailable)"
-      : "GoldRush + CoinGecko";
+    ? moralisAvailable
+      ? "Zerion + Moralis + GoldRush + CoinGecko"
+      : "Zerion + GoldRush + CoinGecko"
+    : moralisAvailable
+      ? "Moralis + GoldRush + CoinGecko"
+      : zerionOn
+        ? "GoldRush + CoinGecko (Zerion unavailable)"
+        : "GoldRush + CoinGecko";
 
   let walletUsd = 0;
   let defiUsd = 0;
@@ -572,6 +606,7 @@ export async function buildPortfolioWalletFeed(
     apisConfigured: {
       zerion: zerionOn,
       goldrush: Boolean(process.env.GOLDRUSH_API_KEY),
+      moralis: moralisOn,
       coingecko: true,
     },
     zerionStatus,

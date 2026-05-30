@@ -33,7 +33,6 @@ import type { MarketRegime } from "@/lib/types";
 import { DEFAULT_CHART_PERIOD, type ChartPeriod } from "@/lib/chart-period";
 import {
   GlassBadge,
-  GlassIconOrb,
   GlassPanel,
   LiquidGlassButton,
 } from "@/components/ui/glass-ui";
@@ -130,14 +129,16 @@ export function PortfolioCommandCenter() {
           <CoinStrip variant="glass" />
         </GlassPanel>
         <GlassPanel strong className="p-8 text-center sm:p-10">
-          <GlassIconOrb icon={Wallet} variant="cyan" size="lg" className="mx-auto" />
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-white/15 bg-white/8">
+            <Wallet className="h-7 w-7 text-cyan-300" />
+          </div>
           <p className="relative mt-6 font-display text-2xl font-bold text-white">
             Connect wallet for DeBank-style portfolio
           </p>
           <p className="relative mx-auto mt-2 max-w-lg text-sm text-white/60">
             Multichain net worth, per-chain breakdown, aggregated tokens across
-            networks, NFT collections, and labeled transaction history — Zerion
-            + GoldRush, like DeBank and Zerion.
+            networks, NFT collections, and labeled transaction history — Moralis
+            + Zerion + GoldRush.
           </p>
         </GlassPanel>
       </div>
@@ -211,16 +212,7 @@ export function PortfolioCommandCenter() {
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="portfolio-glass-tab-bar flex gap-1 overflow-x-auto scrollbar-thin">
-              {TABS.map(({ id, label, icon: Icon }) => {
-                const orbVariant =
-                  id === "adaptive"
-                    ? "emerald"
-                    : id === "spam"
-                      ? "coral"
-                      : id === "nfts"
-                        ? "violet"
-                        : "cyan";
-                return (
+              {TABS.map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
                   type="button"
@@ -231,7 +223,13 @@ export function PortfolioCommandCenter() {
                     id === "spam" && tab === id && "portfolio-glass-tab--amber",
                   )}
                 >
-                  <GlassIconOrb icon={Icon} variant={orbVariant} size="sm" />
+                  <Icon
+                    className={cn(
+                      "h-4 w-4 shrink-0",
+                      tab === id ? "text-white" : "text-white/55",
+                    )}
+                    strokeWidth={2}
+                  />
                   <span className="truncate">{label}</span>
                   {id === "assets" && counts.assets > 0 && (
                     <span className="text-[10px] text-white/50">{counts.assets}</span>
@@ -248,8 +246,7 @@ export function PortfolioCommandCenter() {
                     </span>
                   )}
                 </button>
-                );
-              })}
+              ))}
             </div>
 
             {tab !== "adaptive" && tab !== "spam" && (

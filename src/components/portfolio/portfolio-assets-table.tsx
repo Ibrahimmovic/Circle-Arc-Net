@@ -41,7 +41,7 @@ export function PortfolioAssetsTable({
               >
                 <td className="py-3.5 pl-1">
                   <div className="flex items-center gap-3">
-                    <AssetIcon symbol={a.symbol} logoUrl={a.logoUrl} size={36} glass />
+                    <AssetIcon symbol={a.symbol} logoUrl={a.logoUrl} size={40} />
                     <div className="min-w-0">
                       <p className="font-semibold text-white">{a.symbol}</p>
                       <p className="truncate text-xs text-white/50">{a.name}</p>

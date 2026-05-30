@@ -11,7 +11,7 @@ export function PortfolioSetupBanner({
 }: {
   zerionAvailable: boolean;
   dataSourceLabel?: string;
-  apis?: { zerion: boolean; goldrush: boolean; coingecko: boolean };
+  apis?: { zerion: boolean; goldrush: boolean; moralis: boolean; coingecko: boolean };
   zerionStatus?: "ok" | "error" | "off";
   zerionMessage?: string;
 }) {
@@ -38,8 +38,8 @@ export function PortfolioSetupBanner({
             {zerionAvailable
               ? "Live portfolio data connected"
               : showWarning
-                ? "Zerion key is set but API did not respond"
-                : "Limited mode — add Zerion for full DeBank/Zerion experience"}
+                ? "Zerion rate-limited or unavailable — using Moralis + GoldRush"
+                : "Indexer mode — Moralis + GoldRush + CoinGecko"}
           </p>
           <p className="mt-1 text-xs opacity-90">
             {dataSourceLabel ?? "Loading…"}
@@ -63,6 +63,7 @@ export function PortfolioSetupBanner({
           {apis && (
             <p className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-wide opacity-80">
               <span>Zerion {apis.zerion ? "on" : "off"}</span>
+              <span>Moralis {apis.moralis ? "on" : "off"}</span>
               <span>GoldRush {apis.goldrush ? "on" : "off"}</span>
               <span>CoinGecko {apis.coingecko ? "on" : "off"}</span>
             </p>

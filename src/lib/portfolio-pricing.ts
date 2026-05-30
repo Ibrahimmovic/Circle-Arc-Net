@@ -1,6 +1,8 @@
 import { getMarketSnapshot, getTopCoins } from "@/lib/coingecko";
 import { parseBalanceString } from "@/lib/portfolio-display";
+import { capUsd, sanitizeAssetUsd } from "@/lib/portfolio-valuation";
 import type { PortfolioAsset } from "@/lib/portfolio-wallet-types";
+import { VERIFIED_TOKEN_SYMBOLS } from "@/lib/token-visuals";
 
 /** CoinGecko id by ticker — extends coverage beyond top-100 markets list */
 const SYMBOL_TO_COINGECKO_ID: Record<string, string> = {
@@ -149,25 +151,39 @@ export function enrichAssetsWithMarketData(
   market: Map<string, MarketQuote>,
 ): PortfolioAsset[] {
   return assets.map((a) => {
-    const q = market.get(a.symbol.toUpperCase());
-    if (!q?.price) return a;
-
+    const sym = a.symbol.toUpperCase();
+    const q = market.get(sym);
+    const isVerified = VERIFIED_TOKEN_SYMBOLS.has(sym);
     const balNum = parseBalanceString(a.balance);
-    let priceUsd = a.priceUsd && a.priceUsd > 0 ? a.priceUsd : q.price;
-    let valueUsd = a.valueUsd;
-    if (valueUsd < 0.01 && balNum != null && balNum > 0) {
-      valueUsd = balNum * priceUsd;
+
+    let priceUsd = a.priceUsd && a.priceUsd > 0 ? a.priceUsd : q?.price;
+    let valueUsd = capUsd(a.valueUsd);
+
+    // Only price from CoinGecko for verified tickers — avoids spam "USDC" inflation
+    if (
+      isVerified &&
+      q?.price &&
+      valueUsd < 0.01 &&
+      balNum != null &&
+      balNum > 0
+    ) {
+      valueUsd = capUsd(balNum * (priceUsd ?? q.price));
     }
+
+    valueUsd = sanitizeAssetUsd(a.symbol, valueUsd, a.balance, priceUsd);
+
     const change24hPct =
-      Math.abs(a.change24hPct) > 0.001 ? a.change24hPct : q.change24h;
+      Math.abs(a.change24hPct) > 0.001
+        ? a.change24hPct
+        : (q?.change24h ?? a.change24hPct);
 
     return {
       ...a,
-      logoUrl: a.logoUrl ?? q.image,
+      logoUrl: a.logoUrl ?? (isVerified ? q?.image : undefined),
       priceUsd,
       valueUsd,
       change24hPct,
-      unverified: valueUsd < 0.01 && (balNum ?? 0) > 0,
+      unverified: valueUsd < 0.01 && (balNum ?? 0) > 0 && !isVerified,
     };
   });
 }

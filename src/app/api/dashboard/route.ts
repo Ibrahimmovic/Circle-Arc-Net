@@ -159,6 +159,7 @@ export async function GET(req: NextRequest) {
       circle: Boolean(process.env.CIRCLE_API_KEY),
       zerion: Boolean(process.env.ZERION_API_KEY),
       goldrush: Boolean(process.env.GOLDRUSH_API_KEY),
+      moralis: Boolean(process.env.MORALIS_API_KEY),
       kit: Boolean(getKitKey()),
       coingecko: true,
     },

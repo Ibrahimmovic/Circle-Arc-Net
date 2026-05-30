@@ -119,6 +119,7 @@ export type PortfolioWalletFeed = {
   apisConfigured?: {
     zerion: boolean;
     goldrush: boolean;
+    moralis: boolean;
     coingecko: boolean;
   };
   /** ok | error | off — why Zerion data may be missing */

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { listCircleWallets } from "@/lib/circle";
 import { getWalletBalanceChart, getWalletPortfolio } from "@/lib/zerion";
 import { getAllChainsBalances } from "@/lib/goldrush";
+import { getWalletTokensForChain, isMoralisConfigured } from "@/lib/moralis";
 
 export async function GET() {
   const demo =
@@ -14,9 +15,11 @@ export async function GET() {
     zerion: false,
     zerionChart: false,
     goldrush: false,
+    moralis: false,
     network: process.env.NEXT_PUBLIC_NETWORK ?? "mainnet",
     zerionKeySet: Boolean(process.env.ZERION_API_KEY?.trim()),
     goldrushKeySet: Boolean(process.env.GOLDRUSH_API_KEY?.trim()),
+    moralisKeySet: Boolean(process.env.MORALIS_API_KEY?.trim()),
     timestamp: new Date().toISOString(),
   };
   const errors: Record<string, string> = {};
@@ -47,6 +50,15 @@ export async function GET() {
     status.goldrush = true;
   } catch (e) {
     errors.goldrush = e instanceof Error ? e.message.slice(0, 80) : "failed";
+  }
+
+  if (isMoralisConfigured()) {
+    try {
+      const tokens = await getWalletTokensForChain(demo, "base");
+      status.moralis = tokens.length >= 0;
+    } catch (e) {
+      errors.moralis = e instanceof Error ? e.message.slice(0, 120) : "failed";
+    }
   }
 
   const allOk = status.circle && status.kit && status.zerion && status.goldrush;
