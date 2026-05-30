@@ -14,7 +14,7 @@ export async function GET() {
     zerion: false,
     zerionChart: false,
     goldrush: false,
-    network: process.env.NEXT_PUBLIC_NETWORK ?? "testnet",
+    network: process.env.NEXT_PUBLIC_NETWORK ?? "mainnet",
     zerionKeySet: Boolean(process.env.ZERION_API_KEY?.trim()),
     goldrushKeySet: Boolean(process.env.GOLDRUSH_API_KEY?.trim()),
     timestamp: new Date().toISOString(),

@@ -6,13 +6,13 @@ Add these **exact variable names** and paste your keys as values (Production + P
 
 | Variable name | Your value starts with |
 |---------------|------------------------|
-| `CIRCLE_API_KEY` | `TEST_API_KEY:` |
+| `CIRCLE_API_KEY` | `LIVE_API_KEY:` (mainnet) or `TEST_API_KEY:` (testnet only) |
 | `NEXT_PUBLIC_CIRCLE_KIT_KEY` | `KIT_KEY:` |
 | `CIRCLE_KIT_KEY` | `KIT_KEY:` (optional server copy for swap proxy) |
 | `ZERION_API_KEY` | `zk_` |
 | `GOLDRUSH_API_KEY` | `cqt_` |
 | `NEXT_PUBLIC_APP_URL` | `https://circle-arc-net.vercel.app` |
-| `NEXT_PUBLIC_NETWORK` | `testnet` (edit the existing row — do not add a duplicate) |
+| `NEXT_PUBLIC_NETWORK` | `mainnet` (use `testnet` only for Arc demo deploys; edit existing row — no duplicate) |
 | `NEXT_PUBLIC_DEMO_WALLET` | optional `0x…` for status checks |
 
 `vercel.json` already sets `NEXT_PUBLIC_APP_URL` and `NEXT_PUBLIC_NETWORK` for Production — secrets (`ZERION_API_KEY`, `GOLDRUSH_API_KEY`, `CIRCLE_API_KEY`) must be added in the Vercel UI only.

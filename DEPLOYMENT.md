@@ -19,7 +19,7 @@ The Next.js app runs from the **repository root** (not `agora-forge/`).
 | `GOLDRUSH_API_KEY` | Yes |
 | `NEXT_PUBLIC_APP_URL` | `https://circle-arc-net.vercel.app` |
 | `NEXT_PUBLIC_DEMO_WALLET` | Optional |
-| `NEXT_PUBLIC_NETWORK` | `testnet` (default for hackathon) |
+| `NEXT_PUBLIC_NETWORK` | `mainnet` (set `testnet` for Arc/CCTP demo) |
 
 **Paste your keys in Vercel exactly** (no quotes, no spaces). After saving, click **Redeploy**.
 
