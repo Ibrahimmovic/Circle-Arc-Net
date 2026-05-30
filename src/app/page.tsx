@@ -2,15 +2,32 @@
 
 import { useAccount } from "wagmi";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
-import { PortfolioHero } from "@/components/portfolio/portfolio-hero";
-import { HomeWelcome } from "@/components/home/home-welcome";
+import { StatCard } from "@/components/ui/stat-card";
+import { RegimeBadge } from "@/components/portfolio/regime-badge";
 import { MarketTicker } from "@/components/dashboard/market-ticker";
 import { CoinStrip } from "@/components/dashboard/coin-strip";
+import { ActivityFeed } from "@/components/dashboard/activity-feed";
+import { PortfolioHero } from "@/components/portfolio/portfolio-hero";
+import { ChainBalanceGrid } from "@/components/portfolio/chain-balance-grid";
+import { HomeCinematicHero } from "@/components/home/home-cinematic-hero";
+import { HomeFeatureGrid } from "@/components/home/home-feature-grid";
+import { MotionScrollReveal } from "@/components/motion/motion-primitives";
+import { PremiumIcon } from "@/components/ui/premium-icon";
+import { GlassPanel, LiquidGlassButton } from "@/components/ui/glass-ui";
 import { useDashboard } from "@/hooks/use-dashboard";
 import { useNetwork } from "@/providers/network-context";
-import { Zap, ArrowRight, RefreshCw } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  Wallet,
+  TrendingUp,
+  Layers,
+  Zap,
+  ArrowRight,
+  RefreshCw,
+  Globe,
+} from "lucide-react";
+import { formatUsd, formatPct } from "@/lib/utils";
 import type { MarketRegime } from "@/lib/types";
 
 export default function HomePage() {
@@ -36,90 +53,170 @@ export default function HomePage() {
   const regime = (analysis?.regime ??
     data?.macroRegime ??
     "neutral") as MarketRegime;
+  const trend = change24h >= 0 ? "up" : ("down" as const);
+
+  if (!walletReady) {
+    return (
+      <AppShell title="Overview" subtitle="" variant="home">
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-2 border-white/20 border-t-cyan-400" />
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell title="Overview" subtitle="" variant="home">
-      <div className="mx-auto w-full max-w-4xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-0">
-        {!walletReady && (
-          <div className="portfolio-hero-premium flex min-h-[280px] items-center justify-center p-8">
-            <div className="h-10 w-10 animate-spin rounded-full border-2 border-cyan-500/30 border-t-cyan-400" />
-          </div>
+      <HomeCinematicHero
+        compact={isConnected}
+        showCta={!isConnected}
+        walletPreview={
+          isConnected && analysis
+            ? { totalUsd, change24hPct: change24h }
+            : undefined
+        }
+      />
+
+      <div className="home-content space-y-8">
+        <MotionScrollReveal>
+          <GlassPanel strong className="overflow-hidden">
+            <MarketTicker variant="glass" />
+            <CoinStrip variant="glass" />
+          </GlassPanel>
+        </MotionScrollReveal>
+
+        {!isConnected && (
+          <MotionScrollReveal>
+            <HomeFeatureGrid />
+          </MotionScrollReveal>
         )}
 
-        {walletReady && !isConnected && <HomeWelcome />}
+        {isConnected && (
+          <MotionScrollReveal>
+            <div className="space-y-8">
+              <span className="home-connected-badge inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-cyan-200">
+                <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]" />
+                {data?.networkMode ?? network} · live balances
+              </span>
 
-        {walletReady && isConnected && (
-          <>
-            <div className="home-market-strip overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl">
-              <MarketTicker variant="glass" />
-              <CoinStrip variant="glass" />
-            </div>
+              {data?.hint && (
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                  {data.hint}{" "}
+                  <Link
+                    href="/execute"
+                    className="font-semibold text-white underline-offset-2 hover:underline"
+                  >
+                    Fund →
+                  </Link>
+                </div>
+              )}
 
-            <span className="home-connected-badge inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-cyan-200">
-              <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]" />
-              {data?.networkMode ?? network} · live balances
-            </span>
+              {analysis ? (
+                <PortfolioHero
+                  variant="glass"
+                  totalUsd={totalUsd}
+                  change24hPct={change24h}
+                  regime={regime}
+                  chainCount={data?.chainBalances?.length ?? health?.chainCount ?? 0}
+                  sparkline={data?.sparkline ?? []}
+                  sources={health?.sources ?? ["Zerion", "Covalent"]}
+                  dataSourceLabel={health?.sources?.join(" · ")}
+                  loading={loading}
+                />
+              ) : (
+                <GlassPanel strong className="p-8 text-center">
+                  <p className="text-white/60">
+                    {loading ? "Scanning all chains…" : "No balance yet — use Fund tab."}
+                  </p>
+                </GlassPanel>
+              )}
 
-            {data?.hint && (
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                {data.hint}{" "}
-                <Link href="/execute" className="font-semibold text-white underline-offset-2 hover:underline">
-                  Fund →
-                </Link>
+              <div className="flex flex-wrap gap-3">
+                <LiquidGlassButton href="/execute" variant="primary">
+                  <Zap className="h-4 w-4" />
+                  Open Execute
+                </LiquidGlassButton>
+                <LiquidGlassButton href="/portfolio" variant="secondary">
+                  Portfolio
+                  <ArrowRight className="h-4 w-4" />
+                </LiquidGlassButton>
+                <LiquidGlassButton variant="ghost" onClick={() => refresh()}>
+                  <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                  Sync
+                </LiquidGlassButton>
+                {data?.dataFreshness && (
+                  <span className="self-center text-xs text-white/45">
+                    Updated {new Date(data.dataFreshness).toLocaleTimeString()}
+                  </span>
+                )}
               </div>
-            )}
 
-            {analysis ? (
-              <PortfolioHero
-                variant="classic"
-                totalUsd={totalUsd}
-                change24hPct={change24h}
-                regime={regime}
-                chainCount={data?.chainBalances?.length ?? health?.chainCount ?? 0}
-                sparkline={data?.sparkline ?? []}
-                sources={health?.sources ?? ["Zerion", "Covalent"]}
-                loading={loading}
-              />
-            ) : (
-              <div className="portfolio-hero-premium p-8 text-center">
-                <p className="text-slate-400">
-                  {loading ? "Scanning all chains…" : "No balance yet — use Fund tab."}
-                </p>
+              <div className="home-stat-grid grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <StatCard
+                  label="Net worth"
+                  value={loading ? "…" : formatUsd(totalUsd)}
+                  sub={formatPct(change24h) + " 24h"}
+                  icon={Wallet}
+                  trend={trend}
+                  variant="cyan"
+                />
+                <StatCard
+                  label="Chains"
+                  value={String(data?.chainBalances?.length ?? 0)}
+                  sub="Multichain scan"
+                  icon={Globe}
+                  variant="violet"
+                />
+                <StatCard
+                  label="Regime"
+                  value={regime.replace("-", " ")}
+                  sub="CoinGecko + portfolio"
+                  icon={TrendingUp}
+                  variant="emerald"
+                />
+                <StatCard
+                  label="Rebalance"
+                  value={String(analysis?.rebalanceActions.length ?? 0)}
+                  sub="Suggested moves"
+                  icon={Layers}
+                  variant="amber"
+                />
               </div>
-            )}
 
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href="/execute"
-                className="premium-cta premium-cta--primary inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 sm:flex-none"
-              >
-                <Zap className="h-4 w-4" />
-                Open Execute
-              </Link>
-              <Link
-                href="/portfolio"
-                className="premium-cta premium-cta--ghost inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 sm:flex-none"
-              >
-                Portfolio
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <button
-                type="button"
-                onClick={() => refresh()}
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-slate-700 px-4 text-xs text-slate-400 hover:text-white touch-manipulation"
-              >
-                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-                Sync
-              </button>
+              {data?.chainBalances && data.chainBalances.length > 0 && (
+                <GlassPanel strong className="p-6">
+                  <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-white/55">
+                    <PremiumIcon icon={Globe} variant="cyan" size="sm" />
+                    By chain
+                  </h3>
+                  <ChainBalanceGrid chains={data.chainBalances} />
+                </GlassPanel>
+              )}
+
+              <div className="grid gap-6 lg:grid-cols-2">
+                <GlassPanel strong className="p-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-white/55">
+                      <PremiumIcon icon={Zap} variant="violet" size="sm" />
+                      Quick actions
+                    </h3>
+                    <RegimeBadge regime={regime} />
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <LiquidGlassButton href="/execute" variant="primary" className="!w-full">
+                      <Zap className="h-4 w-4" /> Execute
+                    </LiquidGlassButton>
+                    <LiquidGlassButton href="/portfolio" variant="secondary" className="!w-full">
+                      Portfolio <ArrowRight className="h-4 w-4" />
+                    </LiquidGlassButton>
+                  </div>
+                </GlassPanel>
+                <GlassPanel strong className="overflow-hidden p-1">
+                  <ActivityFeed />
+                </GlassPanel>
+              </div>
             </div>
-
-            <p className="text-center text-[11px] text-slate-500">
-              Cinematic glass theme & full adaptive portfolio →{" "}
-              <Link href="/portfolio" className="text-cyan-400/90 hover:text-cyan-300">
-                Portfolio tab
-              </Link>
-            </p>
-          </>
+          </MotionScrollReveal>
         )}
       </div>
     </AppShell>

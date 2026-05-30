@@ -21,7 +21,7 @@ export function AppShell({
 }) {
   const isHome = variant === "home";
   const isPortfolio = variant === "portfolio";
-  const isCinematic = isPortfolio;
+  const isCinematic = isHome || isPortfolio;
 
   return (
     <div

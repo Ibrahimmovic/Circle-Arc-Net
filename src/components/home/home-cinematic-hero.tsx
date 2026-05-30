@@ -42,7 +42,7 @@ export function HomeCinematicHero({
             <p className="home-glass-hero__lede">
               Route USDC with Circle CCTP, compare LI.FI paths in real time, and settle
               swaps across Ethereum, Base, Arbitrum, and Arc — backed by Zerion and
-              GoldRush portfolio intelligence.
+              Covalent portfolio intelligence.
             </p>
 
             {walletPreview && (
