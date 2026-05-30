@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useAccount } from "wagmi";
 import { useNetwork } from "@/providers/network-context";
 import { getExecChains } from "@/lib/execution/chain-catalog";
 import { executeArbitraryCall } from "@/lib/execution/execute-arbitrary";
+import { saveIntent } from "@/lib/saved-intents";
 import { cn } from "@/lib/utils";
 
 const GOAL_PRESETS = [
@@ -46,23 +48,8 @@ export function ForgeArbitraryPanel() {
       return;
     }
     try {
-      const key = "agora-forge-signed-intents";
-      const prev = JSON.parse(localStorage.getItem(key) ?? "[]") as unknown[];
-      localStorage.setItem(
-        key,
-        JSON.stringify(
-          [
-            {
-              id: `intent-${Date.now()}`,
-              text: goal.trim(),
-              createdAt: new Date().toISOString(),
-              status: "queued",
-            },
-            ...prev,
-          ].slice(0, 20),
-        ),
-      );
-      setMsg("Goal saved. Open the Agent page to run portfolio-linked execution when ready.");
+      saveIntent(goal);
+      setMsg("saved");
       setStatus("ok");
     } catch {
       setMsg("Could not save goal.");
@@ -102,10 +89,9 @@ export function ForgeArbitraryPanel() {
           Custom goal
         </p>
         <p className="mt-2 text-sm text-slate-400">
-          Describe what you want in normal language. For swaps and bridges, use{" "}
-          <strong className="text-slate-200">Full execution</strong> or{" "}
-          <strong className="text-slate-200">Stable transfer</strong> — they work
-          today with your wallet.
+          Describe what you want in normal language. For swaps, bridges, and route
+          comparison, use <strong className="text-slate-200">Swap & Bridge</strong> — it
+          runs in your wallet today.
         </p>
 
         <div className="mt-4 flex flex-wrap gap-2">
@@ -188,7 +174,16 @@ export function ForgeArbitraryPanel() {
         )}
       </div>
 
-      {msg && (
+      {msg === "saved" && status === "ok" && (
+        <p className="rounded-lg border border-emerald-500/25 bg-emerald-950/30 px-3 py-2.5 text-xs text-emerald-200">
+          Goal saved to this browser. View and manage it on the{" "}
+          <Link href="/agent#saved-goals" className="font-semibold text-cyan-300 underline">
+            Agent page
+          </Link>
+          .
+        </p>
+      )}
+      {msg && msg !== "saved" && (
         <p
           className={cn(
             "rounded-lg px-3 py-2 text-xs",

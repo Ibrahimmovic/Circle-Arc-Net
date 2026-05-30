@@ -8,6 +8,7 @@ import { Bot, Play, Loader2, CircleDot } from "lucide-react";
 import type { PortfolioAnalysis } from "@/lib/types";
 import type { ExecutionJob } from "@/lib/execution/types";
 import { runExecutionQueue } from "@/lib/execution/orchestrator";
+import { SavedGoalsPanel } from "@/components/agent/saved-goals-panel";
 
 const DEMO =
   process.env.NEXT_PUBLIC_DEMO_WALLET ??
@@ -77,6 +78,8 @@ export default function AgentPage() {
       title="Agent Console"
       subtitle="Portfolio → plan → automated CCTP · manual runs on Execute"
     >
+      <SavedGoalsPanel />
+
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="luxury-card rounded-2xl p-8">
           <div className="flex items-center gap-4">
