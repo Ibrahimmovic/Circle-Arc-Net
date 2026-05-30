@@ -12,6 +12,7 @@ import { PortfolioHero } from "@/components/portfolio/portfolio-hero";
 import { ChainBalanceGrid } from "@/components/portfolio/chain-balance-grid";
 import { HomeCinematicHero } from "@/components/home/home-cinematic-hero";
 import { HomeFeatureGrid } from "@/components/home/home-feature-grid";
+import { MotionScrollReveal } from "@/components/motion/motion-primitives";
 import { PremiumIcon } from "@/components/ui/premium-icon";
 import { useDashboard } from "@/hooks/use-dashboard";
 import { useNetwork } from "@/providers/network-context";
@@ -50,14 +51,21 @@ export default function HomePage() {
       <HomeCinematicHero compact={isConnected} showCta={!isConnected} />
 
       <div className="home-content space-y-8">
-        <div className="home-ticker-wrap space-y-0">
-          <MarketTicker />
-          <CoinStrip />
-        </div>
+        <MotionScrollReveal>
+          <div className="home-ticker-wrap space-y-0">
+            <MarketTicker />
+            <CoinStrip />
+          </div>
+        </MotionScrollReveal>
 
-        {!isConnected && <HomeFeatureGrid />}
+        {!isConnected && (
+          <MotionScrollReveal>
+            <HomeFeatureGrid />
+          </MotionScrollReveal>
+        )}
 
         {isConnected && (
+          <MotionScrollReveal>
           <div className="space-y-8">
             <span className="home-connected-badge">
               <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]" />
@@ -178,6 +186,7 @@ export default function HomePage() {
               </div>
             </div>
           </div>
+          </MotionScrollReveal>
         )}
       </div>
     </AppShell>

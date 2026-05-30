@@ -4,6 +4,21 @@
   --bg-deep: #030712;
   --bg-panel: rgba(15, 23, 42, 0.96);
   --foreground: #f8fafc;
+  /* Figma variables — synced with src/design/figma-tokens.ts */
+  --figma-bg-canvas: #000000;
+  --figma-bg-elevated: #05020f;
+  --figma-bg-glass: rgba(8, 4, 20, 0.72);
+  --figma-accent-indigo: #6366f1;
+  --figma-accent-indigo-light: #818cf8;
+  --figma-accent-cyan: #22d3ee;
+  --figma-accent-violet: #a78bfa;
+  --figma-text-primary: #ffffff;
+  --figma-text-secondary: rgba(148, 163, 184, 0.95);
+  --figma-border-subtle: rgba(99, 102, 241, 0.15);
+  --figma-radius-lg: 20px;
+  --figma-radius-xl: 24px;
+  --figma-shadow-glow: 0 0 56px rgba(99, 102, 241, 0.35);
+  --figma-blur-glass: 20px;
 }
 
 @theme inline {
@@ -1533,4 +1548,149 @@ body {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #67e8f9;
+}
+
+/* —— Framer Motion 3D scene (Figma frame: Home / Hero / 3D) —— */
+
+.framer-scene {
+  background: var(--figma-bg-canvas);
+}
+
+.framer-scene--compact .framer-scene__stage {
+  transform: scale(0.82) translateY(8%);
+}
+
+.framer-aurora {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+.framer-aurora--indigo {
+  width: 55%;
+  height: 45%;
+  top: 5%;
+  left: -5%;
+  background: rgba(99, 102, 241, 0.22);
+}
+
+.framer-aurora--cyan {
+  width: 45%;
+  height: 40%;
+  top: 20%;
+  right: -8%;
+  background: rgba(6, 182, 212, 0.12);
+}
+
+.framer-scene__grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(99, 102, 241, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 75% 65% at 50% 45%, black, transparent);
+  opacity: 0.7;
+}
+
+.framer-scene__stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 1000px;
+  transform-style: preserve-3d;
+}
+
+.framer-scene__coins {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transform: translateY(-5%);
+}
+
+.framer-scene__platform {
+  position: absolute;
+  bottom: 18%;
+  left: 50%;
+  width: 70%;
+  height: 5rem;
+  margin-left: -35%;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse,
+    rgba(99, 102, 241, 0.2) 0%,
+    rgba(6, 182, 212, 0.08) 50%,
+    transparent 72%
+  );
+  transform: rotateX(62deg);
+  transform-style: preserve-3d;
+}
+
+.framer-coin-3d {
+  position: relative;
+  width: 5rem;
+  height: 5rem;
+  transform-style: preserve-3d;
+}
+
+.framer-coin-3d__face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--coin-face);
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.5),
+    inset 0 2px 0 rgba(255, 255, 255, 0.28);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  color: white;
+  transform: translateZ(0.5rem);
+}
+
+.framer-coin-3d__edge {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--coin-edge);
+  transform: translateZ(-0.25rem) scale(0.94);
+  filter: brightness(0.75);
+}
+
+.framer-coin-3d__glow {
+  position: absolute;
+  inset: -20%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(129, 140, 248, 0.35), transparent 70%);
+  transform: translateZ(-1rem);
+  pointer-events: none;
+}
+
+.framer-bridge__orb {
+  position: absolute;
+  top: 35%;
+  left: 50%;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-left: -0.25rem;
+  border-radius: 50%;
+  background: var(--figma-accent-indigo-light);
+  box-shadow: 0 0 16px var(--figma-accent-indigo-light);
+}
+
+.framer-particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--figma-accent-indigo-light);
+  box-shadow: 0 0 8px rgba(129, 140, 248, 0.6);
+  pointer-events: none;
 }
