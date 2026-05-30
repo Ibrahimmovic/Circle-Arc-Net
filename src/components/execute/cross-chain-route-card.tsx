@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import type { CrossChainRouteOption } from "@/lib/lifi-routes";
-import { formatUnits } from "viem";
+import { formatRouteAmount } from "@/lib/format-route-amount";
 import { ForgeRouteBadge } from "@/components/execute/forge-route-badge";
 
 export function CrossChainRouteCard({
@@ -18,14 +18,14 @@ export function CrossChainRouteCard({
   selected: boolean;
   onSelect: () => void;
 }) {
-  let amountLabel = "—";
-  if (route.toAmount) {
-    try {
-      const formatted = formatUnits(BigInt(route.toAmount), toDecimals);
-      amountLabel = `${Number(formatted).toLocaleString(undefined, { maximumFractionDigits: 6 })} ${toSymbol}`;
-    } catch {
-      amountLabel = route.toAmount;
-    }
+  let amountLabel = route.toAmountDisplay ?? "—";
+  if (!route.toAmountDisplay && route.toAmount) {
+    const dec = route.toAmountDecimals ?? toDecimals;
+    const formatted = formatRouteAmount(route.toAmount, dec, toSymbol);
+    amountLabel = formatted ?? "—";
+  }
+  if (route.circleDirect && !route.toAmountDisplay) {
+    amountLabel = `~${toSymbol} (mint pending)`;
   }
 
   const gas =

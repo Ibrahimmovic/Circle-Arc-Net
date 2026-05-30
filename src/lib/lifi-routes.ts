@@ -21,6 +21,8 @@ export interface CrossChainRouteOption {
   hint?: string;
   /** How this path fulfills the user goal */
   executionHint?: string;
+  toAmountDisplay?: string;
+  toAmountDecimals?: number;
 }
 
 interface LifiAdvancedRoute {

@@ -7,38 +7,85 @@ import { getExecChains } from "@/lib/execution/chain-catalog";
 import { executeArbitraryCall } from "@/lib/execution/execute-arbitrary";
 import { cn } from "@/lib/utils";
 
+const GOAL_PRESETS = [
+  {
+    id: "stake",
+    label: "Stake after bridging",
+    text: "Bridge USDC from Base to Arbitrum, then stake in a vault I specify later.",
+  },
+  {
+    id: "rebalance",
+    label: "Rebalance my portfolio",
+    text: "Move 30% of my USDC from Ethereum to Base and keep the rest on Ethereum.",
+  },
+  {
+    id: "pay",
+    label: "Pay someone on another chain",
+    text: "Send 100 USDC to a recipient wallet on Polygon.",
+  },
+] as const;
+
 export function ForgeArbitraryPanel() {
   const { address, isConnected } = useAccount();
   const { network, isTestnet } = useNetwork();
   const chains = getExecChains(network);
 
+  const [goal, setGoal] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [chain, setChain] = useState(chains[0]?.appKitChain ?? "Base_Sepolia");
   const [contract, setContract] = useState("");
   const [calldata, setCalldata] = useState("0x");
-  const [valueEth, setValueEth] = useState("");
-  const [signedIntent, setSignedIntent] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "ok" | "error">("idle");
   const [running, setRunning] = useState(false);
 
-  const runCalldata = async () => {
+  const queueGoal = () => {
+    if (!goal.trim()) {
+      setMsg("Pick a preset or describe your goal in plain English.");
+      setStatus("error");
+      return;
+    }
+    try {
+      const key = "agora-forge-signed-intents";
+      const prev = JSON.parse(localStorage.getItem(key) ?? "[]") as unknown[];
+      localStorage.setItem(
+        key,
+        JSON.stringify(
+          [
+            {
+              id: `intent-${Date.now()}`,
+              text: goal.trim(),
+              createdAt: new Date().toISOString(),
+              status: "queued",
+            },
+            ...prev,
+          ].slice(0, 20),
+        ),
+      );
+      setMsg("Goal saved. Open the Agent page to run portfolio-linked execution when ready.");
+      setStatus("ok");
+    } catch {
+      setMsg("Could not save goal.");
+      setStatus("error");
+    }
+  };
+
+  const runAdvanced = async () => {
     if (!address) return;
     setRunning(true);
-    setMsg(null);
     try {
       const { txHash } = await executeArbitraryCall(
         {
           chain,
           to: contract,
           data: calldata,
-          valueEth: valueEth || undefined,
           mode: network,
           fromAddress: address,
           testnet: isTestnet,
         },
         setMsg,
       );
-      setMsg(`Arbitrary call sent · ${txHash.slice(0, 16)}…`);
+      setMsg(`Contract call sent · ${txHash.slice(0, 14)}…`);
       setStatus("ok");
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Failed");
@@ -48,73 +95,68 @@ export function ForgeArbitraryPanel() {
     }
   };
 
-  const queueIntent = () => {
-    if (!signedIntent.trim()) {
-      setMsg("Describe your execution goal first.");
-      setStatus("error");
-      return;
-    }
-    try {
-      const key = "agora-forge-signed-intents";
-      const prev = JSON.parse(localStorage.getItem(key) ?? "[]") as unknown[];
-      const entry = {
-        id: `intent-${Date.now()}`,
-        text: signedIntent.trim(),
-        chain,
-        createdAt: new Date().toISOString(),
-        status: "queued",
-      };
-      localStorage.setItem(key, JSON.stringify([entry, ...prev].slice(0, 20)));
-      setMsg("Intent queued for agent / solver (stored locally). Calldata rail runs below when you have hex.");
-      setStatus("ok");
-    } catch {
-      setMsg("Could not save intent.");
-      setStatus("error");
-    }
-  };
-
   return (
-    <div className="forge-panel space-y-5 border border-amber-500/20 p-5 sm:p-6">
-      <div>
-        <p className="font-display text-xs font-bold uppercase tracking-[0.15em] text-amber-400/90">
-          Arbitrary execution
+    <div className="space-y-4">
+      <div className="forge-panel p-5 sm:p-6">
+        <p className="font-display text-xs font-bold uppercase tracking-[0.15em] text-violet-300/90">
+          Custom goal
         </p>
         <p className="mt-2 text-sm text-slate-400">
-          Not a swap: run custom contract calls or queue a signed goal for the agent.
-          Use only contracts you trust.
+          Describe what you want in normal language. For swaps and bridges, use{" "}
+          <strong className="text-slate-200">Full execution</strong> or{" "}
+          <strong className="text-slate-200">Stable transfer</strong> — they work
+          today with your wallet.
         </p>
-      </div>
 
-      <label className="block space-y-2">
-        <span className="text-xs font-semibold text-slate-500">Signed intent (goal text)</span>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {GOAL_PRESETS.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => setGoal(p.text)}
+              className="forge-chip rounded-lg px-3 py-2 text-left text-xs"
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
         <textarea
-          value={signedIntent}
-          onChange={(e) => setSignedIntent(e.target.value)}
-          rows={3}
-          placeholder="e.g. Stake 50 USDC into vault X on Arbitrum after bridging from Base"
-          className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white placeholder:text-slate-600"
+          value={goal}
+          onChange={(e) => setGoal(e.target.value)}
+          rows={4}
+          placeholder="What should happen across chains?"
+          className="mt-3 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white"
         />
+
         <button
           type="button"
           disabled={!isConnected}
-          onClick={queueIntent}
-          className="forge-chip rounded-lg px-4 py-2 text-xs"
+          onClick={queueGoal}
+          className="forge-execute-btn mt-4"
         >
-          Queue intent for agent
+          Save goal for agent
         </button>
-      </label>
+      </div>
 
-      <div className="border-t border-slate-800 pt-4">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Generic calldata (live on EVM)
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block sm:col-span-2">
-            <span className="text-xs text-slate-500">Chain</span>
+      <div className="forge-panel border border-slate-700/60 p-5 sm:p-6">
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((v) => !v)}
+          className="flex w-full items-center justify-between text-sm font-semibold text-slate-400"
+        >
+          Developer: custom contract call
+          <span className="text-xs">{showAdvanced ? "Hide" : "Show"}</span>
+        </button>
+        {showAdvanced && (
+          <div className="mt-4 space-y-3 border-t border-slate-800 pt-4">
+            <p className="text-xs text-slate-500">
+              Only for developers. Wrong calldata can lose funds.
+            </p>
             <select
               value={chain}
               onChange={(e) => setChain(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white"
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white"
             >
               {chains.map((c) => (
                 <option key={c.appKitChain} value={c.appKitChain}>
@@ -122,43 +164,28 @@ export function ForgeArbitraryPanel() {
                 </option>
               ))}
             </select>
-          </label>
-          <label className="block sm:col-span-2">
-            <span className="text-xs text-slate-500">Contract (to)</span>
             <input
               value={contract}
               onChange={(e) => setContract(e.target.value)}
-              placeholder="0x…"
-              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-sm text-white"
+              placeholder="Contract address 0x…"
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs text-white"
             />
-          </label>
-          <label className="block sm:col-span-2">
-            <span className="text-xs text-slate-500">Calldata</span>
             <input
               value={calldata}
               onChange={(e) => setCalldata(e.target.value)}
-              placeholder="0x"
-              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs text-white"
+              placeholder="Calldata 0x…"
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs text-white"
             />
-          </label>
-          <label className="block">
-            <span className="text-xs text-slate-500">Value (ETH, optional)</span>
-            <input
-              value={valueEth}
-              onChange={(e) => setValueEth(e.target.value)}
-              placeholder="0"
-              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white"
-            />
-          </label>
-        </div>
-        <button
-          type="button"
-          disabled={!isConnected || running}
-          onClick={runCalldata}
-          className="mt-4 w-full rounded-xl border border-amber-500/40 bg-amber-500/10 py-3 text-sm font-bold text-amber-100 hover:bg-amber-500/20 disabled:opacity-40"
-        >
-          {running ? "Waiting for wallet…" : "Execute arbitrary call"}
-        </button>
+            <button
+              type="button"
+              disabled={!isConnected || running}
+              onClick={runAdvanced}
+              className="w-full rounded-xl border border-slate-600 py-2.5 text-sm font-semibold text-slate-300"
+            >
+              {running ? "Wallet…" : "Send contract call"}
+            </button>
+          </div>
+        )}
       </div>
 
       {msg && (

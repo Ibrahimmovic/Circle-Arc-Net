@@ -21,6 +21,7 @@ import type { ExecutionKind, ExecutionPipelineStep } from "@/lib/execution/execu
 import { classifyExecution } from "@/lib/execution/execution-intent-ui";
 import { RecipientField } from "@/components/ui/recipient-field";
 import { ForgeRailsStrip } from "@/components/execute/forge-rails-strip";
+import { ForgeCctpPending } from "@/components/execute/forge-cctp-pending";
 import { useExecBalances } from "@/hooks/use-exec-balances";
 import { pushTx } from "@/lib/tx-store";
 import { installCircleProxyFetch } from "@/lib/circle-proxy-fetch";
@@ -71,6 +72,12 @@ export function CrossChainStudio() {
   const [intentText, setIntentText] = useState<string | null>(null);
   const [pipeline, setPipeline] = useState<ExecutionPipelineStep[]>([]);
   const [executionKind, setExecutionKind] = useState<ExecutionKind>("full");
+  const [cctpNote, setCctpNote] = useState<string | null>(null);
+  const [cctpPending, setCctpPending] = useState<{
+    burnTx?: string;
+    amount: string;
+  } | null>(null);
+  const [balanceRefresh, setBalanceRefresh] = useState(0);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -85,6 +92,7 @@ export function CrossChainStudio() {
     balanceChains,
     isConnected,
     network,
+    balanceRefresh,
   );
   const sourceBal = getBalance(fromChain, fromToken);
 
@@ -137,6 +145,11 @@ export function CrossChainStudio() {
       setIntentText(json.intent ?? null);
       setPipeline(json.pipeline ?? []);
       setExecutionKind(json.executionKind ?? "full");
+      setCctpNote(json.cctpNote ?? null);
+      const circle = list.find((r) => r.circleDirect);
+      if (json.executionKind === "transfer" && circle) {
+        setSelectedId(circle.id);
+      }
       setStatus("idle");
       setMessage(null);
     } catch (e) {
@@ -197,8 +210,13 @@ export function CrossChainStudio() {
       }
     }
     if (mode === "transfer") {
-      setToToken(fromToken);
-      setAmount("50");
+      if (isTestnet) {
+        setFromChain("Arc_Testnet");
+        setToChain("Base_Sepolia");
+        setFromToken("USDC");
+        setToToken("USDC");
+      }
+      setAmount("10");
     }
   };
 
@@ -229,8 +247,19 @@ export function CrossChainStudio() {
 
   const execute = async () => {
     if (!address || !selectedRoute?.executable) return;
+    const balStr = sourceBal?.balance ?? "0";
+    const bal =
+      balStr.startsWith("<") ? 0 : Number.parseFloat(balStr.replace(/,/g, "")) || 0;
+    if (bal < Number(amount)) {
+      setMessage(
+        `Need ${amount} ${fromToken} on ${fromLabel} — available: ${sourceBal?.balance ?? "0"}. Fund via Fund wallet tab.`,
+      );
+      setStatus("error");
+      return;
+    }
     setExecuting(true);
     setMessage(null);
+    setCctpPending(null);
     const intent = { fromChain, toChain, fromToken, toToken, amount };
     try {
       if (selectedRoute.circleDirect) {
@@ -246,8 +275,10 @@ export function CrossChainStudio() {
           summary: `Transfer ${amount} ${fromToken} · ${fromLabel} → ${toLabel}`,
           chain: fromChain,
         });
+        setCctpPending({ burnTx: res.burnTx, amount });
         setMessage(res.message);
         setStatus("ok");
+        setTimeout(() => setBalanceRefresh((n) => n + 1), 2000);
       } else {
         const { txHash, tool } = await executeLifiIntent({
           intent,
@@ -401,9 +432,12 @@ export function CrossChainStudio() {
             {balanceLoading
               ? "Balance…"
               : sourceBal
-                ? `Available: ${sourceBal.balance} ${fromToken}`
-                : "Connect wallet for balance"}
+                ? `Available on ${fromLabel}: ${sourceBal.balance} ${fromToken}`
+                : `Connect wallet · fund ${fromToken} on ${fromLabel}`}
           </p>
+          {cctpNote && (
+            <p className="text-xs leading-relaxed text-amber-200/90">{cctpNote}</p>
+          )}
 
           <div className="flex gap-2">
             {[25, 50, 75, 100].map((p) => (
@@ -558,7 +592,24 @@ export function CrossChainStudio() {
                 : "Run transfer"}
           </button>
 
-          {message && (
+          {cctpPending && (
+            <div className="mt-4">
+              <ForgeCctpPending
+                amount={cctpPending.amount}
+                fromChain={fromChain}
+                fromLabel={fromLabel}
+                toLabel={toLabel}
+                toChain={toChain}
+                toToken={toToken}
+                burnTx={cctpPending.burnTx}
+                address={address!}
+                network={network}
+                onDismiss={() => setCctpPending(null)}
+              />
+            </div>
+          )}
+
+          {message && !cctpPending && (
             <p
               role="status"
               className={cn(

@@ -3,17 +3,34 @@ import {
   findExecToken,
   getExecChain,
 } from "@/lib/execution/chain-catalog";
-import { fetchCrossChainRoutes } from "@/lib/lifi-routes";
+import { fetchCrossChainRoutes, type CrossChainRouteOption } from "@/lib/lifi-routes";
 import { fetchLifiQuote } from "@/lib/lifi";
-import { toBaseUnits } from "@/lib/execute-tokens";
+import { toBaseUnits, useCircleCctpBridge } from "@/lib/execute-tokens";
 import { resolveApiTestnet, type NetworkMode } from "@/lib/network";
-import { useCircleCctpBridge } from "@/lib/execute-tokens";
 import {
   buildExecutionPipeline,
   classifyExecution,
   intentSentence,
 } from "@/lib/execution/execution-intent-ui";
 import type { CrossChainIntent } from "@/lib/execution/intent-types";
+import { isQuoteSane } from "@/lib/format-route-amount";
+
+function circleRoute(
+  amount: string,
+  executionHint: string,
+): CrossChainRouteOption {
+  return {
+    id: "circle-cctp",
+    badge: "direct",
+    provider: "Circle CCTP",
+    title: "Circle Direct",
+    executable: true,
+    circleDirect: true,
+    toAmountDisplay: `${amount} USDC`,
+    hint: "Official USDC burn/mint — use this for Arc ↔ L2 testnet moves",
+    executionHint,
+  };
+}
 
 export async function POST(req: NextRequest) {
   let body: {
@@ -73,56 +90,99 @@ export async function POST(req: NextRequest) {
     toCfg.label,
   );
 
-  const orchestrationHint =
-    executionKind === "full"
-      ? "One signature · debit, route, convert, deliver"
-      : executionKind === "transfer"
-        ? "Stablecoin migration · burn/mint rail"
-        : "Same-chain conversion";
-
-  const routes = await fetchCrossChainRoutes({
-    fromChainId: fromCfg.lifiChainId,
-    toChainId: toCfg.lifiChainId,
-    fromToken: fromMeta.symbol,
-    toToken: toMeta.symbol,
-    fromAmount: toBaseUnits(amount, fromMeta.decimals),
-    fromAddress,
-    toAddress: body.toAddress ?? fromAddress,
-    executionHint: orchestrationHint,
-  });
-
-  const isUsdcBridge =
+  const canCircle =
     executionKind === "transfer" &&
     useCircleCctpBridge(fromChain, toChain, fromMeta, toMeta);
 
-  if (isUsdcBridge) {
-    routes.unshift({
-      id: "circle-cctp",
-      badge: "direct",
-      provider: "Circle CCTP",
-      title: "Circle Direct",
-      executable: true,
-      circleDirect: true,
-      hint: "Stable transfer only — same token across chains",
-      executionHint: "Position migration · no swap leg",
+  let routes: CrossChainRouteOption[] = [];
+
+  if (canCircle) {
+    routes = [
+      circleRoute(
+        amount,
+        "Burn on source → Circle attestation → mint on destination (~15 min testnet)",
+      ),
+    ];
+  } else if (executionKind === "full" || executionKind === "same_chain") {
+    const orchestrationHint =
+      executionKind === "full"
+        ? "One signature · debit, route, convert, deliver"
+        : "Same-chain conversion";
+
+    const lifiRoutes = await fetchCrossChainRoutes({
+      fromChainId: fromCfg.lifiChainId,
+      toChainId: toCfg.lifiChainId,
+      fromToken: fromMeta.symbol,
+      toToken: toMeta.symbol,
+      fromAmount: toBaseUnits(amount, fromMeta.decimals),
+      fromAddress,
+      toAddress: body.toAddress ?? fromAddress,
+      executionHint: orchestrationHint,
     });
+
+    routes = lifiRoutes.filter((r) => {
+      if (!r.toAmount || r.circleDirect) return r.executable;
+      return isQuoteSane({
+        fromAmountHuman: amount,
+        toAmountRaw: r.toAmount,
+        fromDecimals: fromMeta.decimals,
+        toDecimals: toMeta.decimals,
+        fromToken,
+        toToken,
+      });
+    });
+
+    const primary = routes.find((r) => r.executable && !r.lifiQuote);
+    if (primary) {
+      try {
+        const quote = await fetchLifiQuote({
+          fromChain: fromCfg.lifiChainId,
+          toChain: toCfg.lifiChainId,
+          fromToken: fromMeta.symbol,
+          toToken: toMeta.symbol,
+          fromAmount: toBaseUnits(amount, fromMeta.decimals),
+          fromAddress,
+          toAddress: body.toAddress ?? fromAddress,
+        });
+        const toRaw = quote.estimate?.toAmountMin ?? quote.estimate?.toAmount;
+        if (
+          toRaw &&
+          isQuoteSane({
+            fromAmountHuman: amount,
+            toAmountRaw: toRaw,
+            fromDecimals: fromMeta.decimals,
+            toDecimals: toMeta.decimals,
+            fromToken,
+            toToken,
+          })
+        ) {
+          primary.lifiQuote = quote;
+          primary.toAmount = toRaw;
+          primary.toAmountDecimals = toMeta.decimals;
+        } else {
+          routes = routes.filter((r) => r.id !== primary.id);
+        }
+      } catch {
+        routes = routes.filter((r) => r.id !== primary.id);
+      }
+    }
+
+    if (canCircle && routes.length === 0) {
+      routes = [circleRoute(amount, "LI.FI unavailable — use Circle for USDC transfer")];
+    }
   }
 
-  const primaryLifi = routes.find((r) => r.executable && !r.circleDirect && !r.lifiQuote);
-  if (primaryLifi) {
-    try {
-      primaryLifi.lifiQuote = await fetchLifiQuote({
-        fromChain: fromCfg.lifiChainId,
-        toChain: toCfg.lifiChainId,
-        fromToken: fromMeta.symbol,
-        toToken: toMeta.symbol,
-        fromAmount: toBaseUnits(amount, fromMeta.decimals),
-        fromAddress,
-        toAddress: body.toAddress ?? fromAddress,
-      });
-    } catch {
-      /* execute path will re-quote */
-    }
+  if (routes.length === 0) {
+    routes = [
+      {
+        id: "none",
+        badge: "best",
+        provider: "—",
+        title: "No path",
+        executable: false,
+        hint: "Try Circle USDC↔USDC, or USDC→WETH across Base and Ethereum Sepolia",
+      },
+    ];
   }
 
   return NextResponse.json({
@@ -133,5 +193,9 @@ export async function POST(req: NextRequest) {
     pipeline,
     fromChain: fromCfg.label,
     toChain: toCfg.label,
+    cctpNote:
+      canCircle || fromChain === "Arc_Testnet" || toChain === "Arc_Testnet"
+        ? "USDC leaves source immediately; destination credit can take ~15 minutes on testnet."
+        : undefined,
   });
 }

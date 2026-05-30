@@ -9,6 +9,7 @@ export function useExecBalances(
   chains: string[],
   enabled: boolean,
   network: "testnet" | "mainnet" = "testnet",
+  refreshKey = 0,
 ) {
   const [balances, setBalances] = useState<TokenBalanceRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -35,7 +36,7 @@ export function useExecBalances(
       }
     }, 500);
     return () => window.clearTimeout(id);
-  }, [address, chains.join(","), enabled, network]);
+  }, [address, chains.join(","), enabled, network, refreshKey]);
 
   const getBalance = (chain: string, symbol: string) =>
     balances.find((b) => balanceKey(b.chain, b.symbol) === balanceKey(chain, symbol));
