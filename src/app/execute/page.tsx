@@ -7,24 +7,16 @@ import { MarketTicker } from "@/components/dashboard/market-ticker";
 import { useNetwork } from "@/providers/network-context";
 import { ARC_FEE_USDC } from "@/lib/network";
 
-const CrossChainExecutionStack = dynamic(
+const CrossChainStudio = dynamic(
   () =>
-    import("@/components/execute/cross-chain-execution-stack").then((m) => ({
-      default: m.CrossChainExecutionStack,
-    })),
-  { ssr: false, loading: () => null },
-);
-
-const ExecuteHub = dynamic(
-  () =>
-    import("@/components/execute/execute-hub").then((m) => ({
-      default: m.ExecuteHub,
+    import("@/components/execute/cross-chain-studio").then((m) => ({
+      default: m.CrossChainStudio,
     })),
   {
     ssr: false,
     loading: () => (
       <div className="flex h-64 items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-cyan-500/30 border-t-cyan-400" />
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-violet-500/30 border-t-violet-400" />
       </div>
     ),
   },
@@ -32,22 +24,22 @@ const ExecuteHub = dynamic(
 
 export default function ExecutePage() {
   const { isConnected } = useAccount();
-  const { isTestnet, network } = useNetwork();
+  const { isTestnet } = useNetwork();
 
   return (
     <AppShell
-      title="Cross-Chain Execution"
-      subtitle="Engine · queue · CCTP bridge & swap · Arc USDC fees"
+      title="Execute"
+      subtitle="Cross-chain routes · one flow · LI.FI + Circle"
     >
       <div className="space-y-6">
         <MarketTicker />
         {!isConnected && isTestnet && (
-          <p className="mx-auto max-w-md rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-center text-sm text-cyan-100">
-            Connect wallet · fund Arc USDC first · {ARC_FEE_USDC}
+          <p className="mx-auto max-w-lg rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-center text-sm text-cyan-100">
+            Connect wallet · fund test tokens on Arc + Base Sepolia if needed ·{" "}
+            {ARC_FEE_USDC} platform fee per run
           </p>
         )}
-        <CrossChainExecutionStack />
-        <ExecuteHub />
+        <CrossChainStudio />
       </div>
     </AppShell>
   );

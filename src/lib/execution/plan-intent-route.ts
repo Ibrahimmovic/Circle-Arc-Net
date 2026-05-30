@@ -1,28 +1,31 @@
 import { fetchLifiQuote } from "@/lib/lifi";
+import { toBaseUnits, useCircleCctpBridge } from "@/lib/execute-tokens";
 import {
-  getSwapChain,
-  getTokensForChain,
-  toBaseUnits,
-  useCircleCctpBridge,
-  type ExecuteToken,
-} from "@/lib/execute-tokens";
+  findExecToken,
+  getExecChain,
+} from "@/lib/execution/chain-catalog";
+import type { ExecuteToken } from "@/lib/execute-tokens";
 import { planRoute } from "@/lib/route-engine";
 import { TESTNET_HOME_CHAIN } from "@/lib/network";
 import type { CrossChainIntent, IntentRoutePlan, IntentRouteStep } from "@/lib/execution/intent-types";
 
-function findToken(chain: string, symbol: string): ExecuteToken | undefined {
-  return getTokensForChain(chain).find(
-    (t) => t.symbol.toUpperCase() === symbol.toUpperCase(),
-  );
+function findToken(
+  chain: string,
+  symbol: string,
+  testnet: boolean,
+): ExecuteToken | undefined {
+  return findExecToken(chain, symbol, testnet ? "testnet" : "mainnet");
 }
 
 async function probeLifi(
   intent: CrossChainIntent,
   fromAddress: string,
   fromMeta: ExecuteToken,
+  testnet: boolean,
 ): Promise<IntentRoutePlan["lifi"] | null> {
-  const fromCfg = getSwapChain(intent.fromChain);
-  const toCfg = getSwapChain(intent.toChain);
+  const mode = testnet ? "testnet" : "mainnet";
+  const fromCfg = getExecChain(intent.fromChain, mode);
+  const toCfg = getExecChain(intent.toChain, mode);
   if (!fromCfg || !toCfg) return null;
 
   try {
@@ -60,8 +63,8 @@ export async function planCrossChainIntent(
 ): Promise<IntentRoutePlan> {
   const testnet = options.testnet ?? true;
   const sameChain = intent.fromChain === intent.toChain;
-  const fromMeta = findToken(intent.fromChain, intent.fromToken);
-  const toMeta = findToken(intent.toChain, intent.toToken);
+  const fromMeta = findToken(intent.fromChain, intent.fromToken, testnet);
+  const toMeta = findToken(intent.toChain, intent.toToken, testnet);
 
   if (!fromMeta || !toMeta) {
     return {
@@ -76,7 +79,7 @@ export async function planCrossChainIntent(
   }
 
   const legacy = planRoute(intent.fromChain, intent.toChain, fromMeta, toMeta);
-  const lifi = await probeLifi(intent, fromAddress, fromMeta);
+  const lifi = await probeLifi(intent, fromAddress, fromMeta, testnet);
   const feeSteps = arcFeeSteps(testnet);
 
   const isUsdcBridge =

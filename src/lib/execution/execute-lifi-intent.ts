@@ -1,5 +1,10 @@
 import type { LifiQuoteResult } from "@/lib/lifi";
-import { getSwapChain, getTokensForChain, toBaseUnits } from "@/lib/execute-tokens";
+import { toBaseUnits } from "@/lib/execute-tokens";
+import {
+  findExecToken,
+  getExecChain,
+} from "@/lib/execution/chain-catalog";
+import type { NetworkMode } from "@/lib/network";
 import type { CrossChainIntent } from "@/lib/execution/intent-types";
 import { debitArcPlatformFee } from "@/lib/arc-platform-fee";
 import { chainIdToHex, switchWalletToChain, withTimeout } from "@/lib/wallet-chain";
@@ -7,12 +12,11 @@ import { chainIdToHex, switchWalletToChain, withTimeout } from "@/lib/wallet-cha
 export async function fetchIntentLifiQuote(
   intent: CrossChainIntent,
   fromAddress: string,
+  mode: NetworkMode = "testnet",
 ): Promise<LifiQuoteResult> {
-  const fromMeta = getTokensForChain(intent.fromChain).find(
-    (t) => t.symbol.toUpperCase() === intent.fromToken.toUpperCase(),
-  );
-  const fromCfg = getSwapChain(intent.fromChain);
-  const toCfg = getSwapChain(intent.toChain);
+  const fromMeta = findExecToken(intent.fromChain, intent.fromToken, mode);
+  const fromCfg = getExecChain(intent.fromChain, mode);
+  const toCfg = getExecChain(intent.toChain, mode);
   if (!fromMeta || !fromCfg || !toCfg) {
     throw new Error("Unsupported chain or token.");
   }
@@ -36,9 +40,11 @@ export async function executeLifiIntent(params: {
   intent: CrossChainIntent;
   fromAddress: string;
   testnet: boolean;
+  mode?: NetworkMode;
   onProgress?: (msg: string) => void;
 }): Promise<{ txHash: string; tool?: string }> {
   const { intent, fromAddress, testnet, onProgress } = params;
+  const mode = params.mode ?? (testnet ? "testnet" : "mainnet");
 
   if (testnet) {
     onProgress?.("Arc platform fee (0.01 USDC)…");
@@ -46,11 +52,11 @@ export async function executeLifiIntent(params: {
     if (!fee.ok) throw new Error(fee.message);
   }
 
-  const fromCfg = getSwapChain(intent.fromChain);
+  const fromCfg = getExecChain(intent.fromChain, mode);
   if (!fromCfg) throw new Error("Unsupported source chain.");
 
   onProgress?.("Fetching best route…");
-  const quote = await fetchIntentLifiQuote(intent, fromAddress);
+  const quote = await fetchIntentLifiQuote(intent, fromAddress, mode);
   const tx = quote.transactionRequest;
   if (!tx?.to || !tx?.data) {
     throw new Error("No executable transaction — try another pair or amount.");

@@ -31,17 +31,8 @@ export async function POST(req: NextRequest) {
   const networkParam = req.nextUrl.searchParams.get("network");
   const testnet = resolveApiTestnet(networkParam);
 
-  if (!testnet) {
-    return NextResponse.json(
-      {
-        error: "Intent planner demo is optimized for testnet. Use Exchange on mainnet or set ?network=testnet.",
-      },
-      { status: 400 },
-    );
-  }
-
   try {
-    const plan = await planCrossChainIntent(intent, fromAddress, { testnet: true });
+    const plan = await planCrossChainIntent(intent, fromAddress, { testnet });
     return NextResponse.json({ plan });
   } catch (e) {
     return NextResponse.json(
