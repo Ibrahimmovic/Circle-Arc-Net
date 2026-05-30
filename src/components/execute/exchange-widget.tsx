@@ -10,6 +10,7 @@ import {
   Settings2,
 } from "lucide-react";
 import { getBridgeChains, TESTNET_HOME_CHAIN } from "@/lib/network";
+import { cn } from "@/lib/utils";
 import { wagmiChainIdForAppKit } from "@/lib/chains";
 import { defaultWalletChainId } from "@/providers/wagmi-config";
 import { installCircleProxyFetch } from "@/lib/circle-proxy-fetch";
@@ -56,8 +57,8 @@ import { formatUnits } from "viem";
 import { TokenAvatar } from "./token-avatar";
 import { TokenPicker } from "./token-picker";
 import { TokenBalanceLine } from "./token-balance-line";
+import { ExchangeSettingsPanel } from "./exchange-settings-panel";
 import type { TokenBalanceRow } from "@/lib/wallet-balances";
-import { RecipientField } from "@/components/ui/recipient-field";
 import { TxScannerPanel } from "./tx-scanner-panel";
 import { chainIdsForRoute } from "@/lib/explorers";
 import {
@@ -114,7 +115,9 @@ export function ExchangeWidget({
   const [toToken, setToToken] = useState("USDC");
   const [amount, setAmount] = useState("");
   const [recipient, setRecipient] = useState("");
-  const [showRecipient, setShowRecipient] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [slippageBps, setSlippageBps] = useState(150);
+  const [bridgeFast, setBridgeFast] = useState(false);
   const [picker, setPicker] = useState<PickerSide>(null);
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string | null>(null);
@@ -271,7 +274,7 @@ export function ExchangeWidget({
             from: { adapter, chain: fromChain as never },
             to: getBridgeDestination(toChain, adapter, network, recipient) as never,
             amount,
-            config: getBridgeKitConfig(),
+            config: getBridgeKitConfig(!bridgeFast),
             token: "USDC",
           });
           setGasPreview(
@@ -381,6 +384,7 @@ export function ExchangeWidget({
           toToken: tSym,
           fromAmount: toBaseUnits(amt, meta.decimals),
           fromAddress: address,
+          slippage: String(slippageBps / 10000),
         });
         const res = await fetch(`/api/lifi/quote?${qs}`);
         const data = await res.json();
@@ -408,7 +412,7 @@ export function ExchangeWidget({
           tokenIn: fromTokenMeta!.circleKey as never,
           tokenOut: toTokenMeta!.circleKey as never,
           amountIn: amount,
-          config: getSwapKitConfig(kitKey),
+          config: getSwapKitConfig(kitKey, slippageBps),
         });
         setQuoteOut(`${est.estimatedOutput?.amount ?? "—"} ${toToken}`);
         setMessage(route.hint);
@@ -424,7 +428,7 @@ export function ExchangeWidget({
           from: { adapter, chain: fromChain as never },
           to: getBridgeDestination(toChain, adapter, network, recipient) as never,
           amount,
-          config: getBridgeKitConfig(),
+          config: getBridgeKitConfig(!bridgeFast),
           token: "USDC",
         });
         setQuoteOut(`~${amount} ${toToken} on ${toMeta?.label}`);
@@ -511,6 +515,8 @@ export function ExchangeWidget({
     toMeta,
     fromMeta,
     getAdapter,
+    slippageBps,
+    bridgeFast,
   ]);
 
   const runExchange = useCallback(async () => {
@@ -550,6 +556,7 @@ export function ExchangeWidget({
           toToken: tSym,
           fromAmount: toBaseUnits(amt, meta.decimals),
           fromAddress: address,
+          slippage: String(slippageBps / 10000),
         });
         const res = await fetch(`/api/lifi/quote?${qs}`);
         const data = await res.json();
@@ -689,7 +696,7 @@ export function ExchangeWidget({
             tokenIn: fromTokenMeta!.circleKey as never,
             tokenOut: toTokenMeta!.circleKey as never,
             amountIn: amount,
-            config: getSwapKitConfig(kitKey),
+            config: getSwapKitConfig(kitKey, slippageBps),
           }),
           180_000,
           "Swap",
@@ -736,7 +743,7 @@ export function ExchangeWidget({
             from: { adapter, chain: fromChain as never },
             to: getBridgeDestination(toChain, adapter, network, recipient) as never,
             amount,
-            config: getBridgeKitConfig(),
+            config: getBridgeKitConfig(!bridgeFast),
             token: "USDC",
           },
           (msg) => {
@@ -842,7 +849,7 @@ export function ExchangeWidget({
             from: { adapter, chain: fromChain as never },
             to: getBridgeDestination(TESTNET_HOME_CHAIN, adapter, network, recipient) as never,
             amount: usdcAmount,
-            config: getBridgeKitConfig(),
+            config: getBridgeKitConfig(!bridgeFast),
             token: "USDC",
           },
           (msg) => {
@@ -942,6 +949,8 @@ export function ExchangeWidget({
     getAdapter,
     chains,
     chainId,
+    slippageBps,
+    bridgeFast,
   ]);
 
   const pct = (p: number) => {
@@ -969,10 +978,35 @@ export function ExchangeWidget({
           <h2 className="font-display text-base font-bold text-white sm:text-lg">
             Swap & Bridge
           </h2>
-          <div className="flex gap-1 text-slate-500">
-            <Settings2 className="h-4 w-4 opacity-40" />
-          </div>
+          <button
+            type="button"
+            onClick={() => setShowSettings((v) => !v)}
+            className={cn(
+              "flex h-9 w-9 items-center justify-center rounded-xl border transition touch-manipulation",
+              showSettings
+                ? "border-cyan-400/45 bg-cyan-400/12 text-cyan-200"
+                : "border-white/14 bg-white/5 text-white/50 hover:border-white/25 hover:text-white/80",
+            )}
+            aria-label="Exchange settings"
+            aria-expanded={showSettings}
+          >
+            <Settings2 className="h-4 w-4" />
+          </button>
         </div>
+
+        {showSettings && (
+          <ExchangeSettingsPanel
+            slippageBps={slippageBps}
+            onSlippageChange={(bps) => {
+              setSlippageBps(bps);
+              setQuoteOut(null);
+            }}
+            bridgeFast={bridgeFast}
+            onBridgeFastChange={setBridgeFast}
+            recipient={recipient}
+            onRecipientChange={setRecipient}
+          />
+        )}
 
         <div className="flex flex-col gap-2 md:grid md:grid-cols-[1fr_auto_1fr] md:items-stretch">
           <button
@@ -982,7 +1016,7 @@ export function ExchangeWidget({
           >
             <p className="text-[10px] text-slate-500">From</p>
             <div className="mt-2 flex items-center gap-2">
-              <TokenAvatar symbol={fromToken} chainKey={fromChain} size={36} />
+              <TokenAvatar symbol={fromToken} chainKey={fromChain} size={36} glass glassVariant="cyan" />
               <div className="min-w-0">
                 <p className="font-bold text-white">{fromToken}</p>
                 <p className="truncate text-xs text-slate-400">{fromMeta?.label}</p>
@@ -1000,7 +1034,7 @@ export function ExchangeWidget({
           <button
             type="button"
             onClick={swapEnds}
-            className="mx-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-600 bg-slate-800/80 text-slate-300 hover:text-cyan-300 touch-manipulation md:mx-0 md:self-center"
+            className="forge-swap-control touch-manipulation md:mx-0 md:self-center"
             aria-label="Swap from and to"
           >
             <ArrowDownUp className="h-4 w-4" />
@@ -1013,7 +1047,7 @@ export function ExchangeWidget({
           >
             <p className="text-[10px] text-slate-500">To</p>
             <div className="mt-2 flex items-center gap-2">
-              <TokenAvatar symbol={toToken} chainKey={toChain} size={36} />
+              <TokenAvatar symbol={toToken} chainKey={toChain} size={36} glass glassVariant="violet" />
               <div className="min-w-0">
                 <p className="font-bold text-white">{toToken}</p>
                 <p className="truncate text-xs text-slate-400">{toMeta?.label}</p>
@@ -1040,7 +1074,7 @@ export function ExchangeWidget({
             />
           </div>
           <div className="mt-2 flex items-center gap-3">
-            <TokenAvatar symbol={fromToken} chainKey={fromChain} size={44} />
+            <TokenAvatar symbol={fromToken} chainKey={fromChain} size={44} glass glassVariant="cyan" />
             <input
               value={amount}
               onChange={(e) => {
@@ -1062,7 +1096,7 @@ export function ExchangeWidget({
                 key={p}
                 type="button"
                 onClick={() => pct(p)}
-                className="rounded-lg bg-slate-800/80 px-3 py-1 text-xs font-medium text-slate-300 hover:bg-slate-700"
+                className="forge-chip rounded-lg px-3 py-1 text-xs"
               >
                 {p === 1 ? "MAX" : `${p * 100}%`}
               </button>
@@ -1140,19 +1174,6 @@ export function ExchangeWidget({
               ? "Switching…"
               : `Switch to ${chains.find((c) => c.appKitChain === route?.signChain)?.label ?? "source"}`}
           </button>
-        )}
-
-        <button
-          type="button"
-          onClick={() => setShowRecipient(!showRecipient)}
-          className="mt-2 w-full text-center text-[10px] text-slate-500 hover:text-cyan-400"
-        >
-          {showRecipient ? "Hide" : "Send to another wallet"}
-        </button>
-        {showRecipient && (
-          <div className="mt-2">
-            <RecipientField value={recipient} onChange={setRecipient} />
-          </div>
         )}
 
         <div className="mt-4 flex flex-col gap-2 sm:flex-row">

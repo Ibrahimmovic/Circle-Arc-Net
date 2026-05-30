@@ -10,6 +10,7 @@ export interface LifiQuoteParams {
   fromAmount: string;
   fromAddress: string;
   toAddress?: string;
+  slippage?: number;
 }
 
 export interface LifiTransactionRequest {
@@ -56,7 +57,7 @@ export async function fetchLifiQuote(
     url.searchParams.set("toAddress", params.toAddress);
   }
   url.searchParams.set("integrator", "agora-forge");
-  url.searchParams.set("slippage", "0.03");
+  url.searchParams.set("slippage", String(params.slippage ?? 0.03));
 
   const res = await fetch(url.toString(), {
     headers: { accept: "application/json" },

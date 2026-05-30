@@ -49,14 +49,21 @@ export function CrossChainStudio() {
 
   return (
     <div className="space-y-5">
-      <GlassPanel strong className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/50">
-            Execution Desk
-          </p>
-          <p className="text-sm text-white/80">Swap · bridge · compare live routes</p>
+      <GlassPanel strong className="forge-studio-hero !overflow-visible px-4 py-4 sm:px-5 sm:py-5">
+        <p className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-400/90">
+          Agora Forge
+        </p>
+        <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 className="font-display text-xl font-bold text-white sm:text-2xl">
+              <span className="text-gradient">Execution Desk</span>
+            </h2>
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/60">
+              Swap, bridge, and compare live routes — quote on the left, paths on the right.
+            </p>
+          </div>
+          <ForgeRailsStrip />
         </div>
-        <ForgeRailsStrip />
       </GlassPanel>
 
       <div className="portfolio-glass-tab-bar flex gap-1 overflow-x-auto scrollbar-thin">
