@@ -197,6 +197,7 @@ export function PortfolioCommandCenter() {
           />
 
           <PortfolioHero
+            variant="glass"
             totalUsd={data.totalUsd}
             change24hPct={data.change24hPct}
             regime={regime}

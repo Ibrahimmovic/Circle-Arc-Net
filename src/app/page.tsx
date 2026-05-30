@@ -3,29 +3,11 @@
 import { useAccount } from "wagmi";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
-import { StatCard } from "@/components/ui/stat-card";
-import { RegimeBadge } from "@/components/portfolio/regime-badge";
-import { MarketTicker } from "@/components/dashboard/market-ticker";
-import { CoinStrip } from "@/components/dashboard/coin-strip";
-import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { PortfolioHero } from "@/components/portfolio/portfolio-hero";
-import { ChainBalanceGrid } from "@/components/portfolio/chain-balance-grid";
-import { HomeCinematicHero } from "@/components/home/home-cinematic-hero";
-import { HomeFeatureGrid } from "@/components/home/home-feature-grid";
-import { MotionScrollReveal } from "@/components/motion/motion-primitives";
-import { PremiumIcon } from "@/components/ui/premium-icon";
+import { HomeWelcome } from "@/components/home/home-welcome";
 import { useDashboard } from "@/hooks/use-dashboard";
 import { useNetwork } from "@/providers/network-context";
-import {
-  Wallet,
-  TrendingUp,
-  Layers,
-  Zap,
-  ArrowRight,
-  RefreshCw,
-  Globe,
-} from "lucide-react";
-import { formatUsd, formatPct } from "@/lib/utils";
+import { Zap, ArrowRight, RefreshCw } from "lucide-react";
 import type { MarketRegime } from "@/lib/types";
 
 export default function HomePage() {
@@ -44,44 +26,21 @@ export default function HomePage() {
   const regime = (analysis?.regime ??
     data?.macroRegime ??
     "neutral") as MarketRegime;
-  const trend = change24h >= 0 ? "up" : ("down" as const);
 
   return (
     <AppShell title="Overview" subtitle="" variant="home">
-      <HomeCinematicHero
-        compact={isConnected}
-        showCta={!isConnected}
-        walletPreview={
-          isConnected && analysis
-            ? { totalUsd, change24hPct: change24h }
-            : undefined
-        }
-      />
-
-      <div className="home-content space-y-8">
-        <MotionScrollReveal>
-          <div className="glass-panel glass-panel--strong glass-panel--flush overflow-hidden">
-            <MarketTicker variant="glass" />
-            <CoinStrip variant="glass" />
-          </div>
-        </MotionScrollReveal>
-
-        {!isConnected && (
-          <MotionScrollReveal>
-            <HomeFeatureGrid />
-          </MotionScrollReveal>
-        )}
+      <div className="mx-auto w-full max-w-4xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-0">
+        {!isConnected && <HomeWelcome />}
 
         {isConnected && (
-          <MotionScrollReveal>
-          <div className="space-y-8">
-            <span className="home-connected-badge">
+          <>
+            <span className="home-connected-badge inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-cyan-200">
               <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]" />
               {data?.networkMode ?? network} · live balances
             </span>
 
             {data?.hint && (
-              <div className="home-pro-panel home-pro-panel--amber px-4 py-3 text-sm text-amber-100">
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
                 {data.hint}{" "}
                 <Link href="/execute" className="font-semibold text-white underline-offset-2 hover:underline">
                   Fund →
@@ -91,6 +50,7 @@ export default function HomePage() {
 
             {analysis ? (
               <PortfolioHero
+                variant="classic"
                 totalUsd={totalUsd}
                 change24hPct={change24h}
                 regime={regime}
@@ -100,7 +60,7 @@ export default function HomePage() {
                 loading={loading}
               />
             ) : (
-              <div className="home-pro-panel p-8 text-center">
+              <div className="portfolio-hero-premium p-8 text-center">
                 <p className="text-slate-400">
                   {loading ? "Scanning all chains…" : "No balance yet — use Fund tab."}
                 </p>
@@ -108,93 +68,30 @@ export default function HomePage() {
             )}
 
             <div className="flex flex-wrap gap-3">
+              <Link
+                href="/execute"
+                className="premium-cta premium-cta--primary inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 sm:flex-none"
+              >
+                <Zap className="h-4 w-4" />
+                Open Execute
+              </Link>
+              <Link
+                href="/portfolio"
+                className="premium-cta premium-cta--ghost inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 sm:flex-none"
+              >
+                Portfolio
+                <ArrowRight className="h-4 w-4" />
+              </Link>
               <button
                 type="button"
                 onClick={() => refresh()}
-                className="home-pro-btn home-pro-btn--secondary !min-h-[2.5rem] !px-4 !text-xs inline-flex items-center gap-2"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-slate-700 px-4 text-xs text-slate-400 hover:text-white touch-manipulation"
               >
                 <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-                Sync live data
+                Sync
               </button>
-              {data?.dataFreshness && (
-                <span className="self-center text-xs text-slate-500">
-                  Updated {new Date(data.dataFreshness).toLocaleTimeString()}
-                </span>
-              )}
             </div>
-
-            <div className="home-stat-grid grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard
-                label="Net worth"
-                value={loading ? "…" : formatUsd(totalUsd)}
-                sub={formatPct(change24h) + " 24h"}
-                icon={Wallet}
-                trend={trend}
-                variant="cyan"
-              />
-              <StatCard
-                label="Chains"
-                value={String(data?.chainBalances?.length ?? 0)}
-                sub="Multichain scan"
-                icon={Globe}
-                variant="violet"
-              />
-              <StatCard
-                label="Regime"
-                value={regime.replace("-", " ")}
-                sub="CoinGecko + portfolio"
-                icon={TrendingUp}
-                variant="emerald"
-              />
-              <StatCard
-                label="Rebalance"
-                value={String(analysis?.rebalanceActions.length ?? 0)}
-                sub="Suggested moves"
-                icon={Layers}
-                variant="amber"
-              />
-            </div>
-
-            {data?.chainBalances && data.chainBalances.length > 0 && (
-              <div className="home-pro-panel p-6">
-                <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-slate-400">
-                  <PremiumIcon icon={Globe} variant="cyan" size="sm" />
-                  By chain
-                </h3>
-                <ChainBalanceGrid chains={data.chainBalances} />
-              </div>
-            )}
-
-            <div className="grid gap-6 lg:grid-cols-2">
-              <div className="home-pro-panel p-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-slate-400">
-                    <PremiumIcon icon={Zap} variant="violet" size="sm" />
-                    Quick actions
-                  </h3>
-                  <RegimeBadge regime={regime} />
-                </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <Link
-                    href="/execute"
-                    className="home-pro-btn home-pro-btn--primary justify-center !w-full"
-                  >
-                    <Zap className="h-4 w-4" /> Execute
-                  </Link>
-                  <Link
-                    href="/portfolio"
-                    className="home-pro-btn home-pro-btn--secondary justify-center !w-full"
-                  >
-                    Portfolio <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </div>
-              </div>
-              <div className="home-pro-panel overflow-hidden p-1">
-                <ActivityFeed />
-              </div>
-            </div>
-          </div>
-          </MotionScrollReveal>
+          </>
         )}
       </div>
     </AppShell>

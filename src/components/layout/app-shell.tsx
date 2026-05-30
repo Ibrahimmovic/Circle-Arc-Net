@@ -21,7 +21,7 @@ export function AppShell({
 }) {
   const isHome = variant === "home";
   const isPortfolio = variant === "portfolio";
-  const isCinematic = isHome || isPortfolio;
+  const isCinematic = isPortfolio;
 
   return (
     <div
@@ -51,7 +51,7 @@ export function AppShell({
           </div>
           {isHome && (
             <div className="mt-2 overflow-x-auto">
-              <ApiStatusBar variant="minimal" />
+              <ApiStatusBar />
             </div>
           )}
         </div>
@@ -90,9 +90,9 @@ export function AppShell({
         <main
           className={cn(
             "app-shell-main relative z-10 flex-1",
-            isHome && "",
+            isHome && "grid-mesh",
             isPortfolio && "portfolio-main px-4 py-5 sm:px-6 sm:py-8 lg:px-10",
-            !isCinematic && "grid-mesh px-4 py-5 sm:px-6 sm:py-8 lg:px-10",
+            !isHome && !isPortfolio && "grid-mesh px-4 py-5 sm:px-6 sm:py-8 lg:px-10",
           )}
         >
           {children}
