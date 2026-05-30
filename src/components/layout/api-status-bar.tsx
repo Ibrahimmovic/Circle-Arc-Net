@@ -3,13 +3,13 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 
+type ServiceStatus = Record<string, boolean | string | undefined>;
+
 export function ApiStatusBar({ variant = "default" }: { variant?: "default" | "minimal" }) {
-  const [services, setServices] = useState<Record<string, boolean> | null>(
-    null,
-  );
+  const [services, setServices] = useState<ServiceStatus | null>(null);
 
   useEffect(() => {
-    fetch("/api/status")
+    fetch("/api/status", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => setServices(d.services))
       .catch(() => setServices(null));
@@ -24,11 +24,13 @@ export function ApiStatusBar({ variant = "default" }: { variant?: "default" | "m
     );
   }
 
+  const covalentOk = Boolean(services.covalent ?? services.goldrush);
   const items = [
     ["Circle", services.circle],
     ["Kit", services.kit],
     ["Zerion", services.zerion],
-    ["GoldRush", services.goldrush],
+    ["Covalent", covalentOk],
+    ["Alchemy", services.alchemy],
   ] as const;
 
   const allOk = items.every(([, ok]) => ok);

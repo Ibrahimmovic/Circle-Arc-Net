@@ -5,15 +5,25 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { PortfolioHero } from "@/components/portfolio/portfolio-hero";
 import { HomeWelcome } from "@/components/home/home-welcome";
+import { MarketTicker } from "@/components/dashboard/market-ticker";
+import { CoinStrip } from "@/components/dashboard/coin-strip";
 import { useDashboard } from "@/hooks/use-dashboard";
 import { useNetwork } from "@/providers/network-context";
 import { Zap, ArrowRight, RefreshCw } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { MarketRegime } from "@/lib/types";
 
 export default function HomePage() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, status } = useAccount();
+  const [walletReady, setWalletReady] = useState(false);
   const { network } = useNetwork();
   const { data, loading, refresh } = useDashboard(isConnected ? address : undefined);
+
+  useEffect(() => {
+    if (status !== "connecting" && status !== "reconnecting") {
+      setWalletReady(true);
+    }
+  }, [status]);
 
   const analysis = data?.analysis;
   const health = data?.health;
@@ -30,10 +40,21 @@ export default function HomePage() {
   return (
     <AppShell title="Overview" subtitle="" variant="home">
       <div className="mx-auto w-full max-w-4xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-0">
-        {!isConnected && <HomeWelcome />}
+        {!walletReady && (
+          <div className="portfolio-hero-premium flex min-h-[280px] items-center justify-center p-8">
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-cyan-500/30 border-t-cyan-400" />
+          </div>
+        )}
 
-        {isConnected && (
+        {walletReady && !isConnected && <HomeWelcome />}
+
+        {walletReady && isConnected && (
           <>
+            <div className="home-market-strip overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl">
+              <MarketTicker variant="glass" />
+              <CoinStrip variant="glass" />
+            </div>
+
             <span className="home-connected-badge inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-cyan-200">
               <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]" />
               {data?.networkMode ?? network} · live balances
@@ -56,7 +77,7 @@ export default function HomePage() {
                 regime={regime}
                 chainCount={data?.chainBalances?.length ?? health?.chainCount ?? 0}
                 sparkline={data?.sparkline ?? []}
-                sources={health?.sources ?? ["Zerion", "GoldRush"]}
+                sources={health?.sources ?? ["Zerion", "Covalent"]}
                 loading={loading}
               />
             ) : (
@@ -91,6 +112,13 @@ export default function HomePage() {
                 Sync
               </button>
             </div>
+
+            <p className="text-center text-[11px] text-slate-500">
+              Cinematic glass theme & full adaptive portfolio →{" "}
+              <Link href="/portfolio" className="text-cyan-400/90 hover:text-cyan-300">
+                Portfolio tab
+              </Link>
+            </p>
           </>
         )}
       </div>

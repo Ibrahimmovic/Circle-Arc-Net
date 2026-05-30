@@ -26,7 +26,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <FramerProvider>
       <NetworkProvider>
-        <WagmiProvider config={wagmiConfig} reconnectOnMount={false}>
+        <WagmiProvider config={wagmiConfig} reconnectOnMount>
           <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
         </WagmiProvider>
       </NetworkProvider>
