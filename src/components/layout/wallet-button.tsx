@@ -7,7 +7,7 @@ import { useNetwork } from "@/providers/network-context";
 import { defaultWalletChainId } from "@/providers/wagmi-config";
 import { useSwitchChain } from "wagmi";
 
-export function WalletButton() {
+export function WalletButton({ variant = "default" }: { variant?: "default" | "home" }) {
   const { address, isConnected, chainId } = useAccount();
   const { connect, connectors, isPending } = useConnect();
   const { disconnect } = useDisconnect();
@@ -17,6 +17,8 @@ export function WalletButton() {
   const targetChainId = defaultWalletChainId;
   const onWrongChain = isConnected && chainId !== targetChainId;
 
+  const isHome = variant === "home";
+
   if (isConnected && address) {
     return (
       <div className="flex max-w-full items-center gap-1.5 sm:gap-2">
@@ -24,7 +26,7 @@ export function WalletButton() {
           <button
             type="button"
             onClick={() => switchChain({ chainId: targetChainId })}
-            className="shrink-0 rounded-xl border border-amber-500/50 bg-amber-500/15 px-2 py-2 text-[10px] font-medium text-amber-200 sm:px-3 sm:text-xs touch-manipulation"
+            className="shrink-0 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2 py-2 text-[10px] font-medium text-amber-200 sm:px-3 sm:text-xs touch-manipulation"
           >
             <span className="hidden min-[400px]:inline">Switch to </span>
             {isTestnet ? "Arc" : "ETH"}
@@ -33,9 +35,13 @@ export function WalletButton() {
         <button
           type="button"
           onClick={() => disconnect()}
-          className="flex max-w-[min(100%,11rem)] items-center gap-1.5 rounded-xl border border-cyan-500/40 bg-slate-900/90 px-2.5 py-2 text-xs font-medium text-cyan-100 sm:max-w-none sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm touch-manipulation"
+          className={
+            isHome
+              ? "flex max-w-[min(100%,11rem)] items-center gap-1.5 rounded-lg border border-white/12 bg-white/[0.04] px-2.5 py-2 text-xs font-medium text-slate-200 sm:max-w-none sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm touch-manipulation"
+              : "flex max-w-[min(100%,11rem)] items-center gap-1.5 rounded-xl border border-cyan-500/40 bg-slate-900/90 px-2.5 py-2 text-xs font-medium text-cyan-100 sm:max-w-none sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm touch-manipulation"
+          }
         >
-          <Wallet className="h-4 w-4 shrink-0 text-cyan-400" />
+          <Wallet className={`h-4 w-4 shrink-0 ${isHome ? "text-slate-400" : "text-cyan-400"}`} />
           <span className="truncate font-mono">{shortenAddress(address)}</span>
           <LogOut className="h-4 w-4 shrink-0 opacity-60" />
         </button>
@@ -50,7 +56,11 @@ export function WalletButton() {
       type="button"
       disabled={isPending || !injected}
       onClick={() => connect({ connector: injected, chainId: targetChainId })}
-      className="flex min-h-[44px] items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-cyan-500/30 hover:brightness-110 disabled:opacity-50 sm:px-6 sm:text-sm touch-manipulation"
+      className={
+        isHome
+          ? "flex min-h-[44px] items-center gap-2 rounded-lg border border-white/14 bg-white px-4 py-2.5 text-xs font-semibold text-black transition hover:bg-slate-100 disabled:opacity-50 sm:px-6 sm:text-sm touch-manipulation"
+          : "flex min-h-[44px] items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-cyan-500/30 hover:brightness-110 disabled:opacity-50 sm:px-6 sm:text-sm touch-manipulation"
+      }
     >
       {isPending ? (
         <Loader2 className="h-4 w-4 animate-spin" />

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 
-export function ApiStatusBar() {
+export function ApiStatusBar({ variant = "default" }: { variant?: "default" | "minimal" }) {
   const [services, setServices] = useState<Record<string, boolean> | null>(
     null,
   );
@@ -32,6 +32,21 @@ export function ApiStatusBar() {
   ] as const;
 
   const allOk = items.every(([, ok]) => ok);
+
+  if (variant === "minimal") {
+    return (
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">
+        {items.map(([name, ok]) => (
+          <span key={name} className="inline-flex items-center gap-1.5">
+            <span
+              className={`h-1 w-1 rounded-full ${ok ? "bg-emerald-500/80" : "bg-rose-500/80"}`}
+            />
+            {name}
+          </span>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div

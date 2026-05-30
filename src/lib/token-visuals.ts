@@ -42,7 +42,7 @@ export const CHAIN_ICONS: Record<string, string> = {
   Arbitrum_Sepolia: "https://assets.coingecko.com/coins/images/16547/small/arb.jpg",
   Optimism_Sepolia: "https://assets.coingecko.com/coins/images/25244/small/Optimism.png",
   Ethereum: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
-  Base: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
+  Base: "https://icons.llamao.fi/icons/chains/rsz_base.jpg",
   Arbitrum: "https://assets.coingecko.com/coins/images/16547/small/arb.jpg",
   Optimism: "https://assets.coingecko.com/coins/images/25244/small/Optimism.png",
   OP: "https://assets.coingecko.com/coins/images/25244/small/Optimism.png",

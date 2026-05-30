@@ -40,12 +40,12 @@ export function AppShell({
           )}
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <NetworkToggle />
-            <WalletButton />
+            <NetworkToggle variant={isHome ? "home" : "default"} />
+            <WalletButton variant={isHome ? "home" : "default"} />
           </div>
           {isHome && (
             <div className="mt-2 overflow-x-auto">
-              <ApiStatusBar />
+              <ApiStatusBar variant="minimal" />
             </div>
           )}
         </div>

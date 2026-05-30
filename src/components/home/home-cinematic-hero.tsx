@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { HomeRouteVisual } from "./home-route-visual";
+import { HomeExecutionVisual } from "./home-execution-visual";
 import { HomeProBackdrop } from "./home-pro-backdrop";
 import { figmaEaseOut, figmaSpringSnappy } from "@/design/motion-presets";
 import { formatPct, formatUsd } from "@/lib/utils";
@@ -30,18 +30,18 @@ export function HomeCinematicHero({
           animate={{ opacity: 1, y: 0 }}
           transition={figmaEaseOut}
         >
-          <p className="home-pro-hero__kicker">Agora Forge · Multichain execution</p>
+          <p className="home-pro-hero__kicker">Agora Forge · Circle CCTP · Arc</p>
 
           <h1 className="home-pro-hero__title font-display">
-            Institutional-grade
+            Cross-chain execution
             <br />
-            <span className="home-pro-hero__accent">cross-chain</span> execution
+            <span className="home-pro-hero__accent">without compromise.</span>
           </h1>
 
           <p className="home-pro-hero__lede">
-            Bridge USDC via Circle CCTP, compare LI.FI routes, and execute swaps across
-            Ethereum, Base, Arbitrum, and Arc — with live portfolio data from Zerion and
-            GoldRush.
+            Route USDC with Circle CCTP, compare LI.FI paths in real time, and settle
+            swaps across Ethereum, Base, Arbitrum, and Arc — backed by Zerion and GoldRush
+            portfolio intelligence.
           </p>
 
           {walletPreview && (
@@ -109,7 +109,7 @@ export function HomeCinematicHero({
               </p>
             </div>
           )}
-          <HomeRouteVisual compact={compact} />
+          <HomeExecutionVisual compact={compact} />
         </motion.div>
       </div>
     </section>
